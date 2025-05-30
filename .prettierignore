@@ -11,4 +11,3 @@ coverage/
 .env*
 package-lock.json
 yarn.lock
-.claude/settings.local.json
