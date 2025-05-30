@@ -1,0 +1,93 @@
+# .pre-commit-config.yaml
+# Pre-commit hooks for ADHD Todo Expo/React Native project
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-json
+        name: Validate JSON files
+      - id: check-yaml
+        name: Validate YAML files
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+        name: Fix mixed line endings
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+        name: Prevent direct commits to main/master
+
+  # JavaScript/TypeScript linting and formatting
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: npx eslint
+        language: system
+        types: [javascript, jsx, typescript, tsx]
+        args: ['--fix', '--max-warnings=0']
+        pass_filenames: true
+        exclude: '^(node_modules|android|ios|.expo)/.*'
+
+      - id: prettier
+        name: Prettier
+        entry: npx prettier
+        language: system
+        types_or: [javascript, jsx, typescript, tsx, json, css, scss, markdown, yaml]
+        args: ['--write', '--ignore-unknown']
+        pass_filenames: true
+        exclude: '^(node_modules|android|ios|.expo)/.*'
+
+  # React Native specific checks
+  - repo: local
+    hooks:
+      - id: check-console-logs
+        name: Check for console.log statements
+        entry: sh -c 'grep -n "console\.log" "$@" | grep -v "// eslint-disable-line" | grep -v "__DEV__" && exit 1 || exit 0'
+        language: system
+        types: [javascript, jsx, typescript, tsx]
+        exclude: '^(node_modules|__tests__|.*\.test\.[jt]sx?$|.*\.spec\.[jt]sx?$)'
+
+      - id: check-debugger
+        name: Check for debugger statements
+        entry: sh -c 'grep -n "debugger" "$@" && exit 1 || exit 0'
+        language: system
+        types: [javascript, jsx, typescript, tsx]
+
+      - id: check-aboutme-comments
+        name: Check for ABOUTME comments
+        entry: sh -c 'for file in "$@"; do if [ -f "$file" ] && [[ "$file" =~ \.(js|jsx|ts|tsx)$ ]] && ! grep -q "^// ABOUTME:" "$file"; then echo "Missing ABOUTME comment in $file"; exit 1; fi; done'
+        language: system
+        types: [javascript, jsx, typescript, tsx]
+        exclude: '^(node_modules|__tests__|.*\.test\.[jt]sx?$|.*\.spec\.[jt]sx?$|index\.js$)'
+
+  # Security checks
+  - repo: local
+    hooks:
+      - id: check-sensitive-files
+        name: Check for sensitive data
+        entry: sh -c 'grep -E "(api_key|apiKey|API_KEY|secret|SECRET|password|PASSWORD|token|TOKEN)" "$@" | grep -v "process.env" | grep -v "Constants.manifest" && exit 1 || exit 0'
+        language: system
+        types: [javascript, jsx, typescript, tsx]
+        exclude: '^(node_modules|\.env\.example$)'
+
+  # Test checks (commented out until Jest is configured for Expo)
+  # - repo: local
+  #   hooks:
+  #     - id: test-on-commit
+  #       name: Run tests before commit
+  #       entry: npm test -- --watchAll=false --passWithNoTests
+  #       language: system
+  #       pass_filenames: false
+  #       stages: [commit]
+
+# Configuration
+default_stages: [commit]
+fail_fast: false
+verbose: true
