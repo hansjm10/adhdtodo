@@ -60,3 +60,9 @@ jest.mock('react-native-gesture-handler', () => {
     Directions: {},
   };
 });
+
+// Mock Vibration
+jest.mock('react-native/Libraries/Vibration/Vibration', () => ({
+  vibrate: jest.fn(),
+  cancel: jest.fn(),
+}));

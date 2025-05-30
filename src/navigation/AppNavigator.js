@@ -8,11 +8,30 @@ import { View, Text } from 'react-native';
 import CreateTaskScreen from '../screens/CreateTaskScreen';
 import TaskListScreen from '../screens/TaskListScreen';
 import EditTaskScreen from '../screens/EditTaskScreen';
+import FocusModeScreen from '../screens/FocusModeScreen';
+import HyperfocusScreen from '../screens/HyperfocusScreen';
+import ScatteredScreen from '../screens/ScatteredScreen';
 
-const FocusScreen = () => (
-  <View testID="focus-screen" style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>Focus Screen</Text>
-  </View>
+const FocusStack = () => (
+  <Stack.Navigator>
+    <Stack.Screen name="FocusMode" component={FocusModeScreen} options={{ title: 'Focus Modes' }} />
+    <Stack.Screen
+      name="Hyperfocus"
+      component={HyperfocusScreen}
+      options={{
+        headerShown: false,
+        presentation: 'modal',
+      }}
+    />
+    <Stack.Screen
+      name="Scattered"
+      component={ScatteredScreen}
+      options={{
+        headerShown: false,
+        presentation: 'modal',
+      }}
+    />
+  </Stack.Navigator>
 );
 
 const RewardsScreen = () => (
@@ -50,9 +69,10 @@ const AppNavigator = () => {
         />
         <Tab.Screen
           name="Focus"
-          component={FocusScreen}
+          component={FocusStack}
           options={{
             tabBarTestID: 'tab-focus',
+            headerShown: false,
           }}
         />
         <Tab.Screen
