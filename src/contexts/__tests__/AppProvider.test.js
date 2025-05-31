@@ -2,14 +2,26 @@
 // Ensures all contexts are accessible through single provider
 
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, cleanup } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { AppProvider } from '../AppProvider';
 import { useUser } from '../UserContext';
 import { useTasks } from '../TaskContext';
 import { useNotifications } from '../NotificationContext';
 
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage');
+
+// Mock services
+jest.mock('../../services/TaskStorageService', () => ({
+  getAllTasks: jest.fn().mockResolvedValue([]),
+}));
+
 describe('AppProvider', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const TestComponent = () => {
     const { user, loading: userLoading } = useUser();
     const { tasks, loading: tasksLoading } = useTasks();
