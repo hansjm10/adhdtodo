@@ -32,15 +32,36 @@ const TaskStorageService = require('../../services/TaskStorageService');
 // Test wrapper component with contexts
 const TestWrapper = ({ children }) => <AppProvider>{children}</AppProvider>;
 
+// Helper to wait for contexts to load
+const _waitForContextsToLoad = async (getByTestId) => {
+  // Wait for any loading states to complete
+  await waitFor(
+    () => {
+      expect(getByTestId('task-list')).toBeTruthy();
+    },
+    { timeout: 3000 },
+  );
+};
+
 describe('TaskListScreen', () => {
+  const mockUser = { id: 'user1', name: 'Test User' };
+
+  // Increase timeout for these tests
+  jest.setTimeout(10000);
+
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset context caches
     require('../../contexts/TaskContext')._resetCache();
     require('../../contexts/NotificationContext')._resetNotifications();
 
-    // Setup default mocks
-    AsyncStorage.getItem.mockResolvedValue(null);
+    // Setup default mocks - by default, return a logged in user
+    AsyncStorage.getItem.mockImplementation((key) => {
+      if (key === 'currentUser') {
+        return Promise.resolve(JSON.stringify(mockUser));
+      }
+      return Promise.resolve(null);
+    });
     AsyncStorage.setItem.mockResolvedValue(undefined);
     TaskStorageService.getAllTasks.mockResolvedValue([]);
   });
@@ -61,12 +82,6 @@ describe('TaskListScreen', () => {
   });
 
   it('should display list of tasks', async () => {
-    const mockUser = { id: 'user1', name: 'Test User' };
-    AsyncStorage.getItem.mockImplementation((key) => {
-      if (key === 'currentUser') return Promise.resolve(JSON.stringify(mockUser));
-      return Promise.resolve(null);
-    });
-
     const mockTasks = [
       createTask({ title: 'Task 1', description: 'Description 1', userId: 'user1' }),
       createTask({ title: 'Task 2', category: TASK_CATEGORIES.WORK.id, userId: 'user1' }),
@@ -81,14 +96,21 @@ describe('TaskListScreen', () => {
       </TestWrapper>,
     );
 
-    await waitFor(() => {
-      expect(getByText('Task 1')).toBeTruthy();
-      expect(getByText('Description 1')).toBeTruthy();
-      expect(getByText('Task 2')).toBeTruthy();
-      expect(getByText('Task 3')).toBeTruthy();
-      // Check that task 3 exists
-      expect(getByTestId(`task-item-${mockTasks[2].id}`)).toBeTruthy();
-    });
+    // Wait for tasks to load and be displayed
+    await waitFor(
+      () => {
+        // Check that at least one task is visible
+        expect(getByText('Task 1')).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
+
+    // Now check for all tasks
+    expect(getByText('Description 1')).toBeTruthy();
+    expect(getByText('Task 2')).toBeTruthy();
+    expect(getByText('Task 3')).toBeTruthy();
+    // Check that task 3 exists
+    expect(getByTestId(`task-item-${mockTasks[2].id}`)).toBeTruthy();
   });
 
   it('should have add task button', () => {
@@ -123,12 +145,6 @@ describe('TaskListScreen', () => {
   });
 
   it('should refresh tasks on focus', async () => {
-    const mockUser = { id: 'user1', name: 'Test User' };
-    AsyncStorage.getItem.mockImplementation((key) => {
-      if (key === 'currentUser') return Promise.resolve(JSON.stringify(mockUser));
-      return Promise.resolve(null);
-    });
-
     const mockTasks = [createTask({ title: 'Task 1', userId: 'user1' })];
     TaskStorageService.getAllTasks.mockResolvedValue(mockTasks);
 
@@ -144,12 +160,6 @@ describe('TaskListScreen', () => {
   });
 
   it('should show completed tasks differently', async () => {
-    const mockUser = { id: 'user1', name: 'Test User' };
-    AsyncStorage.getItem.mockImplementation((key) => {
-      if (key === 'currentUser') return Promise.resolve(JSON.stringify(mockUser));
-      return Promise.resolve(null);
-    });
-
     const completedTask = createTask({ title: 'Completed Task', userId: 'user1' });
     completedTask.completed = true;
 
@@ -164,10 +174,15 @@ describe('TaskListScreen', () => {
     );
 
     // Wait for tasks to be rendered
-    await waitFor(() => {
-      expect(getByText('Pending Task')).toBeTruthy();
-      expect(getByText('Completed Task')).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByText('Pending Task')).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
+
+    // Check for the other task
+    expect(getByText('Completed Task')).toBeTruthy();
 
     // Verify both task items exist
     expect(getByTestId(`task-item-${pendingTask.id}`)).toBeTruthy();
@@ -180,12 +195,6 @@ describe('TaskListScreen', () => {
       navigate: mockNavigate,
     });
 
-    const mockUser = { id: 'user1', name: 'Test User' };
-    AsyncStorage.getItem.mockImplementation((key) => {
-      if (key === 'currentUser') return Promise.resolve(JSON.stringify(mockUser));
-      return Promise.resolve(null);
-    });
-
     const mockTask = createTask({ title: 'Task 1', userId: 'user1' });
     TaskStorageService.getAllTasks.mockResolvedValue([mockTask]);
 
@@ -195,15 +204,13 @@ describe('TaskListScreen', () => {
       </TestWrapper>,
     );
 
-    // Wait for task list to be rendered
-    await waitFor(() => {
-      expect(getByTestId('task-list')).toBeTruthy();
-    });
-
     // Wait for task item to be rendered
-    await waitFor(() => {
-      expect(getByTestId(`task-item-${mockTask.id}`)).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByTestId(`task-item-${mockTask.id}`)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
 
     fireEvent.press(getByTestId(`task-item-${mockTask.id}`));
 

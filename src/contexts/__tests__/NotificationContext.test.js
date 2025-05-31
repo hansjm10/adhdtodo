@@ -243,16 +243,16 @@ describe('NotificationContext', () => {
   it('should clear all notifications', async () => {
     const ClearTestComponent = () => {
       const { notifications, clearAllNotifications, loading } = useNotifications();
-      const [hasCleared, setHasCleared] = React.useState(false);
 
-      React.useEffect(() => {
-        if (!loading && notifications.length > 0 && !hasCleared) {
-          setHasCleared(true);
-          clearAllNotifications();
-        }
-      }, [loading, notifications.length, hasCleared, clearAllNotifications]);
-
-      return <Text testID="notif-count">{notifications.length}</Text>;
+      return (
+        <View>
+          <Text testID="loading">{loading.toString()}</Text>
+          <Text testID="notif-count">{notifications.length}</Text>
+          <Text testID="clear-button" onPress={() => clearAllNotifications()}>
+            Clear
+          </Text>
+        </View>
+      );
     };
 
     const { getByTestId } = render(
@@ -261,7 +261,20 @@ describe('NotificationContext', () => {
       </NotificationProvider>,
     );
 
+    // Wait for initial load to complete
     await waitFor(() => {
+      expect(getByTestId('loading').props.children).toBe('false');
+    });
+
+    // Verify initial notifications are loaded
+    expect(getByTestId('notif-count').props.children).toBe(3);
+
+    // Clear notifications
+    const clearButton = getByTestId('clear-button');
+
+    // Use waitFor to handle the async state updates
+    await waitFor(async () => {
+      clearButton.props.onPress();
       expect(getByTestId('notif-count').props.children).toBe(0);
     });
 
