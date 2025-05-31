@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CreateTaskScreen from '../screens/CreateTaskScreen';
 import TaskListScreen from '../screens/TaskListScreen';
@@ -18,7 +18,9 @@ import PartnerInviteScreen from '../screens/PartnerInviteScreen';
 import TaskAssignmentScreen from '../screens/TaskAssignmentScreen';
 import PartnerDashboardScreen from '../screens/PartnerDashboardScreen';
 import NotificationListScreen from '../screens/NotificationListScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import UserStorageService from '../services/UserStorageService';
+import AuthService from '../services/AuthService';
 import NotificationService from '../services/NotificationService';
 import NotificationBadge from '../components/NotificationBadge';
 import NotificationContainer from '../components/NotificationContainer';
@@ -26,13 +28,6 @@ import NotificationContainer from '../components/NotificationContainer';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
-
-// Placeholder for Rewards screen
-const RewardsScreen = () => (
-  <View testID="rewards-screen" style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>Rewards Screen</Text>
-  </View>
-);
 
 // Tasks Stack Navigator with notification support
 const TasksStack = ({ navigation }) => {
@@ -155,8 +150,8 @@ const MainTabs = () => {
             iconName = focused ? 'time' : 'time-outline';
           } else if (route.name === 'Partner') {
             iconName = focused ? 'people' : 'people-outline';
-          } else if (route.name === 'Rewards') {
-            iconName = focused ? 'trophy' : 'trophy-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -190,10 +185,10 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="Rewards"
-        component={RewardsScreen}
+        name="Profile"
+        component={ProfileScreen}
         options={{
-          tabBarTestID: 'tab-rewards',
+          tabBarTestID: 'tab-profile',
         }}
       />
     </Tab.Navigator>
@@ -220,8 +215,9 @@ const AppNavigator = () => {
 
   const checkAuthStatus = async () => {
     try {
-      const currentUser = await UserStorageService.getCurrentUser();
-      setIsAuthenticated(!!currentUser);
+      // Verify session is valid
+      const sessionResult = await AuthService.verifySession();
+      setIsAuthenticated(sessionResult.isValid);
     } catch (error) {
       // Error checking auth status - default to not authenticated
       setIsAuthenticated(false);

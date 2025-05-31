@@ -15,6 +15,11 @@ export const createUser = (userData = {}) => {
     email: userData.email || '',
     name: userData.name || '',
     role: userData.role || USER_ROLE.ADHD_USER,
+    // Authentication fields
+    passwordHash: userData.passwordHash || null,
+    passwordSalt: userData.passwordSalt || null,
+    sessionToken: userData.sessionToken || null,
+    lastLoginAt: userData.lastLoginAt || null,
     partnerId: null, // Will be set when partnership is established
     notificationPreferences: {
       global: NOTIFICATION_PREFERENCES.ALL,
