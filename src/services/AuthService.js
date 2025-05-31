@@ -126,9 +126,9 @@ class AuthService {
         throw new Error('Invalid email or password');
       }
 
-      // Check if user has password (for backward compatibility)
+      // Verify user has password credentials
       if (!user.passwordHash || !user.passwordSalt) {
-        throw new Error('This account needs to be migrated. Please reset your password.');
+        throw new Error('Invalid email or password');
       }
 
       // Verify password
@@ -327,58 +327,6 @@ class AuthService {
     // eslint-disable-next-line no-unused-vars
     const { passwordHash, passwordSalt, sessionToken, ...sanitized } = user;
     return sanitized;
-  }
-
-  // Migrate existing user to use password authentication
-  async migrateUser(email, password) {
-    try {
-      const user = await UserStorageService.getUserByEmail(email);
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Check if already migrated
-      if (user.passwordHash && user.passwordSalt) {
-        throw new Error('User already has password authentication');
-      }
-
-      // Validate password
-      const passwordValidation = this.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.errors.join('. '));
-      }
-
-      // Generate salt and hash password
-      const salt = await CryptoService.generateSalt();
-      const passwordHash = await CryptoService.hashPassword(password, salt);
-
-      // Generate session token
-      const sessionToken = await CryptoService.generateSessionToken();
-
-      // Update user
-      const updatedUser = updateUser(user, {
-        passwordHash,
-        passwordSalt: salt,
-        sessionToken,
-        lastLoginAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      await UserStorageService.updateUser(updatedUser);
-      await UserStorageService.setCurrentUser(updatedUser);
-      await UserStorageService.saveUserToken(sessionToken);
-
-      return {
-        success: true,
-        user: this.sanitizeUser(updatedUser),
-        token: sessionToken,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
   }
 }
 

@@ -243,7 +243,7 @@ describe('AuthService', () => {
       const result = await AuthService.login('test@example.com', 'Test123!@#');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('This account needs to be migrated. Please reset your password.');
+      expect(result.error).toBe('Invalid email or password');
     });
   });
 
@@ -415,57 +415,6 @@ describe('AuthService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Password must be at least');
-    });
-  });
-
-  describe('migrateUser', () => {
-    it('should migrate user without password', async () => {
-      const mockUser = {
-        id: 'user_123',
-        email: 'test@example.com',
-        passwordHash: null,
-        passwordSalt: null,
-      };
-
-      UserStorageService.getUserByEmail.mockResolvedValue(mockUser);
-
-      const result = await AuthService.migrateUser('test@example.com', 'NewPass123!');
-
-      expect(result.success).toBe(true);
-      expect(result.user).toBeDefined();
-      expect(result.token).toBe('mocktoken.1234567890');
-      expect(updateUser).toHaveBeenCalledWith(
-        mockUser,
-        expect.objectContaining({
-          passwordHash: 'mockhash',
-          passwordSalt: 'mocksalt',
-          sessionToken: 'mocktoken.1234567890',
-        }),
-      );
-    });
-
-    it('should reject already migrated user', async () => {
-      const mockUser = {
-        id: 'user_123',
-        passwordHash: 'existinghash',
-        passwordSalt: 'existingsalt',
-      };
-
-      UserStorageService.getUserByEmail.mockResolvedValue(mockUser);
-
-      const result = await AuthService.migrateUser('test@example.com', 'NewPass123!');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('User already has password authentication');
-    });
-
-    it('should reject non-existent user', async () => {
-      UserStorageService.getUserByEmail.mockResolvedValue(null);
-
-      const result = await AuthService.migrateUser('nonexistent@example.com', 'NewPass123!');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('User not found');
     });
   });
 

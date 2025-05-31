@@ -66,3 +66,23 @@ jest.mock('react-native/Libraries/Vibration/Vibration', () => ({
   vibrate: jest.fn(),
   cancel: jest.fn(),
 }));
+
+// Mock expo-crypto
+jest.mock('expo-crypto', () => ({
+  getRandomBytesAsync: jest.fn(),
+  pbkdf2Async: jest.fn(),
+  digestStringAsync: jest.fn(),
+  CryptoDigestAlgorithm: {
+    SHA256: 'SHA-256',
+  },
+  CryptoEncoding: {
+    HEX: 'hex',
+  },
+}));
+
+// Mock expo-secure-store
+jest.mock('expo-secure-store', () => ({
+  setItemAsync: jest.fn(),
+  getItemAsync: jest.fn(),
+  deleteItemAsync: jest.fn(),
+}));

@@ -148,14 +148,6 @@ if (result.success) {
 }
 ```
 
-## Migration from Old System
-
-For existing users who don't have passwords:
-
-1. Users will see an error message asking them to reset their password
-2. Future implementation will include a password reset flow
-3. Admin can manually migrate users using `AuthService.migrateUser()`
-
 ## Testing
 
 The authentication system includes comprehensive tests:
