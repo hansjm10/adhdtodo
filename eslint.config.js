@@ -75,7 +75,7 @@ module.exports = [
 
   // Test files configuration
   {
-    files: ['*.test.js', '*.spec.js', '**/__tests__/**/*.js'],
+    files: ['*.test.js', '*.spec.js', '**/__tests__/**/*.js', 'tests/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.jest,

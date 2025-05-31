@@ -1,7 +1,7 @@
 // ABOUTME: Jest setup file for configuring test environment
 // Imports testing utilities and sets up mocks for React Native
 
-/* global jest */
+/* eslint-disable no-undef */
 
 import '@testing-library/jest-native/extend-expect';
 
@@ -86,3 +86,52 @@ jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
   deleteItemAsync: jest.fn(),
 }));
+
+// Mock React Navigation
+jest.mock('@react-navigation/native', () => {
+  const actualNav = jest.requireActual('@react-navigation/native');
+  return {
+    ...actualNav,
+    useNavigation: () => ({
+      navigate: jest.fn(),
+      dispatch: jest.fn(),
+      goBack: jest.fn(),
+      setOptions: jest.fn(),
+    }),
+    useRoute: () => ({
+      params: {},
+    }),
+    useFocusEffect: jest.fn(),
+    useIsFocused: () => true,
+  };
+});
+
+// Mock stack navigator
+jest.mock('@react-navigation/stack', () => {
+  const React = require('react');
+  return {
+    createStackNavigator: () => ({
+      Navigator: ({ children }) => React.createElement('View', null, children),
+      Screen: ({ children, component: Component }) =>
+        Component ? React.createElement(Component) : children,
+    }),
+    CardStyleInterpolators: {
+      forHorizontalIOS: jest.fn(),
+    },
+    TransitionPresets: {
+      SlideFromRightIOS: {},
+    },
+  };
+});
+
+// Mock bottom tabs navigator
+jest.mock('@react-navigation/bottom-tabs', () => {
+  const React = require('react');
+  return {
+    createBottomTabNavigator: () => ({
+      Navigator: ({ children }) => React.createElement('View', null, children),
+      Screen: ({ children, component: Component }) =>
+        Component ? React.createElement(Component) : children,
+    }),
+  };
+});
