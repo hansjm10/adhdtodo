@@ -53,8 +53,8 @@ describe('TaskContext', () => {
     TaskStorageService.deleteTask.mockResolvedValue(true);
   });
 
-  afterEach(() => {
-    cleanup();
+  afterEach(async () => {
+    await cleanup();
   });
 
   const TestComponent = ({ testId = 'tasks' }) => {
@@ -74,13 +74,12 @@ describe('TaskContext', () => {
     );
   };
 
-  it('should provide initial state with loading true', () => {
+  it('should provide initial state with loading true', async () => {
     const { getByTestId } = render(
       <TaskProvider>
         <TestComponent />
       </TaskProvider>,
     );
-
     expect(getByTestId('tasks-loading').props.children).toBe('true');
     expect(getByTestId('tasks-error').props.children).toBe('no-error');
     expect(getByTestId('tasks-count').props.children).toBe(0);
@@ -106,6 +105,9 @@ describe('TaskContext', () => {
     const errorMessage = 'Failed to load tasks';
     TaskStorageService.getAllTasks.mockRejectedValueOnce(new Error(errorMessage));
 
+    // Suppress expected console.error
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     const { getByTestId } = render(
       <TaskProvider>
         <TestComponent />
@@ -116,6 +118,8 @@ describe('TaskContext', () => {
       expect(getByTestId('tasks-loading').props.children).toBe('false');
       expect(getByTestId('tasks-error').props.children).toBe(errorMessage);
     });
+
+    consoleSpy.mockRestore();
   });
 
   it('should filter tasks by user', async () => {
