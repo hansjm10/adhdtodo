@@ -1,0 +1,82 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 Features",
+      "labels": ["feature", "enhancement"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": ["bug", "fix", "bugfix"]
+    },
+    {
+      "title": "## 🧪 Tests",
+      "labels": ["test", "tests", "testing"]
+    },
+    {
+      "title": "## 📦 Dependencies",
+      "labels": ["dependencies", "npm"]
+    },
+    {
+      "title": "## 📝 Documentation",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "## 🎨 Style & UI",
+      "labels": ["style", "ui", "ux", "design"]
+    },
+    {
+      "title": "## ♻️ Refactoring",
+      "labels": ["refactor", "refactoring", "cleanup"]
+    },
+    {
+      "title": "## 🔧 Configuration",
+      "labels": ["config", "configuration", "build"]
+    }
+  ],
+  "ignore_labels": ["skip-changelog", "wip", "duplicate", "invalid"],
+  "sort": "ASC",
+  "template": "${{CHANGELOG}}\n\n**Full Changelog**: ${{OWNER}}/${{REPO}}/compare/${{PREVIOUS_TAG}}...${{RELEASE_TAG}}",
+  "pr_template": "- ${{TITLE}} (#${{NUMBER}}) by @${{AUTHOR}}",
+  "empty_template": "- No changes in this release",
+  "label_extractor": [
+    {
+      "pattern": "^(feat|feature)\\s*:",
+      "target": "feature"
+    },
+    {
+      "pattern": "^fix\\s*:",
+      "target": "bug"
+    },
+    {
+      "pattern": "^test\\s*:",
+      "target": "test"
+    },
+    {
+      "pattern": "^docs\\s*:",
+      "target": "documentation"
+    },
+    {
+      "pattern": "^style\\s*:",
+      "target": "style"
+    },
+    {
+      "pattern": "^refactor\\s*:",
+      "target": "refactor"
+    }
+  ],
+  "transformers": [
+    {
+      "pattern": "\\[skip ci\\]",
+      "flags": "ig",
+      "target": ""
+    }
+  ],
+  "max_tags_to_fetch": 200,
+  "max_pull_requests": 200,
+  "max_back_track_time_days": 365,
+  "exclude_merge_branches": [],
+  "tag_resolver": {
+    "method": "semver"
+  },
+  "base_branches": ["master"]
+}

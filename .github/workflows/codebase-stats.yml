@@ -1,0 +1,91 @@
+# ABOUTME: GitHub Actions workflow for codebase statistics
+# Generates metrics and reports on code quality trends
+
+name: Codebase Statistics
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  metrics:
+    name: Generate Metrics
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate test coverage report
+        run: |
+          npm test -- --coverage --coverageReporters=json-summary
+          echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f coverage/coverage-summary.json ]; then
+            lines=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+            statements=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
+            functions=$(jq -r '.total.functions.pct' coverage/coverage-summary.json)
+            branches=$(jq -r '.total.branches.pct' coverage/coverage-summary.json)
+            
+            echo "| Lines | ${lines}% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Statements | ${statements}% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Functions | ${functions}% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Branches | ${branches}% |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Count lines of code
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Lines of Code" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          find src -name "*.js" -o -name "*.jsx" | xargs wc -l | tail -n 1 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: File count by type
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## File Count by Type" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File Type | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          js_count=$(find src -name "*.js" | grep -v test | wc -l)
+          jsx_count=$(find src -name "*.jsx" | grep -v test | wc -l)
+          test_count=$(find src -name "*.test.js" -o -name "*.test.jsx" | wc -l)
+          
+          echo "| JavaScript | $js_count |" >> $GITHUB_STEP_SUMMARY
+          echo "| JSX | $jsx_count |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | $test_count |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Dependency count
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          prod_deps=$(jq -r '.dependencies | length' package.json)
+          dev_deps=$(jq -r '.devDependencies | length' package.json)
+          
+          echo "- Production dependencies: $prod_deps" >> $GITHUB_STEP_SUMMARY
+          echo "- Development dependencies: $dev_deps" >> $GITHUB_STEP_SUMMARY
+          echo "- Total: $((prod_deps + dev_deps))" >> $GITHUB_STEP_SUMMARY
