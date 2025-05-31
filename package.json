@@ -52,6 +52,7 @@
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@react-native-community/eslint-config": "^3.2.0",
+    "@react-navigation/native-stack": "^7.3.14",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.2.0",
     "eslint": "^9.28.0",
