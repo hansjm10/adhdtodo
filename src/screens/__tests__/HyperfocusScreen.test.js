@@ -6,11 +6,23 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import HyperfocusScreen from '../HyperfocusScreen';
-import TaskStorageService from '../../services/TaskStorageService';
+import { AppProvider } from '../../contexts/AppProvider';
 import { createTask } from '../../utils/TaskModel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock dependencies
-jest.mock('../../services/TaskStorageService');
+jest.mock('@react-native-async-storage/async-storage');
+
+// Mock TaskStorageService at the module level
+jest.mock('../../services/TaskStorageService', () => ({
+  getAllTasks: jest.fn(),
+  saveTask: jest.fn(),
+  updateTask: jest.fn(),
+  deleteTask: jest.fn(),
+}));
+
+// Import after mocking
+const TaskStorageService = require('../../services/TaskStorageService');
 
 // Mock navigation
 const mockGoBack = jest.fn();
@@ -29,7 +41,11 @@ jest.mock('@react-navigation/native', () => ({
 // Mock Alert
 jest.spyOn(Alert, 'alert');
 
-const wrapper = ({ children }) => <NavigationContainer>{children}</NavigationContainer>;
+const wrapper = ({ children }) => (
+  <AppProvider>
+    <NavigationContainer>{children}</NavigationContainer>
+  </AppProvider>
+);
 
 describe('HyperfocusScreen', () => {
   let mockTask;
@@ -37,13 +53,28 @@ describe('HyperfocusScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    // Reset context caches
+    require('../../contexts/TaskContext')._resetCache();
+    require('../../contexts/NotificationContext')._resetNotifications();
+
+    // Setup default mocks
+    AsyncStorage.getItem.mockImplementation((key) => {
+      if (key === 'currentUser') {
+        return Promise.resolve(JSON.stringify({ id: 'user1', name: 'Test User' }));
+      }
+      return Promise.resolve(null);
+    });
+    AsyncStorage.setItem.mockResolvedValue(undefined);
+
     mockTask = {
       ...createTask({
         title: 'Test Task',
         timeEstimate: 30,
         timeSpent: 0,
+        userId: 'user1',
       }),
       id: 'task-1',
+      isComplete: false,
     };
     TaskStorageService.getAllTasks.mockResolvedValue([mockTask]);
     TaskStorageService.updateTask.mockResolvedValue(true);

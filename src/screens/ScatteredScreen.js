@@ -1,65 +1,62 @@
 // ABOUTME: Scattered mode screen for rapid task switching with quick wins
 // Perfect for high-energy, low-focus times - complete quick tasks for momentum
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import TaskStorageService from '../services/TaskStorageService';
+import { useTasks } from '../contexts';
 import RewardService from '../services/RewardService';
-import { completeTask } from '../utils/TaskModel';
 
 const ScatteredScreen = () => {
   const navigation = useNavigation();
-  const [quickTasks, setQuickTasks] = useState([]);
+  const { getPendingTasks, updateTask } = useTasks();
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
 
+  // Get quick tasks from context
+  const quickTasks = useMemo(() => {
+    const pendingTasks = getPendingTasks();
+    return pendingTasks.filter((task) => task.timeEstimate && task.timeEstimate <= 15);
+  }, [getPendingTasks]);
+
   useEffect(() => {
-    loadQuickTasks();
-  }, []);
-
-  const loadQuickTasks = async () => {
-    const pendingTasks = await TaskStorageService.getPendingTasks();
-    const filtered = pendingTasks.filter((task) => task.timeEstimate && task.timeEstimate <= 15);
-    setQuickTasks(filtered);
-
-    if (filtered.length === 0) {
+    if (quickTasks.length === 0) {
       Alert.alert(
         'No Quick Tasks Available',
         'Add some tasks with 5-15 minute time estimates to use Scattered Mode.',
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
     }
-  };
+  }, [quickTasks.length, navigation]);
 
   const handleCompleteTask = async () => {
     if (currentTaskIndex >= quickTasks.length) return;
 
     const task = quickTasks[currentTaskIndex];
     const xp = RewardService.calculateTaskXP(task);
-    const completedTask = completeTask(task, xp);
 
-    await TaskStorageService.updateTask(completedTask);
-    await RewardService.updateStreak();
+    try {
+      await updateTask(task.id, { completed: true, completedAt: new Date().toISOString(), xp });
+      await RewardService.updateStreak();
 
-    setCompletedCount((prev) => prev + 1);
-    setTotalXP((prev) => prev + xp);
+      setCompletedCount((prev) => prev + 1);
+      setTotalXP((prev) => prev + xp);
 
-    // Move to next task
-    if (currentTaskIndex < quickTasks.length - 1) {
-      setCurrentTaskIndex((prev) => prev + 1);
-    } else {
-      // All tasks completed
-      Alert.alert(
-        '🎉 Amazing Sprint!',
-        `You completed ${completedCount + 1} tasks and earned ${totalXP + xp} XP!`,
-        [
-          { text: 'Find More Tasks', onPress: () => loadQuickTasks() },
-          { text: 'Exit', onPress: () => navigation.goBack() },
-        ],
-      );
+      // Move to next task
+      if (currentTaskIndex < quickTasks.length - 1) {
+        setCurrentTaskIndex((prev) => prev + 1);
+      } else {
+        // All tasks completed
+        Alert.alert(
+          '🎉 Amazing Sprint!',
+          `You completed ${completedCount + 1} tasks and earned ${totalXP + xp} XP!`,
+          [{ text: 'Exit', onPress: () => navigation.goBack() }],
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to complete task. Please try again.');
     }
   };
 

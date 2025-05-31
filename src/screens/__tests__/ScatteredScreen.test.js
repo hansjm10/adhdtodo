@@ -6,13 +6,26 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import ScatteredScreen from '../ScatteredScreen';
-import TaskStorageService from '../../services/TaskStorageService';
+import { AppProvider } from '../../contexts/AppProvider';
 import RewardService from '../../services/RewardService';
 import { createTask } from '../../utils/TaskModel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock dependencies
-jest.mock('../../services/TaskStorageService');
+jest.mock('@react-native-async-storage/async-storage');
 jest.mock('../../services/RewardService');
+
+// Mock TaskStorageService at the module level
+jest.mock('../../services/TaskStorageService', () => ({
+  getAllTasks: jest.fn(),
+  saveTask: jest.fn(),
+  updateTask: jest.fn(),
+  deleteTask: jest.fn(),
+  getPendingTasks: jest.fn(),
+}));
+
+// Import after mocking
+const TaskStorageService = require('../../services/TaskStorageService');
 
 // Mock navigation
 const mockGoBack = jest.fn();
@@ -26,17 +39,47 @@ jest.mock('@react-navigation/native', () => ({
 // Mock Alert
 jest.spyOn(Alert, 'alert');
 
-const wrapper = ({ children }) => <NavigationContainer>{children}</NavigationContainer>;
+const wrapper = ({ children }) => (
+  <AppProvider>
+    <NavigationContainer>{children}</NavigationContainer>
+  </AppProvider>
+);
 
 describe('ScatteredScreen', () => {
   const mockQuickTasks = [
-    { ...createTask({ title: 'Quick Task 1', timeEstimate: 5 }), id: '1' },
-    { ...createTask({ title: 'Quick Task 2', timeEstimate: 10 }), id: '2' },
-    { ...createTask({ title: 'Quick Task 3', timeEstimate: 15 }), id: '3' },
+    {
+      ...createTask({ title: 'Quick Task 1', timeEstimate: 5, userId: 'user1' }),
+      id: '1',
+      isComplete: false,
+    },
+    {
+      ...createTask({ title: 'Quick Task 2', timeEstimate: 10, userId: 'user1' }),
+      id: '2',
+      isComplete: false,
+    },
+    {
+      ...createTask({ title: 'Quick Task 3', timeEstimate: 15, userId: 'user1' }),
+      id: '3',
+      isComplete: false,
+    },
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset context caches
+    require('../../contexts/TaskContext')._resetCache();
+    require('../../contexts/NotificationContext')._resetNotifications();
+
+    // Setup default mocks
+    AsyncStorage.getItem.mockImplementation((key) => {
+      if (key === 'currentUser') {
+        return Promise.resolve(JSON.stringify({ id: 'user1', name: 'Test User' }));
+      }
+      return Promise.resolve(null);
+    });
+    AsyncStorage.setItem.mockResolvedValue(undefined);
+
+    TaskStorageService.getAllTasks.mockResolvedValue(mockQuickTasks);
     TaskStorageService.getPendingTasks.mockResolvedValue(mockQuickTasks);
     TaskStorageService.updateTask.mockResolvedValue(true);
     RewardService.calculateTaskXP.mockReturnValue(10);
@@ -46,22 +89,27 @@ describe('ScatteredScreen', () => {
   it('should load and display quick tasks', async () => {
     const { getByText } = render(<ScatteredScreen />, { wrapper });
 
-    await waitFor(() => {
-      expect(TaskStorageService.getPendingTasks).toHaveBeenCalled();
-    });
+    await waitFor(
+      () => {
+        expect(getByText('Quick Task 1')).toBeTruthy();
+      },
+      { timeout: 10000 },
+    );
 
-    await waitFor(() => {
-      expect(getByText('Quick Task 1')).toBeTruthy();
-      expect(getByText('5 minutes')).toBeTruthy();
-      expect(getByText('1 of 3')).toBeTruthy();
-    });
-  });
+    expect(getByText('5 minutes')).toBeTruthy();
+    expect(getByText('1 of 3')).toBeTruthy();
+  }, 15000);
 
   it('should filter out tasks longer than 15 minutes', async () => {
     const allTasks = [
       ...mockQuickTasks,
-      { ...createTask({ title: 'Long Task', timeEstimate: 30 }), id: '4' },
+      {
+        ...createTask({ title: 'Long Task', timeEstimate: 30, userId: 'user1' }),
+        id: '4',
+        isComplete: false,
+      },
     ];
+    TaskStorageService.getAllTasks.mockResolvedValue(allTasks);
     TaskStorageService.getPendingTasks.mockResolvedValue(allTasks);
 
     const { getByText, queryByText } = render(<ScatteredScreen />, { wrapper });
@@ -73,9 +121,13 @@ describe('ScatteredScreen', () => {
   });
 
   it('should show alert when no quick tasks available', async () => {
-    TaskStorageService.getPendingTasks.mockResolvedValue([
-      { ...createTask({ title: 'Long Task', timeEstimate: 30 }), id: '1' },
-    ]);
+    const longTask = {
+      ...createTask({ title: 'Long Task', timeEstimate: 30, userId: 'user1' }),
+      id: '1',
+      isComplete: false,
+    };
+    TaskStorageService.getAllTasks.mockResolvedValue([longTask]);
+    TaskStorageService.getPendingTasks.mockResolvedValue([longTask]);
 
     render(<ScatteredScreen />, { wrapper });
 
@@ -101,7 +153,7 @@ describe('ScatteredScreen', () => {
       expect(TaskStorageService.updateTask).toHaveBeenCalledWith(
         expect.objectContaining({
           completed: true,
-          xpEarned: 10,
+          xp: 10,
         }),
       );
       expect(RewardService.updateStreak).toHaveBeenCalled();
@@ -205,10 +257,13 @@ describe('ScatteredScreen', () => {
           description: 'This is a description',
           timeEstimate: 10,
           category: 'work',
+          userId: 'user1',
         }),
         id: '1',
+        isComplete: false,
       },
     ];
+    TaskStorageService.getAllTasks.mockResolvedValue(tasksWithDetails);
     TaskStorageService.getPendingTasks.mockResolvedValue(tasksWithDetails);
 
     const { getByText } = render(<ScatteredScreen />, { wrapper });

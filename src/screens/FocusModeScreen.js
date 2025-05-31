@@ -1,7 +1,7 @@
 // ABOUTME: Focus mode selection screen - choose between Hyperfocus and Scattered modes
 // Allows users to select tasks and enter specialized ADHD-friendly focus modes
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,23 +13,17 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import TaskStorageService from '../services/TaskStorageService';
+import { useTasks } from '../contexts';
 import { createTestNotifications } from '../utils/NotificationTestHelper';
 
 const FocusModeScreen = () => {
   const navigation = useNavigation();
   const [selectedMode, setSelectedMode] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [tasks, setTasks] = useState([]);
+  const { getPendingTasks } = useTasks();
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
-
-  const loadTasks = async () => {
-    const pendingTasks = await TaskStorageService.getPendingTasks();
-    setTasks(pendingTasks);
-  };
+  // Get pending tasks from context
+  const tasks = useMemo(() => getPendingTasks(), [getPendingTasks]);
 
   const startFocusMode = () => {
     if (!selectedTask) {

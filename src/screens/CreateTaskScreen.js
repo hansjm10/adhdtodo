@@ -16,10 +16,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { TASK_CATEGORIES, TIME_PRESETS } from '../constants/TaskConstants';
 import { createTask } from '../utils/TaskModel';
-import TaskStorageService from '../services/TaskStorageService';
+import { useUser, useTasks } from '../contexts';
 
 const CreateTaskScreen = () => {
   const navigation = useNavigation();
+  const { user } = useUser();
+  const { addTask } = useTasks();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -31,19 +33,24 @@ const CreateTaskScreen = () => {
       return;
     }
 
+    if (!user) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
     const taskData = {
       title: title.trim(),
       description: description.trim(),
       category: selectedCategory,
       timeEstimate: selectedTimePreset,
+      userId: user.id,
     };
 
-    const newTask = createTask(taskData);
-    const success = await TaskStorageService.saveTask(newTask);
-
-    if (success) {
+    try {
+      const newTask = createTask(taskData);
+      await addTask(newTask);
       navigation.goBack();
-    } else {
+    } catch (error) {
       Alert.alert('Error', 'Failed to save task. Please try again.');
     }
   };

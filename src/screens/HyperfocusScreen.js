@@ -1,12 +1,11 @@
 // ABOUTME: Hyperfocus mode screen for ADHD users - single task focus with timer
 // Provides distraction-free interface with built-in timer and break reminders
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Vibration } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import TaskStorageService from '../services/TaskStorageService';
-import { updateTask } from '../utils/TaskModel';
+import { useTasks } from '../contexts';
 
 const WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const BREAK_DURATION = 5 * 60; // 5 minutes in seconds
@@ -15,24 +14,26 @@ const HyperfocusScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { taskId } = route.params || {};
+  const { tasks, updateTask } = useTasks();
 
-  const [task, setTask] = useState(null);
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
   const intervalRef = useRef(null);
 
+  // Find the task from context
+  const task = useMemo(() => {
+    return tasks.find((t) => t.id === taskId);
+  }, [tasks, taskId]);
+
   useEffect(() => {
-    if (taskId) {
-      loadTask();
-    }
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [taskId]);
+  }, []);
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
@@ -51,14 +52,6 @@ const HyperfocusScreen = () => {
 
     return () => clearInterval(intervalRef.current);
   }, [isRunning, timeLeft, isBreak]);
-
-  const loadTask = async () => {
-    const tasks = await TaskStorageService.getAllTasks();
-    const foundTask = tasks.find((t) => t.id === taskId);
-    if (foundTask) {
-      setTask(foundTask);
-    }
-  };
 
   const handleTimerComplete = () => {
     // Vibration may not be available in test environment
@@ -108,12 +101,13 @@ const HyperfocusScreen = () => {
   const updateTaskTimeSpent = async () => {
     if (!task) return;
 
-    const updatedTask = updateTask(task, {
-      timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
-    });
-
-    await TaskStorageService.updateTask(updatedTask);
-    setTask(updatedTask);
+    try {
+      await updateTask(task.id, {
+        timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update task progress.');
+    }
   };
 
   const toggleTimer = () => {

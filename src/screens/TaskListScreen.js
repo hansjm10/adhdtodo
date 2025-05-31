@@ -1,7 +1,7 @@
 // ABOUTME: Screen for displaying list of tasks with ADHD-friendly design
 // Shows tasks in a clean, organized list with visual feedback and empty states
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,86 +11,50 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import TaskStorageService from '../services/TaskStorageService';
-import UserStorageService from '../services/UserStorageService';
-import PartnershipService from '../services/PartnershipService';
+import { useNavigation } from '@react-navigation/native';
+import { useUser, useTasks } from '../contexts';
 import TaskItem from '../components/TaskItem';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
 
 const TaskListScreen = () => {
   const navigation = useNavigation();
-  const [tasks, setTasks] = useState([]);
+  const { user: currentUser, partner } = useUser();
+  const { tasks: allTasks, refreshTasks } = useTasks();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [partner, setPartner] = useState(null);
   const [showAssignedOnly, setShowAssignedOnly] = useState(false);
 
-  const loadUserData = async () => {
-    try {
-      const user = await UserStorageService.getCurrentUser();
-      setCurrentUser(user);
+  // Filter and sort tasks based on current filters
+  const filteredTasks = useMemo(() => {
+    if (!currentUser) return [];
 
-      if (user) {
-        const activePartnership = await PartnershipService.getActivePartnership(user.id);
-        if (activePartnership) {
-          const partnerId =
-            activePartnership.adhdUserId === user.id
-              ? activePartnership.partnerId
-              : activePartnership.adhdUserId;
-          const partnerUser = await UserStorageService.getUserById(partnerId);
-          setPartner(partnerUser);
-        }
-      }
-    } catch (error) {
-      // Error loading user data
-    }
-  };
+    let filtered = allTasks;
 
-  const loadTasks = async () => {
-    if (!currentUser) return;
-
-    let loadedTasks;
     if (showAssignedOnly) {
-      // Show only tasks assigned by/to partner
-      loadedTasks = await TaskStorageService.getAssignedTasks(currentUser.id);
-    } else if (selectedCategory) {
-      // Show tasks for current user in selected category
-      const userTasks = await TaskStorageService.getTasksForUser(currentUser.id);
-      loadedTasks = userTasks.filter((task) => task.category === selectedCategory);
+      // Show only tasks assigned by partner
+      filtered = allTasks.filter((task) => task.assignedBy && task.assignedBy !== currentUser.id);
     } else {
-      // Show all tasks for current user
-      loadedTasks = await TaskStorageService.getTasksForUser(currentUser.id);
+      // Show tasks for current user
+      filtered = allTasks.filter((task) => task.userId === currentUser.id);
+
+      if (selectedCategory) {
+        filtered = filtered.filter((task) => task.category === selectedCategory);
+      }
     }
 
     // Sort tasks: incomplete first, then by priority and due date
-    loadedTasks.sort((a, b) => {
+    return filtered.sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
       if (a.dueDate) return -1;
       if (b.dueDate) return 1;
       return 0;
     });
-
-    setTasks(loadedTasks);
-  };
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      if (currentUser) {
-        loadTasks();
-      }
-    }, [selectedCategory, showAssignedOnly, currentUser]),
-  );
+  }, [allTasks, currentUser, selectedCategory, showAssignedOnly]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadTasks();
+    await refreshTasks();
     setRefreshing(false);
   };
 
@@ -98,7 +62,7 @@ const TaskListScreen = () => {
     return (
       <TaskItem
         task={item}
-        onUpdate={loadTasks}
+        onUpdate={refreshTasks}
         onPress={() => navigation.navigate('EditTask', { taskId: item.id })}
         currentUser={currentUser}
         partner={partner}
@@ -198,12 +162,12 @@ const TaskListScreen = () => {
       <CategoryFilter />
       <FlatList
         testID="task-list"
-        data={tasks}
+        data={filteredTasks}
         renderItem={renderTask}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={EmptyState}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={tasks.length === 0 ? styles.emptyList : null}
+        contentContainerStyle={filteredTasks.length === 0 ? styles.emptyList : null}
       />
 
       <TouchableOpacity

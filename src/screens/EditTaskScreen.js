@@ -1,7 +1,7 @@
 // ABOUTME: Screen for editing existing tasks with ADHD-friendly UI
 // Provides form inputs to modify task details and delete functionality
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,49 +16,35 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { TASK_CATEGORIES, TIME_PRESETS } from '../constants/TaskConstants';
-import { updateTask } from '../utils/TaskModel';
-import TaskStorageService from '../services/TaskStorageService';
+// Removed unused import: updateTask from TaskModel
+import { useTasks } from '../contexts';
 
 const EditTaskScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { taskId } = route.params || {};
+  const { tasks, updateTask, deleteTask } = useTasks();
 
-  const [loading, setLoading] = useState(true);
-  const [task, setTask] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedTimePreset, setSelectedTimePreset] = useState(null);
 
+  // Find the task from context
+  const task = useMemo(() => {
+    return tasks.find((t) => t.id === taskId);
+  }, [tasks, taskId]);
+
+  // Initialize form with task data
   useEffect(() => {
-    loadTask();
-  }, [taskId]);
-
-  const loadTask = async () => {
-    try {
-      if (!taskId) {
-        setLoading(false);
-        return;
-      }
-
-      const tasks = await TaskStorageService.getAllTasks();
-      const foundTask = tasks.find((t) => t.id === taskId);
-
-      if (foundTask) {
-        setTask(foundTask);
-        setTitle(foundTask.title);
-        setDescription(foundTask.description || '');
-        setSelectedCategory(foundTask.category);
-        setSelectedTimePreset(foundTask.timeEstimate);
-      }
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading task:', error);
-      setLoading(false);
+    if (task) {
+      setTitle(task.title);
+      setDescription(task.description || '');
+      setSelectedCategory(task.category);
+      setSelectedTimePreset(task.timeEstimate);
     }
-  };
+  }, [task]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -66,34 +52,47 @@ const EditTaskScreen = () => {
       return;
     }
 
-    const updatedTask = updateTask(task, {
-      title: title.trim(),
-      description: description.trim(),
-      category: selectedCategory,
-      timeEstimate: selectedTimePreset,
-    });
+    if (!task) {
+      Alert.alert('Error', 'Task not found');
+      return;
+    }
 
-    const success = await TaskStorageService.updateTask(updatedTask);
-
-    if (success) {
+    setLoading(true);
+    try {
+      await updateTask(task.id, {
+        title: title.trim(),
+        description: description.trim(),
+        category: selectedCategory,
+        timeEstimate: selectedTimePreset,
+      });
       navigation.goBack();
-    } else {
+    } catch (error) {
       Alert.alert('Error', 'Failed to update task. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = () => {
+    if (!task) {
+      Alert.alert('Error', 'Task not found');
+      return;
+    }
+
     Alert.alert('Delete Task', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const success = await TaskStorageService.deleteTask(task.id);
-          if (success) {
+          setLoading(true);
+          try {
+            await deleteTask(task.id);
             navigation.goBack();
-          } else {
+          } catch (error) {
             Alert.alert('Error', 'Failed to delete task. Please try again.');
+          } finally {
+            setLoading(false);
           }
         },
       },

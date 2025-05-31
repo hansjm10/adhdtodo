@@ -6,11 +6,24 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import FocusModeScreen from '../FocusModeScreen';
-import TaskStorageService from '../../services/TaskStorageService';
+import { AppProvider } from '../../contexts/AppProvider';
 import { createTask } from '../../utils/TaskModel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock dependencies
-jest.mock('../../services/TaskStorageService');
+jest.mock('@react-native-async-storage/async-storage');
+
+// Mock TaskStorageService at the module level
+jest.mock('../../services/TaskStorageService', () => ({
+  getAllTasks: jest.fn(),
+  saveTask: jest.fn(),
+  updateTask: jest.fn(),
+  deleteTask: jest.fn(),
+  getPendingTasks: jest.fn(),
+}));
+
+// Import after mocking
+const TaskStorageService = require('../../services/TaskStorageService');
 
 // Mock Alert
 jest.spyOn(Alert, 'alert');
@@ -24,20 +37,40 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const wrapper = ({ children }) => <NavigationContainer>{children}</NavigationContainer>;
+const wrapper = ({ children }) => (
+  <AppProvider>
+    <NavigationContainer>{children}</NavigationContainer>
+  </AppProvider>
+);
 
 describe('FocusModeScreen', () => {
   const mockTasks = [
-    { ...createTask({ title: 'Long Task', timeEstimate: 60 }), id: '1' },
-    { ...createTask({ title: 'Medium Task', timeEstimate: 30 }), id: '2' },
-    { ...createTask({ title: 'Quick Task 1', timeEstimate: 5 }), id: '3' },
-    { ...createTask({ title: 'Quick Task 2', timeEstimate: 15 }), id: '4' },
-    { ...createTask({ title: 'No Estimate Task' }), id: '5' },
+    { ...createTask({ title: 'Long Task', timeEstimate: 60, userId: 'user1' }), id: '1' },
+    { ...createTask({ title: 'Medium Task', timeEstimate: 30, userId: 'user1' }), id: '2' },
+    { ...createTask({ title: 'Quick Task 1', timeEstimate: 5, userId: 'user1' }), id: '3' },
+    { ...createTask({ title: 'Quick Task 2', timeEstimate: 15, userId: 'user1' }), id: '4' },
+    { ...createTask({ title: 'No Estimate Task', userId: 'user1' }), id: '5' },
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    TaskStorageService.getPendingTasks.mockResolvedValue(mockTasks);
+    // Reset context caches
+    require('../../contexts/TaskContext')._resetCache();
+    require('../../contexts/NotificationContext')._resetNotifications();
+
+    // Setup default mocks
+    AsyncStorage.getItem.mockImplementation((key) => {
+      if (key === 'currentUser') {
+        return Promise.resolve(JSON.stringify({ id: 'user1', name: 'Test User' }));
+      }
+      return Promise.resolve(null);
+    });
+    AsyncStorage.setItem.mockResolvedValue(undefined);
+
+    // Set up tasks that aren't completed
+    const pendingTasks = mockTasks.map((task) => ({ ...task, isComplete: false }));
+    TaskStorageService.getAllTasks.mockResolvedValue(pendingTasks);
+    TaskStorageService.getPendingTasks.mockResolvedValue(pendingTasks);
   });
 
   it('should display both focus modes', async () => {
@@ -176,6 +209,7 @@ describe('FocusModeScreen', () => {
   });
 
   it('should show empty state when no tasks available', async () => {
+    TaskStorageService.getAllTasks.mockResolvedValue([]);
     TaskStorageService.getPendingTasks.mockResolvedValue([]);
 
     const { getByText } = render(<FocusModeScreen />, { wrapper });
@@ -188,9 +222,9 @@ describe('FocusModeScreen', () => {
   });
 
   it('should show empty state when no quick tasks available for scattered mode', async () => {
-    TaskStorageService.getPendingTasks.mockResolvedValue([
-      createTask({ id: '1', title: 'Long Task', timeEstimate: 60 }),
-    ]);
+    const longTask = createTask({ id: '1', title: 'Long Task', timeEstimate: 60, userId: 'user1' });
+    TaskStorageService.getAllTasks.mockResolvedValue([longTask]);
+    TaskStorageService.getPendingTasks.mockResolvedValue([longTask]);
 
     const { getByText } = render(<FocusModeScreen />, { wrapper });
 
