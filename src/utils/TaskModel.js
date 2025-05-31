@@ -25,6 +25,18 @@ export const createTask = (taskData = {}) => {
     updatedAt: now,
     xpEarned: 0,
     streakContribution: false,
+    // Accountability partner fields
+    assignedBy: taskData.assignedBy || null, // User ID of partner who assigned
+    assignedTo: taskData.assignedTo || null, // User ID of ADHD user
+    dueDate: taskData.dueDate || null,
+    preferredStartTime: taskData.preferredStartTime || null,
+    startedAt: null,
+    partnerNotified: {
+      onStart: false,
+      onComplete: false,
+      onOverdue: false,
+    },
+    encouragementReceived: [],
   };
 };
 
@@ -87,4 +99,72 @@ export const completeTask = (task, xpEarned = 10) => {
     xpEarned,
     updatedAt: new Date(),
   };
+};
+
+export const startTask = (task) => {
+  return {
+    ...task,
+    status: TASK_STATUS.IN_PROGRESS,
+    startedAt: new Date(),
+    updatedAt: new Date(),
+  };
+};
+
+export const assignTask = (
+  task,
+  assignedBy,
+  assignedTo,
+  dueDate = null,
+  preferredStartTime = null,
+) => {
+  return {
+    ...task,
+    assignedBy,
+    assignedTo,
+    dueDate,
+    preferredStartTime,
+    updatedAt: new Date(),
+  };
+};
+
+export const addEncouragement = (task, encouragement) => {
+  return {
+    ...task,
+    encouragementReceived: [
+      ...task.encouragementReceived,
+      {
+        message: encouragement.message,
+        fromUserId: encouragement.fromUserId,
+        timestamp: new Date(),
+      },
+    ],
+    updatedAt: new Date(),
+  };
+};
+
+export const markPartnerNotified = (task, notificationType) => {
+  return {
+    ...task,
+    partnerNotified: {
+      ...task.partnerNotified,
+      [notificationType]: true,
+    },
+    updatedAt: new Date(),
+  };
+};
+
+export const isOverdue = (task) => {
+  if (!task.dueDate || task.completed) {
+    return false;
+  }
+  return new Date() > new Date(task.dueDate);
+};
+
+export const getTimeUntilDue = (task) => {
+  if (!task.dueDate || task.completed) {
+    return null;
+  }
+  const now = new Date();
+  const due = new Date(task.dueDate);
+  return due - now;
 };

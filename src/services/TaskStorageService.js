@@ -2,6 +2,7 @@
 // Handles saving, loading, updating, and deleting tasks from local storage
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import UserStorageService from './UserStorageService';
 
 const STORAGE_KEY = 'tasks';
 
@@ -100,6 +101,64 @@ class TaskStorageService {
       pending,
       totalXP,
     };
+  }
+
+  // Multi-user support methods
+  async getTasksForUser(userId) {
+    const tasks = await this.getAllTasks();
+    return tasks.filter(
+      (task) => task.assignedTo === userId || (!task.assignedTo && !task.assignedBy), // Include non-assigned tasks for backward compatibility
+    );
+  }
+
+  async getTasksAssignedByUser(userId) {
+    const tasks = await this.getAllTasks();
+    return tasks.filter((task) => task.assignedBy === userId);
+  }
+
+  async getAssignedTasks(userId) {
+    const tasks = await this.getAllTasks();
+    return tasks.filter((task) => task.assignedTo === userId && task.assignedBy);
+  }
+
+  async getPartnerTasks(userId) {
+    try {
+      const currentUser = await UserStorageService.getCurrentUser();
+      if (!currentUser || !currentUser.partnerId) {
+        return [];
+      }
+
+      const tasks = await this.getAllTasks();
+      // Get tasks where current user assigned to partner OR partner assigned to current user
+      return tasks.filter(
+        (task) =>
+          (task.assignedBy === userId && task.assignedTo === currentUser.partnerId) ||
+          (task.assignedBy === currentUser.partnerId && task.assignedTo === userId),
+      );
+    } catch (error) {
+      console.error('Error getting partner tasks:', error);
+      return [];
+    }
+  }
+
+  async getOverdueTasks(userId) {
+    const tasks = await this.getTasksForUser(userId);
+    const now = new Date();
+    return tasks.filter((task) => !task.completed && task.dueDate && new Date(task.dueDate) < now);
+  }
+
+  async getUpcomingTasks(userId, hoursAhead = 24) {
+    const tasks = await this.getTasksForUser(userId);
+    const now = new Date();
+    const futureTime = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
+
+    return tasks.filter(
+      (task) =>
+        !task.completed &&
+        task.dueDate &&
+        new Date(task.dueDate) >= now &&
+        new Date(task.dueDate) <= futureTime,
+    );
   }
 }
 
