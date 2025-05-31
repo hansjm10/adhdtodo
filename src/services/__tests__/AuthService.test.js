@@ -411,6 +411,13 @@ describe('AuthService', () => {
     });
 
     it('should reject weak password', async () => {
+      const mockUser = {
+        id: 'user_123',
+        email: 'test@example.com',
+      };
+
+      UserStorageService.getUserByEmail.mockResolvedValue(mockUser);
+
       const result = await AuthService.resetPassword('test@example.com', 'weak');
 
       expect(result.success).toBe(false);

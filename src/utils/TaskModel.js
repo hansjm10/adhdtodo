@@ -37,6 +37,7 @@ export const createTask = (taskData = {}) => {
       onOverdue: false,
     },
     encouragementReceived: [],
+    userId: taskData.userId || null, // User ID who owns the task
   };
 };
 

@@ -149,13 +149,21 @@ describe('FocusModeScreen', () => {
   it('should select a task when tapped', async () => {
     const { getByText } = render(<FocusModeScreen />, { wrapper });
 
+    // Wait for the component to render
     await waitFor(() => {
-      fireEvent.press(getByText('Hyperfocus Mode'));
+      expect(getByText('Hyperfocus Mode')).toBeTruthy();
     });
 
+    // Select hyperfocus mode
+    fireEvent.press(getByText('Hyperfocus Mode'));
+
+    // Wait for tasks to be displayed
     await waitFor(() => {
-      fireEvent.press(getByText('Long Task'));
+      expect(getByText('Long Task')).toBeTruthy();
     });
+
+    // Select a task
+    fireEvent.press(getByText('Long Task'));
 
     // Task should be selected, button should work without alert
     fireEvent.press(getByText('Start Hyperfocus Mode'));
@@ -165,8 +173,17 @@ describe('FocusModeScreen', () => {
   it('should not navigate when no task is selected', async () => {
     const { getByText } = render(<FocusModeScreen />, { wrapper });
 
+    // Wait for the component to render
     await waitFor(() => {
-      fireEvent.press(getByText('Hyperfocus Mode'));
+      expect(getByText('Hyperfocus Mode')).toBeTruthy();
+    });
+
+    // Select hyperfocus mode
+    fireEvent.press(getByText('Hyperfocus Mode'));
+
+    // Wait for button to be visible
+    await waitFor(() => {
+      expect(getByText('Start Hyperfocus Mode')).toBeTruthy();
     });
 
     // Try to press the button without selecting a task
@@ -180,14 +197,23 @@ describe('FocusModeScreen', () => {
   it('should navigate to Hyperfocus screen when starting hyperfocus mode', async () => {
     const { getByText } = render(<FocusModeScreen />, { wrapper });
 
+    // Wait for the component to render
     await waitFor(() => {
-      fireEvent.press(getByText('Hyperfocus Mode'));
+      expect(getByText('Hyperfocus Mode')).toBeTruthy();
     });
 
+    // Select hyperfocus mode
+    fireEvent.press(getByText('Hyperfocus Mode'));
+
+    // Wait for tasks to be displayed
     await waitFor(() => {
-      fireEvent.press(getByText('Long Task'));
+      expect(getByText('Long Task')).toBeTruthy();
     });
 
+    // Select a task
+    fireEvent.press(getByText('Long Task'));
+
+    // Start hyperfocus mode
     fireEvent.press(getByText('Start Hyperfocus Mode'));
 
     expect(mockNavigate).toHaveBeenCalledWith('Hyperfocus', { taskId: expect.any(String) });
@@ -196,10 +222,15 @@ describe('FocusModeScreen', () => {
   it('should display time estimates correctly', async () => {
     const { getByText } = render(<FocusModeScreen />, { wrapper });
 
+    // Wait for the component to render
     await waitFor(() => {
-      fireEvent.press(getByText('Hyperfocus Mode'));
+      expect(getByText('Hyperfocus Mode')).toBeTruthy();
     });
 
+    // Select hyperfocus mode
+    fireEvent.press(getByText('Hyperfocus Mode'));
+
+    // Wait for time estimates to be displayed
     await waitFor(() => {
       expect(getByText('60 min')).toBeTruthy();
       expect(getByText('30 min')).toBeTruthy();
