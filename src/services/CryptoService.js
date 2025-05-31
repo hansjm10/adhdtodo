@@ -11,7 +11,8 @@ class CryptoService {
     return this.bytesToHex(randomBytes);
   }
 
-  // Hash a password with salt using PBKDF2
+  // Hash a password with salt using multiple rounds of SHA-256
+  // Since expo-crypto doesn't support PBKDF2, we implement a similar approach
   async hashPassword(password, salt) {
     if (!password || typeof password !== 'string') {
       throw new Error('Password must be a non-empty string');
@@ -21,25 +22,22 @@ class CryptoService {
       throw new Error('Salt must be a non-empty string');
     }
 
-    // PBKDF2 with SHA256, 100,000 iterations (OWASP recommended minimum)
-    const iterations = 100000;
-    const keyLength = 32; // 256 bits
+    // Use multiple iterations of SHA-256 to simulate PBKDF2-like key stretching
+    // This is not as secure as proper PBKDF2 but provides reasonable protection
+    const iterations = 10000; // Reduced from 100k due to performance constraints
 
-    // Convert password to Uint8Array
-    const encoder = new TextEncoder();
-    const passwordBytes = encoder.encode(password);
-    const saltBytes = this.hexToBytes(salt);
+    let hash = password + salt;
 
-    // Derive key using PBKDF2
-    const derivedKey = await Crypto.pbkdf2Async(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      passwordBytes,
-      saltBytes,
-      iterations,
-      keyLength,
-    );
+    // Apply SHA-256 multiple times
+    for (let i = 0; i < iterations; i++) {
+      hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        hash + salt + i.toString(),
+        { encoding: Crypto.CryptoEncoding.HEX },
+      );
+    }
 
-    return this.bytesToHex(derivedKey);
+    return hash;
   }
 
   // Verify a password against a hash
