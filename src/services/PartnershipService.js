@@ -1,7 +1,7 @@
 // ABOUTME: Service for managing partnerships between ADHD users and accountability partners
 // Handles partnership creation, invites, status updates, and partnership-related operations
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorageService from './SecureStorageService';
 import {
   createPartnership,
   acceptPartnership,
@@ -15,11 +15,10 @@ const STORAGE_KEY = 'partnerships';
 class PartnershipService {
   async getAllPartnerships() {
     try {
-      const partnershipsJson = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!partnershipsJson) {
+      const partnerships = await SecureStorageService.getItem(STORAGE_KEY);
+      if (!partnerships) {
         return [];
       }
-      const partnerships = JSON.parse(partnershipsJson);
       return Array.isArray(partnerships) ? partnerships : [];
     } catch (error) {
       console.error('Error loading partnerships:', error);
@@ -31,7 +30,7 @@ class PartnershipService {
     try {
       const partnerships = await this.getAllPartnerships();
       partnerships.push(partnership);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(partnerships));
+      await SecureStorageService.setItem(STORAGE_KEY, partnerships);
       return true;
     } catch (error) {
       console.error('Error saving partnership:', error);
@@ -49,7 +48,7 @@ class PartnershipService {
       }
 
       partnerships[partnershipIndex] = updatedPartnership;
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(partnerships));
+      await SecureStorageService.setItem(STORAGE_KEY, partnerships);
       return true;
     } catch (error) {
       console.error('Error updating partnership:', error);
@@ -189,7 +188,7 @@ class PartnershipService {
 
   async clearAllPartnerships() {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await SecureStorageService.removeItem(STORAGE_KEY);
       return true;
     } catch (error) {
       console.error('Error clearing partnerships:', error);

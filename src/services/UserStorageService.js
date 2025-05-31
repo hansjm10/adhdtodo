@@ -1,7 +1,7 @@
-// ABOUTME: Service for managing user data persistence using AsyncStorage
+// ABOUTME: Service for managing user data persistence using SecureStorageService
 // Handles user authentication, profile management, and partnership connections
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorageService from './SecureStorageService';
 import ErrorHandler from '../utils/ErrorHandler';
 
 const STORAGE_KEYS = {
@@ -13,8 +13,8 @@ const STORAGE_KEYS = {
 class UserStorageService {
   async getCurrentUser() {
     try {
-      const userJson = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      return userJson ? JSON.parse(userJson) : null;
+      const user = await SecureStorageService.getItem(STORAGE_KEYS.CURRENT_USER);
+      return user;
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'load');
       return null;
@@ -23,7 +23,7 @@ class UserStorageService {
 
   async setCurrentUser(user) {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+      await SecureStorageService.setItem(STORAGE_KEYS.CURRENT_USER, user);
       // Also update in all users list
       await this.updateUser(user);
       return true;
@@ -35,11 +35,10 @@ class UserStorageService {
 
   async getAllUsers() {
     try {
-      const usersJson = await AsyncStorage.getItem(STORAGE_KEYS.ALL_USERS);
-      if (!usersJson) {
+      const users = await SecureStorageService.getItem(STORAGE_KEYS.ALL_USERS);
+      if (!users) {
         return [];
       }
-      const users = JSON.parse(usersJson);
       return Array.isArray(users) ? users : [];
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'load');
@@ -60,7 +59,7 @@ class UserStorageService {
         users.push(user);
       }
 
-      await AsyncStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(users));
+      await SecureStorageService.setItem(STORAGE_KEYS.ALL_USERS, users);
       return true;
     } catch (error) {
       console.error('Error saving user:', error);
@@ -79,12 +78,12 @@ class UserStorageService {
       }
 
       users[userIndex] = updatedUser;
-      await AsyncStorage.setItem(STORAGE_KEYS.ALL_USERS, JSON.stringify(users));
+      await SecureStorageService.setItem(STORAGE_KEYS.ALL_USERS, users);
 
       // Update current user if it's the same
       const currentUser = await this.getCurrentUser();
       if (currentUser && currentUser.id === updatedUser.id) {
-        await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+        await SecureStorageService.setItem(STORAGE_KEYS.CURRENT_USER, updatedUser);
       }
 
       return true;
@@ -116,8 +115,8 @@ class UserStorageService {
 
   async logout() {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_TOKEN);
+      await SecureStorageService.removeItem(STORAGE_KEYS.CURRENT_USER);
+      await SecureStorageService.removeItem(STORAGE_KEYS.USER_TOKEN);
       return true;
     } catch (error) {
       console.error('Error during logout:', error);
@@ -127,7 +126,7 @@ class UserStorageService {
 
   async saveUserToken(token) {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_TOKEN, token);
+      await SecureStorageService.setItem(STORAGE_KEYS.USER_TOKEN, token);
       return true;
     } catch (error) {
       console.error('Error saving user token:', error);
@@ -137,7 +136,7 @@ class UserStorageService {
 
   async getUserToken() {
     try {
-      return await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
+      return await SecureStorageService.getItem(STORAGE_KEYS.USER_TOKEN);
     } catch (error) {
       console.error('Error getting user token:', error);
       return null;
@@ -146,9 +145,9 @@ class UserStorageService {
 
   async clearAllUsers() {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.ALL_USERS);
-      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_TOKEN);
+      await SecureStorageService.removeItem(STORAGE_KEYS.ALL_USERS);
+      await SecureStorageService.removeItem(STORAGE_KEYS.CURRENT_USER);
+      await SecureStorageService.removeItem(STORAGE_KEYS.USER_TOKEN);
       return true;
     } catch (error) {
       console.error('Error clearing users:', error);
