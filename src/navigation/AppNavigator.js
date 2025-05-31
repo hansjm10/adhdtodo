@@ -16,18 +16,16 @@ import AuthScreen from '../screens/AuthScreen';
 import PartnershipScreen from '../screens/PartnershipScreen';
 import PartnerInviteScreen from '../screens/PartnerInviteScreen';
 import TaskAssignmentScreen from '../screens/TaskAssignmentScreen';
+import PartnerDashboardScreen from '../screens/PartnerDashboardScreen';
+import NotificationListScreen from '../screens/NotificationListScreen';
 import UserStorageService from '../services/UserStorageService';
+import NotificationService from '../services/NotificationService';
+import NotificationBadge from '../components/NotificationBadge';
+import NotificationContainer from '../components/NotificationContainer';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
-
-// Placeholder for PartnerDashboard (to be created)
-const PartnerDashboardScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>Partner Dashboard - Coming Soon</Text>
-  </View>
-);
 
 // Placeholder for Rewards screen
 const RewardsScreen = () => (
@@ -36,18 +34,56 @@ const RewardsScreen = () => (
   </View>
 );
 
-// Tasks Stack Navigator
-const TasksStack = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="TasksList" component={TaskListScreen} options={{ title: 'Tasks' }} />
-    <Stack.Screen
-      name="CreateTask"
-      component={CreateTaskScreen}
-      options={{ title: 'Create Task' }}
-    />
-    <Stack.Screen name="EditTask" component={EditTaskScreen} options={{ title: 'Edit Task' }} />
-  </Stack.Navigator>
-);
+// Tasks Stack Navigator with notification support
+const TasksStack = ({ navigation }) => {
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    loadUnreadCount();
+    // Set up interval to check for new notifications
+    const interval = setInterval(loadUnreadCount, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadUnreadCount = async () => {
+    try {
+      const user = await UserStorageService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        const notifications = await NotificationService.getNotificationsForUser(user.id);
+        const unread = notifications.filter((n) => !n.read).length;
+        setUnreadCount(unread);
+      }
+    } catch (error) {
+      // Error loading notification count
+    }
+  };
+
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="TasksList"
+        component={TaskListScreen}
+        options={{
+          title: 'Tasks',
+          headerRight: () => (
+            <NotificationBadge
+              count={unreadCount}
+              onPress={() => navigation.navigate('NotificationList')}
+            />
+          ),
+        }}
+      />
+      <Stack.Screen
+        name="CreateTask"
+        component={CreateTaskScreen}
+        options={{ title: 'Create Task' }}
+      />
+      <Stack.Screen name="EditTask" component={EditTaskScreen} options={{ title: 'Edit Task' }} />
+    </Stack.Navigator>
+  );
+};
 
 // Focus Stack Navigator
 const FocusStack = () => (
@@ -202,11 +238,22 @@ const AppNavigator = () => {
     <View testID="app-navigator" style={{ flex: 1 }}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <RootStack.Screen name="Main" component={MainTabs} />
+          <>
+            <RootStack.Screen name="Main" component={MainTabs} />
+            <RootStack.Screen
+              name="NotificationList"
+              component={NotificationListScreen}
+              options={{
+                headerShown: true,
+                presentation: 'modal',
+              }}
+            />
+          </>
         ) : (
           <RootStack.Screen name="Auth" component={AuthScreen} />
         )}
       </RootStack.Navigator>
+      {isAuthenticated && <NotificationContainer />}
     </View>
   );
 };

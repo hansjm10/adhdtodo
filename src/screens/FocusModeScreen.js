@@ -14,6 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TaskStorageService from '../services/TaskStorageService';
+import { createTestNotifications } from '../utils/NotificationTestHelper';
 
 const FocusModeScreen = () => {
   const navigation = useNavigation();
@@ -142,6 +143,11 @@ const FocusModeScreen = () => {
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* Test button for notifications - remove in production */}
+        <TouchableOpacity style={[styles.testButton]} onPress={createTestNotifications}>
+          <Text style={styles.testButtonText}>Test Notifications</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -279,6 +285,24 @@ const styles = StyleSheet.create({
   startButtonText: {
     fontSize: 18,
     fontWeight: '600',
+    color: '#fff',
+  },
+  testButton: {
+    backgroundColor: '#9B59B6',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginHorizontal: 20,
+    marginTop: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  testButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
     color: '#fff',
   },
 });

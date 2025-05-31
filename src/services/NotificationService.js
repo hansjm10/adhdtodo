@@ -145,6 +145,11 @@ class NotificationService {
     return this.pendingNotifications.filter((n) => n.toUserId === userId);
   }
 
+  async getUnreadNotificationCount(userId) {
+    const userNotifications = await this.getNotificationsForUser(userId);
+    return userNotifications.filter((n) => !n.read).length;
+  }
+
   async markNotificationAsRead(notificationId) {
     const notification = this.pendingNotifications.find((n) => n.id === notificationId);
     if (notification) {
@@ -152,6 +157,14 @@ class NotificationService {
       return true;
     }
     return false;
+  }
+
+  async markAllNotificationsAsRead(userId) {
+    const userNotifications = this.pendingNotifications.filter((n) => n.toUserId === userId);
+    userNotifications.forEach((n) => {
+      n.read = true;
+    });
+    return true;
   }
 
   async clearNotificationsForUser(userId) {
