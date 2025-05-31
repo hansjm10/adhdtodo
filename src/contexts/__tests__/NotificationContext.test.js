@@ -53,8 +53,8 @@ describe('NotificationContext', () => {
     AsyncStorage.removeItem.mockResolvedValue(undefined);
   });
 
-  afterEach(() => {
-    cleanup();
+  afterEach(async () => {
+    await cleanup();
   });
 
   const TestComponent = () => {
@@ -109,6 +109,9 @@ describe('NotificationContext', () => {
     const errorMessage = 'Failed to load notifications';
     AsyncStorage.getItem.mockRejectedValueOnce(new Error(errorMessage));
 
+    // Suppress expected console.error
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     const { getByTestId } = render(
       <NotificationProvider>
         <TestComponent />
@@ -119,6 +122,8 @@ describe('NotificationContext', () => {
       expect(getByTestId('loading').props.children).toBe('false');
       expect(getByTestId('error').props.children).toBe(errorMessage);
     });
+
+    consoleSpy.mockRestore();
   });
 
   it('should add a new notification', async () => {
