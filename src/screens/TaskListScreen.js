@@ -2,15 +2,8 @@
 // Shows tasks in a clean, organized list with visual feedback and empty states
 
 import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
-  ScrollView,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, ScrollView } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import { useUser, useTasks } from '../contexts';
 import TaskItem from '../components/TaskItem';
@@ -160,7 +153,7 @@ const TaskListScreen = () => {
   return (
     <View style={styles.container}>
       <CategoryFilter />
-      <FlatList
+      <FlashList
         testID="task-list"
         data={filteredTasks}
         renderItem={renderTask}
@@ -168,6 +161,8 @@ const TaskListScreen = () => {
         ListEmptyComponent={EmptyState}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={filteredTasks.length === 0 ? styles.emptyList : null}
+        estimatedItemSize={100}
+        drawDistance={200}
       />
 
       <TouchableOpacity

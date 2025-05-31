@@ -326,4 +326,36 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TaskItem;
+// Custom comparison function for React.memo
+const areEqual = (prevProps, nextProps) => {
+  // Compare task properties that affect visual rendering
+  const prevTask = prevProps.task;
+  const nextTask = nextProps.task;
+
+  // Check if task visual properties are the same
+  const taskVisuallyEqual =
+    prevTask.id === nextTask.id &&
+    prevTask.title === nextTask.title &&
+    prevTask.description === nextTask.description &&
+    prevTask.completed === nextTask.completed &&
+    prevTask.category === nextTask.category &&
+    prevTask.priority === nextTask.priority &&
+    prevTask.dueDate === nextTask.dueDate &&
+    prevTask.timeEstimate === nextTask.timeEstimate &&
+    prevTask.status === nextTask.status &&
+    prevTask.xpEarned === nextTask.xpEarned &&
+    prevTask.assignedBy === nextTask.assignedBy &&
+    prevTask.partnerNotified?.onStart === nextTask.partnerNotified?.onStart &&
+    prevTask.partnerNotified?.onComplete === nextTask.partnerNotified?.onComplete;
+
+  // Check if other props are the same
+  const otherPropsEqual =
+    prevProps.onUpdate === nextProps.onUpdate &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.currentUser?.id === nextProps.currentUser?.id &&
+    prevProps.partner?.id === nextProps.partner?.id;
+
+  return taskVisuallyEqual && otherPropsEqual;
+};
+
+export default React.memo(TaskItem, areEqual);

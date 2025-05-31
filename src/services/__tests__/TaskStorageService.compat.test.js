@@ -1,5 +1,5 @@
-// ABOUTME: Tests for TaskStorageService which handles local task persistence
-// Verifies storage operations including save, load, update, and delete
+// ABOUTME: Compatibility tests for TaskStorageService to ensure backward compatibility
+// Tests that the new category-based implementation still works with existing test patterns
 
 import TaskStorageService from '../TaskStorageService';
 import SecureStorageService from '../SecureStorageService';
@@ -8,14 +8,14 @@ import { createTask } from '../../utils/TaskModel';
 // Mock SecureStorageService
 jest.mock('../SecureStorageService');
 
-describe('TaskStorageService', () => {
+describe('TaskStorageService - Backward Compatibility', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
     // Reset mock implementations to default
     SecureStorageService.setItem.mockImplementation(() => Promise.resolve());
     SecureStorageService.getItem.mockImplementation((key) => {
-      // Always return an empty index to indicate new format is in use
+      // Return empty index to indicate we're using new format
       if (key === 'tasks_index') return Promise.resolve({});
       return Promise.resolve(null);
     });
@@ -28,19 +28,36 @@ describe('TaskStorageService', () => {
       expect(tasks).toEqual([]);
     });
 
-    it('should return stored tasks', async () => {
-      const mockTasks = [createTask({ title: 'Task 1' }), createTask({ title: 'Task 2' })];
+    it('should return stored tasks from old format', async () => {
+      const mockTasks = [
+        createTask({ title: 'Task 1', category: 'home' }),
+        createTask({ title: 'Task 2', category: 'work' }),
+      ];
 
-      SecureStorageService.getItem.mockResolvedValue(mockTasks);
+      // Mock to simulate old format that gets migrated
+      let migrated = false;
+      const migratedData = {};
+
+      SecureStorageService.getItem.mockImplementation((key) => {
+        if (key === 'tasks' && !migrated) return Promise.resolve(mockTasks);
+        if (key === 'tasks_index' && !migrated) return Promise.resolve(null);
+        // After migration
+        return Promise.resolve(migratedData[key] || null);
+      });
+
+      SecureStorageService.setItem.mockImplementation((key, value) => {
+        migratedData[key] = value;
+        if (key === 'tasks_index') migrated = true;
+        return Promise.resolve();
+      });
 
       const tasks = await TaskStorageService.getAllTasks();
       expect(tasks).toHaveLength(2);
-      expect(tasks[0].title).toBe('Task 1');
-      expect(tasks[1].title).toBe('Task 2');
+      expect(tasks.find((t) => t.title === 'Task 1')).toBeTruthy();
+      expect(tasks.find((t) => t.title === 'Task 2')).toBeTruthy();
     });
 
     it('should handle corrupted data gracefully', async () => {
-      // SecureStorageService.getItem would return null for invalid JSON
       SecureStorageService.getItem.mockResolvedValue(null);
 
       const tasks = await TaskStorageService.getAllTasks();
@@ -97,13 +114,12 @@ describe('TaskStorageService', () => {
     });
 
     it('should not update non-existent task', async () => {
-      const task = createTask({ title: 'Non-existent', category: 'home' });
-      // Task not in index means it doesn't exist
       SecureStorageService.getItem.mockImplementation((key) => {
         if (key === 'tasks_index') return Promise.resolve({});
         return Promise.resolve(null);
       });
 
+      const task = createTask({ title: 'Non-existent' });
       const result = await TaskStorageService.updateTask(task);
 
       expect(result).toBe(false);

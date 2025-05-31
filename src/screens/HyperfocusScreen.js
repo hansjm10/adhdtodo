@@ -2,10 +2,11 @@
 // Provides distraction-free interface with built-in timer and break reminders
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Vibration, Platform } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTasks } from '../contexts';
+import { getTimerSize, responsiveFontSize, responsivePadding } from '../utils/ResponsiveDimensions';
 
 const WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const BREAK_DURATION = 5 * 60; // 5 minutes in seconds
@@ -54,9 +55,15 @@ const HyperfocusScreen = () => {
   }, [isRunning, timeLeft, isBreak]);
 
   const handleTimerComplete = () => {
-    // Vibration may not be available in test environment
-    if (Vibration?.vibrate) {
-      Vibration.vibrate([500, 500, 500]);
+    // Platform-specific vibration handling
+    if (Platform.OS !== 'web' && Vibration?.vibrate) {
+      if (Platform.OS === 'android') {
+        // Android: Use short vibration duration
+        Vibration.vibrate(100);
+      } else if (Platform.OS === 'ios') {
+        // iOS: Simple vibration without duration
+        Vibration.vibrate();
+      }
     }
     setIsRunning(false);
 
@@ -216,7 +223,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: responsivePadding(32),
   },
   modeLabel: {
     color: '#888',
@@ -233,9 +240,9 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   timerContainer: {
-    width: 280,
-    height: 280,
-    borderRadius: 140,
+    width: getTimerSize(),
+    height: getTimerSize(),
+    borderRadius: getTimerSize() / 2,
     borderWidth: 8,
     borderColor: '#4ECDC4',
     justifyContent: 'center',
@@ -244,7 +251,7 @@ const styles = StyleSheet.create({
   },
   timer: {
     color: '#fff',
-    fontSize: 72,
+    fontSize: responsiveFontSize(72),
     fontWeight: '300',
   },
   controls: {
