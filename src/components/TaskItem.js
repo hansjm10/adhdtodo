@@ -94,17 +94,35 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }) => {
     }
   };
 
+  const taskStatus = task.completed
+    ? 'completed'
+    : task.status === 'in_progress'
+      ? 'in progress'
+      : 'pending';
+  const taskAccessibilityLabel = `${task.title}, ${taskStatus}${category ? `, category: ${category.name}` : ''}${task.priority && task.priority !== TASK_PRIORITY.MEDIUM ? `, priority: ${task.priority}` : ''}${task.dueDate ? `, due: ${new Date(task.dueDate).toLocaleDateString()}` : ''}`;
+
   return (
     <TouchableOpacity
       testID={`task-item-${task.id}`}
       style={[styles.container, task.completed && styles.completedContainer]}
       onPress={onPress}
       activeOpacity={0.7}
+      accessible={true}
+      accessibilityLabel={taskAccessibilityLabel}
+      accessibilityHint="Double tap to view task details"
+      accessibilityRole="button"
     >
       <TouchableOpacity
         testID="task-checkbox"
         style={[styles.checkbox, task.completed && styles.checkboxCompleted]}
         onPress={handleToggleComplete}
+        accessible={true}
+        accessibilityLabel={task.completed ? 'Mark task as incomplete' : 'Mark task as complete'}
+        accessibilityHint={
+          task.completed ? 'Double tap to uncheck this task' : 'Double tap to complete this task'
+        }
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: task.completed }}
       >
         {task.completed && <Text style={styles.checkmark}>✓</Text>}
       </TouchableOpacity>
@@ -168,6 +186,15 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }) => {
           style={styles.startButton}
           onPress={handleStartTask}
           disabled={task.status === 'in_progress'}
+          accessible={true}
+          accessibilityLabel={task.status === 'in_progress' ? 'Task in progress' : 'Start task'}
+          accessibilityHint={
+            task.status === 'in_progress'
+              ? 'Task is already in progress'
+              : 'Double tap to start working on this task'
+          }
+          accessibilityRole="button"
+          accessibilityState={{ disabled: task.status === 'in_progress' }}
         >
           <Ionicons
             name={task.status === 'in_progress' ? 'pause-circle' : 'play-circle'}

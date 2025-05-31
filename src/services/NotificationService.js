@@ -1,12 +1,40 @@
 // ABOUTME: Service for managing notifications between accountability partners
 // Handles sending notifications for task events and encouragement messages
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
 import UserStorageService from './UserStorageService';
 
 class NotificationService {
   // Store for pending notifications (in production, this would be a proper queue/backend)
   pendingNotifications = [];
+  STORAGE_KEY = '@adhdtodo:notifications';
+  MAX_NOTIFICATIONS = 100; // Limit to prevent unbounded growth
+
+  constructor() {
+    this.loadNotifications();
+  }
+
+  async loadNotifications() {
+    try {
+      const stored = await AsyncStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        this.pendingNotifications = JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  }
+
+  async saveNotifications() {
+    try {
+      // Keep only the most recent notifications to prevent unbounded growth
+      const toSave = this.pendingNotifications.slice(-this.MAX_NOTIFICATIONS);
+      await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+    } catch (error) {
+      console.error('Error saving notifications:', error);
+    }
+  }
 
   async sendNotification(toUserId, type, data) {
     try {
@@ -33,6 +61,9 @@ class NotificationService {
       // In a real app, this would send push notifications
       // For now, we'll store them locally
       this.pendingNotifications.push(notification);
+
+      // Save to persistent storage
+      await this.saveNotifications();
 
       // In production, this would trigger actual notification delivery
       return true;
@@ -154,6 +185,7 @@ class NotificationService {
     const notification = this.pendingNotifications.find((n) => n.id === notificationId);
     if (notification) {
       notification.read = true;
+      await this.saveNotifications();
       return true;
     }
     return false;
@@ -164,11 +196,13 @@ class NotificationService {
     userNotifications.forEach((n) => {
       n.read = true;
     });
+    await this.saveNotifications();
     return true;
   }
 
   async clearNotificationsForUser(userId) {
     this.pendingNotifications = this.pendingNotifications.filter((n) => n.toUserId !== userId);
+    await this.saveNotifications();
     return true;
   }
 }

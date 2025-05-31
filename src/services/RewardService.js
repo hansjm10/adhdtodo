@@ -4,6 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TaskStorageService from './TaskStorageService';
 import { REWARD_POINTS } from '../constants/TaskConstants';
+import ErrorHandler from '../utils/ErrorHandler';
 
 const STREAK_KEY = 'streak_data';
 const LAST_COMPLETION_KEY = 'last_completion_date';
@@ -31,55 +32,69 @@ class RewardService {
   }
 
   async updateStreak() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const lastCompletionStr = await AsyncStorage.getItem(LAST_COMPLETION_KEY);
-    const streakData = await this.getStreakData();
+      const lastCompletionStr = await AsyncStorage.getItem(LAST_COMPLETION_KEY);
+      const streakData = await this.getStreakData();
 
-    if (!lastCompletionStr) {
-      // First task ever completed
-      await AsyncStorage.setItem(LAST_COMPLETION_KEY, today.toISOString());
-      const newStreak = { current: 1, best: Math.max(1, streakData.best) };
-      await this.setStreakData(newStreak);
-      return newStreak;
-    }
-
-    const lastCompletion = new Date(lastCompletionStr);
-    lastCompletion.setHours(0, 0, 0, 0);
-
-    const daysDiff = Math.floor((today - lastCompletion) / (1000 * 60 * 60 * 24));
-
-    if (daysDiff === 0) {
-      // Same day, maintain streak but check if we need to start from stored data
-      if (streakData.current === 0) {
-        streakData.current = 1;
-        streakData.best = Math.max(streakData.current, streakData.best);
-        await this.setStreakData(streakData);
+      if (!lastCompletionStr) {
+        // First task ever completed
+        await AsyncStorage.setItem(LAST_COMPLETION_KEY, today.toISOString());
+        const newStreak = { current: 1, best: Math.max(1, streakData.best) };
+        await this.setStreakData(newStreak);
+        return newStreak;
       }
+
+      const lastCompletion = new Date(lastCompletionStr);
+      lastCompletion.setHours(0, 0, 0, 0);
+
+      const daysDiff = Math.floor((today - lastCompletion) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff === 0) {
+        // Same day, maintain streak but check if we need to start from stored data
+        if (streakData.current === 0) {
+          streakData.current = 1;
+          streakData.best = Math.max(streakData.current, streakData.best);
+          await this.setStreakData(streakData);
+        }
+        return streakData;
+      } else if (daysDiff === 1) {
+        // Consecutive day, increment streak
+        streakData.current = (streakData.current || 0) + 1;
+        streakData.best = Math.max(streakData.current, streakData.best);
+      } else {
+        // Missed day(s), reset streak
+        streakData.current = 1;
+      }
+
+      await AsyncStorage.setItem(LAST_COMPLETION_KEY, today.toISOString());
+      await this.setStreakData(streakData);
+
       return streakData;
-    } else if (daysDiff === 1) {
-      // Consecutive day, increment streak
-      streakData.current = (streakData.current || 0) + 1;
-      streakData.best = Math.max(streakData.current, streakData.best);
-    } else {
-      // Missed day(s), reset streak
-      streakData.current = 1;
+    } catch (error) {
+      ErrorHandler.handleStorageError(error, 'save');
+      return { current: 0, best: 0 };
     }
-
-    await AsyncStorage.setItem(LAST_COMPLETION_KEY, today.toISOString());
-    await this.setStreakData(streakData);
-
-    return streakData;
   }
 
   async getStreakData() {
-    const data = await AsyncStorage.getItem(STREAK_KEY);
-    return data ? JSON.parse(data) : { current: 0, best: 0 };
+    try {
+      const data = await AsyncStorage.getItem(STREAK_KEY);
+      return data ? JSON.parse(data) : { current: 0, best: 0 };
+    } catch (error) {
+      ErrorHandler.handleStorageError(error, 'load');
+      return { current: 0, best: 0 };
+    }
   }
 
   async setStreakData(streakData) {
-    await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(streakData));
+    try {
+      await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(streakData));
+    } catch (error) {
+      ErrorHandler.handleStorageError(error, 'save');
+    }
   }
 
   async getStats() {

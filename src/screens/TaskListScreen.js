@@ -126,6 +126,11 @@ const TaskListScreen = () => {
           setShowAssignedOnly(!showAssignedOnly);
           setSelectedCategory(null);
         }}
+        accessible={true}
+        accessibilityLabel={partner ? `Show tasks from ${partner.name}` : 'Show assigned tasks'}
+        accessibilityHint="Double tap to filter tasks assigned by your partner"
+        accessibilityRole="button"
+        accessibilityState={{ selected: showAssignedOnly }}
       >
         <Text style={[styles.categoryChipText, showAssignedOnly && styles.categoryChipTextActive]}>
           {partner ? `From ${partner.name}` : 'Assigned'}
@@ -141,6 +146,11 @@ const TaskListScreen = () => {
           setSelectedCategory(null);
           setShowAssignedOnly(false);
         }}
+        accessible={true}
+        accessibilityLabel="Show all tasks"
+        accessibilityHint="Double tap to show all tasks"
+        accessibilityRole="button"
+        accessibilityState={{ selected: !selectedCategory && !showAssignedOnly }}
       >
         <Text
           style={[
@@ -162,6 +172,11 @@ const TaskListScreen = () => {
               { borderColor: category.color },
             ]}
             onPress={() => setSelectedCategory(category.id)}
+            accessible={true}
+            accessibilityLabel={`Filter by ${category.label} category`}
+            accessibilityHint={`Double tap to show only ${category.label} tasks`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: selectedCategory === category.id }}
           >
             <Text style={styles.categoryIcon}>{category.icon}</Text>
             <Text
@@ -195,6 +210,10 @@ const TaskListScreen = () => {
         testID="add-task-button"
         style={styles.addButton}
         onPress={() => navigation.navigate('CreateTask')}
+        accessible={true}
+        accessibilityLabel="Add new task"
+        accessibilityHint="Double tap to create a new task"
+        accessibilityRole="button"
       >
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
