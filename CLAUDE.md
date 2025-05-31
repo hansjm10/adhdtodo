@@ -104,10 +104,18 @@ npx expo publish    # Publish to Expo
 # Project setup
 npm install                  # Install dependencies
 npm run build               # Build the project (when configured)
-npm test                    # Run all tests (when configured)
+npm test                    # Run all tests
 npm run test:watch          # Run tests in watch mode
-npm run lint                # Run linting (when configured)
+npm run lint                # Run linting
 npm run typecheck           # Run type checking (when configured)
+
+# Testing specific files
+npm test -- --testPathPattern=<pattern>
+npm test -- --coverage      # Run tests with coverage
+
+# Integration tests
+npm test tests/integration/              # Run all integration tests
+npm test tests/integration/auth-flow     # Run specific integration test
 
 # Quality checks (always run before commits)
 npm run lint && npm run typecheck && npm test
@@ -180,6 +188,10 @@ adhdtodo/
 │   ├── utils/             # Utility functions
 │   └── constants/         # App constants
 ├── tests/                 # Test files
+│   ├── setup.js           # Global test setup and mocks
+│   ├── integration/       # Integration tests for user flows
+│   ├── unit/              # Unit tests (future)
+│   └── e2e/               # End-to-end tests (future)
 ├── docs/                  # Project documentation
 ├── scripts/               # Automation scripts
 └── .github/               # GitHub Actions workflows
@@ -244,6 +256,14 @@ When implementing features for ADHD users:
 - Mock React Native modules
 - Test state management logic
 - Aim for >80% coverage
+
+### Integration Tests
+
+- Test complete user flows across multiple screens
+- Verify navigation and context integration
+- Test data persistence and state management
+- Use real component interactions (no shallow rendering)
+- Located in `tests/integration/`
 
 ### Component Tests
 
