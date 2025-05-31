@@ -1,7 +1,6 @@
 // ABOUTME: Integration tests for notification flows
 // Tests reminders, viewing, clearing, and various notification types
 
-import React from 'react';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import {
@@ -116,12 +115,12 @@ describe('Notification Flow Integration Tests', () => {
       fireEvent.changeText(getByPlaceholderText('Task Title'), 'Doctor Appointment');
 
       // Enable reminder
-      const reminderSwitch = getByTestId('reminder-switch');
-      fireEvent(reminderSwitch, 'onValueChange', true);
+      const reminderSwitch = getByText('Enable Reminder');
+      fireEvent.press(reminderSwitch);
 
       // Set reminder time
-      const reminderPicker = getByTestId('reminder-picker');
-      fireEvent(reminderPicker, 'onValueChange', 30);
+      const reminderPicker = getByText('30 minutes before');
+      fireEvent.press(reminderPicker);
 
       mockTaskService.saveTask.mockResolvedValue(task);
 

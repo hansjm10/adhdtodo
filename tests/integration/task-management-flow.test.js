@@ -1,7 +1,6 @@
 // ABOUTME: Integration tests for task management flows
 // Tests creating, viewing, editing, completing, and filtering tasks
 
-import React from 'react';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import {
@@ -13,7 +12,6 @@ import {
   cleanupIntegrationTest,
   mockTaskService,
 } from './setup';
-import TaskStorageService from '../../src/services/TaskStorageService';
 
 // Mock Alert
 jest.spyOn(Alert, 'alert');
@@ -384,7 +382,7 @@ describe('Task Management Flow Integration Tests', () => {
 
       mockTaskService.getAllTasks.mockResolvedValue([task]);
 
-      const { getByText, getByTestId } = await renderAppWithAuth({ user });
+      const { getByText } = await renderAppWithAuth({ user });
 
       await waitFor(() => {
         expect(getByText('Shared Task')).toBeTruthy();

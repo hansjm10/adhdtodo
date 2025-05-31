@@ -14,7 +14,7 @@ import SecureStorageService from '../../src/services/SecureStorageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Custom render function for integration tests
-export const renderApp = (initialRouteName = null) => {
+export const renderApp = (_initialRouteName = null) => {
   const wrapper = ({ children }) => (
     <AppProvider>
       <NavigationContainer>{children}</NavigationContainer>

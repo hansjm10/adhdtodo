@@ -1,7 +1,7 @@
 // ABOUTME: Jest setup file for configuring test environment
 // Imports testing utilities and sets up mocks for React Native
 
-/* global jest */
+/* eslint-disable no-undef */
 
 import '@testing-library/jest-native/extend-expect';
 

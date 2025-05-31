@@ -1,7 +1,6 @@
 // ABOUTME: Integration tests for complete authentication flows
 // Tests registration, login, logout, and session persistence
 
-import React from 'react';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import {
@@ -13,7 +12,6 @@ import {
   cleanupIntegrationTest,
   mockAuthService,
 } from './setup';
-import AuthService from '../../src/services/AuthService';
 import UserStorageService from '../../src/services/UserStorageService';
 import SecureStorageService from '../../src/services/SecureStorageService';
 
@@ -265,7 +263,7 @@ describe('Authentication Flow Integration Tests', () => {
   describe('Logout Flow', () => {
     it('should successfully logout and clear session', async () => {
       // Start with authenticated user
-      const { getByTestId, getByText } = await renderAppWithAuth();
+      const { getByText } = await renderAppWithAuth();
 
       // Navigate to profile tab
       await waitFor(() => {
