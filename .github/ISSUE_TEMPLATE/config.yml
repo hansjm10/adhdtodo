@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/jordthomas/adhdtodo/discussions
+    about: Please ask and answer questions here
+  - name: Expo Documentation
+    url: https://docs.expo.dev/
+    about: Check the Expo documentation for framework-specific issues
+  - name: React Native Documentation
+    url: https://reactnative.dev/docs/getting-started
+    about: Check the React Native documentation for general mobile development help

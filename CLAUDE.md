@@ -115,6 +115,13 @@ npm run lint && npm run typecheck && npm test
 
 ### Git Workflow
 
+**Branch Protection**: The `master` branch is protected with the following rules:
+
+- No direct pushes allowed - all changes must go through pull requests
+- Pull requests can be self-approved and merged (since this is a solo project)
+- Force pushes and branch deletion are prohibited
+- These rules apply to all users, including administrators
+
 ```bash
 # Feature development
 git checkout -b feature/<name>
@@ -125,6 +132,9 @@ git push -u origin feature/<name>
 # Create PR with gh CLI
 gh pr create --title "<title>" --body "<description>"
 gh pr view --web           # View PR in browser
+
+# Merge your own PR (no approval needed)
+gh pr merge <number>        # Merge after creating PR
 
 # Issue management
 gh issue list

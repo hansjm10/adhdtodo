@@ -38,3 +38,23 @@ yarn-error.*
 
 # Claude local settings
 .claude/settings.local.json
+
+# Testing
+coverage/
+*.coverage
+.nyc_output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/

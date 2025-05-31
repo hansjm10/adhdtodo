@@ -1,0 +1,50 @@
+# ABOUTME: Dependabot configuration for automated dependency updates
+# Keeps npm packages and GitHub Actions up to date
+
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "jordthomas"  # Update with your GitHub username
+    labels:
+      - "dependencies"
+      - "npm"
+    groups:
+      # Group all Expo-related updates together
+      expo:
+        patterns:
+          - "expo*"
+          - "@expo/*"
+      # Group all React Navigation updates
+      react-navigation:
+        patterns:
+          - "@react-navigation/*"
+      # Group all testing library updates
+      testing:
+        patterns:
+          - "@testing-library/*"
+          - "jest*"
+      # Group all ESLint and Prettier updates
+      linting:
+        patterns:
+          - "eslint*"
+          - "prettier*"
+          - "@react-native-community/eslint-config"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    labels:
+      - "dependencies"
+      - "github-actions"
