@@ -32,8 +32,7 @@ jobs:
           npm run format:check
       
       - name: Run tests
-        run: npm test -- --coverage || true  # Allow tests to fail for now
-        continue-on-error: true
+        run: npm test -- --coverage
 
       - name: Upload coverage reports
         if: always()  # Upload coverage even if tests fail

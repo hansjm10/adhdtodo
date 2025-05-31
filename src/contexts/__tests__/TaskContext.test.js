@@ -2,7 +2,7 @@
 // Ensures single source of truth for tasks with caching and filtering capabilities
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import { TaskProvider, useTasks, _resetCache } from '../TaskContext';
 import TaskStorageService from '../../services/TaskStorageService';
@@ -51,6 +51,10 @@ describe('TaskContext', () => {
     TaskStorageService.saveTask.mockResolvedValue(true);
     TaskStorageService.updateTask.mockResolvedValue(true);
     TaskStorageService.deleteTask.mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   const TestComponent = ({ testId = 'tasks' }) => {

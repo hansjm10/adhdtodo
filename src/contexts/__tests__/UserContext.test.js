@@ -2,7 +2,7 @@
 // Ensures centralized user state management without prop drilling
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import { UserProvider, useUser } from '../UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +15,10 @@ describe('UserContext', () => {
     jest.clearAllMocks();
     AsyncStorage.getItem.mockResolvedValue(null);
     AsyncStorage.setItem.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   const TestComponent = () => {

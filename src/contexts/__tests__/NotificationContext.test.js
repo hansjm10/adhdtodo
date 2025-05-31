@@ -2,7 +2,7 @@
 // Ensures centralized notification management without prop drilling
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import {
   NotificationProvider,
@@ -51,6 +51,10 @@ describe('NotificationContext', () => {
     AsyncStorage.getItem.mockResolvedValue(JSON.stringify(mockNotifications));
     AsyncStorage.setItem.mockResolvedValue(undefined);
     AsyncStorage.removeItem.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   const TestComponent = () => {
