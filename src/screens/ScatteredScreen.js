@@ -7,6 +7,11 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTasks } from '../contexts';
 import RewardService from '../services/RewardService';
+import {
+  getCardMinHeight,
+  responsiveFontSize,
+  responsivePadding,
+} from '../utils/ResponsiveDimensions';
 
 const ScatteredScreen = () => {
   const navigation = useNavigation();
@@ -220,16 +225,16 @@ const styles = StyleSheet.create({
   taskCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 32,
+    padding: responsivePadding(32),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
-    minHeight: 300,
+    minHeight: getCardMinHeight(),
   },
   taskTime: {
-    fontSize: 48,
+    fontSize: responsiveFontSize(48),
     fontWeight: '300',
     color: '#4ECDC4',
     marginBottom: 16,
