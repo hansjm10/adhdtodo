@@ -20,10 +20,10 @@ import PartnerDashboardScreen from '../screens/PartnerDashboardScreen';
 import NotificationListScreen from '../screens/NotificationListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import UserStorageService from '../services/UserStorageService';
-import AuthService from '../services/AuthService';
 import NotificationService from '../services/NotificationService';
 import NotificationBadge from '../components/NotificationBadge';
 import NotificationContainer from '../components/NotificationContainer';
+import { useUser } from '../contexts/UserContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -206,27 +206,10 @@ const LoadingScreen = () => (
 
 // Root Navigator with Authentication Flow
 const AppNavigator = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, loading } = useUser();
+  const isAuthenticated = !!user;
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      // Verify session is valid
-      const sessionResult = await AuthService.verifySession();
-      setIsAuthenticated(sessionResult.isValid);
-    } catch (error) {
-      // Error checking auth status - default to not authenticated
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
+  if (loading) {
     return <LoadingScreen />;
   }
 

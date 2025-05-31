@@ -6,15 +6,39 @@ import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import { UserProvider, useUser } from '../UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AuthService from '../../services/AuthService';
+import UserStorageService from '../../services/UserStorageService';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
+
+// Mock AuthService
+jest.mock('../../services/AuthService', () => ({
+  __esModule: true,
+  default: {
+    verifySession: jest.fn(),
+    logout: jest.fn(),
+  },
+}));
+
+// Mock UserStorageService
+jest.mock('../../services/UserStorageService', () => ({
+  __esModule: true,
+  default: {
+    setCurrentUser: jest.fn(),
+    logout: jest.fn(),
+  },
+}));
 
 describe('UserContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     AsyncStorage.getItem.mockResolvedValue(null);
     AsyncStorage.setItem.mockResolvedValue(undefined);
+    AuthService.verifySession.mockResolvedValue({ isValid: false });
+    AuthService.logout.mockResolvedValue({ success: true });
+    UserStorageService.setCurrentUser.mockResolvedValue(true);
+    UserStorageService.logout.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -51,7 +75,10 @@ describe('UserContext', () => {
 
   it('should load user data on mount', async () => {
     const mockUser = { id: '1', name: 'Test User', email: 'test@example.com' };
-    AsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(mockUser));
+    AuthService.verifySession.mockResolvedValueOnce({
+      isValid: true,
+      user: mockUser,
+    });
 
     const { getByTestId } = render(
       <UserProvider>
@@ -64,7 +91,7 @@ describe('UserContext', () => {
       expect(getByTestId('user').props.children).toBe('Test User');
     });
 
-    expect(AsyncStorage.getItem).toHaveBeenCalledWith('currentUser');
+    expect(AuthService.verifySession).toHaveBeenCalled();
   });
 
   it('should load partner and partnership data when user has partnerId', async () => {
@@ -77,8 +104,12 @@ describe('UserContext', () => {
     const mockPartner = { id: 'partner1', name: 'Test Partner' };
     const mockPartnership = { id: 'partnership1', userId: '1', partnerId: 'partner1' };
 
+    AuthService.verifySession.mockResolvedValueOnce({
+      isValid: true,
+      user: mockUser,
+    });
+
     AsyncStorage.getItem
-      .mockResolvedValueOnce(JSON.stringify(mockUser))
       .mockResolvedValueOnce(JSON.stringify(mockPartnership))
       .mockResolvedValueOnce(JSON.stringify(mockPartner));
 
@@ -98,7 +129,7 @@ describe('UserContext', () => {
 
   it('should handle errors gracefully', async () => {
     const errorMessage = 'Failed to load user data';
-    AsyncStorage.getItem.mockRejectedValueOnce(new Error(errorMessage));
+    AuthService.verifySession.mockRejectedValueOnce(new Error(errorMessage));
 
     const { getByTestId } = render(
       <UserProvider>
@@ -135,10 +166,11 @@ describe('UserContext', () => {
       expect(getByTestId('user').props.children).toBe('Updated User');
     });
 
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      'currentUser',
-      JSON.stringify({ id: '2', name: 'Updated User', email: 'updated@example.com' }),
-    );
+    expect(UserStorageService.setCurrentUser).toHaveBeenCalledWith({
+      id: '2',
+      name: 'Updated User',
+      email: 'updated@example.com',
+    });
   });
 
   it('should refresh all data when refreshUserData is called', async () => {
@@ -157,7 +189,7 @@ describe('UserContext', () => {
     };
 
     const mockUser = { id: '1', name: 'Refreshed User', email: 'test@example.com' };
-    AsyncStorage.getItem.mockResolvedValue(JSON.stringify(mockUser));
+    AuthService.verifySession.mockResolvedValue({ isValid: true, user: mockUser });
 
     const { getByTestId } = render(
       <UserProvider>
@@ -167,7 +199,7 @@ describe('UserContext', () => {
 
     await waitFor(() => {
       expect(getByTestId('user').props.children).toBe('Refreshed User');
-      expect(AsyncStorage.getItem).toHaveBeenCalledTimes(2); // Initial load + refresh
+      expect(AuthService.verifySession).toHaveBeenCalledTimes(2); // Initial load + refresh
     });
   });
 
@@ -185,8 +217,7 @@ describe('UserContext', () => {
     };
 
     const mockUser = { id: '1', name: 'Test User', email: 'test@example.com' };
-    AsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(mockUser));
-    AsyncStorage.removeItem.mockResolvedValue(undefined);
+    AuthService.verifySession.mockResolvedValueOnce({ isValid: true, user: mockUser });
 
     const { getByTestId } = render(
       <UserProvider>
@@ -198,7 +229,7 @@ describe('UserContext', () => {
       expect(getByTestId('user').props.children).toBe('no-user');
     });
 
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('currentUser');
+    expect(AuthService.logout).toHaveBeenCalled();
   });
 
   it('should throw error when useUser is used outside provider', () => {

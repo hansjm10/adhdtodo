@@ -3,6 +3,8 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AuthService from '../services/AuthService';
+import UserStorageService from '../services/UserStorageService';
 
 const UserContext = createContext();
 
@@ -19,16 +21,17 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const userData = await AsyncStorage.getItem('currentUser');
-      if (userData) {
-        const parsedUser = JSON.parse(userData);
-        setUserState(parsedUser);
+      // First verify if session is still valid
+      const sessionResult = await AuthService.verifySession();
+
+      if (sessionResult.isValid && sessionResult.user) {
+        setUserState(sessionResult.user);
 
         // If user has a partner, load partner and partnership data
-        if (parsedUser.partnerId) {
+        if (sessionResult.user.partnerId) {
           const [partnershipData, partnerData] = await Promise.all([
-            AsyncStorage.getItem(`partnership_${parsedUser.id}`),
-            AsyncStorage.getItem(`user_${parsedUser.partnerId}`),
+            AsyncStorage.getItem(`partnership_${sessionResult.user.id}`),
+            AsyncStorage.getItem(`user_${sessionResult.user.partnerId}`),
           ]);
 
           if (partnershipData) {
@@ -38,6 +41,11 @@ export const UserProvider = ({ children }) => {
             setPartner(JSON.parse(partnerData));
           }
         }
+      } else {
+        // Session is invalid or expired
+        setUserState(null);
+        setPartner(null);
+        setPartnership(null);
       }
     } catch (err) {
       setError(err.message);
@@ -57,9 +65,11 @@ export const UserProvider = ({ children }) => {
     try {
       setUserState(newUser);
       if (newUser) {
-        await AsyncStorage.setItem('currentUser', JSON.stringify(newUser));
+        await UserStorageService.setCurrentUser(newUser);
       } else {
-        await AsyncStorage.removeItem('currentUser');
+        await UserStorageService.logout();
+        setPartner(null);
+        setPartnership(null);
       }
     } catch (err) {
       setError(err.message);
@@ -107,11 +117,10 @@ export const UserProvider = ({ children }) => {
   // Logout - clear all user data
   const logout = useCallback(async () => {
     try {
+      await AuthService.logout();
       setUserState(null);
       setPartner(null);
       setPartnership(null);
-      await AsyncStorage.removeItem('currentUser');
-      // Note: We're not removing partner/partnership data as they might be needed later
     } catch (err) {
       setError(err.message);
       console.error('Error during logout:', err);
