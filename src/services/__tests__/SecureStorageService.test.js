@@ -8,6 +8,9 @@ import SecureStorageService from '../SecureStorageService';
 jest.mock('expo-secure-store');
 
 describe('SecureStorageService', () => {
+  let consoleErrorSpy;
+  let consoleWarnSpy;
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
@@ -15,6 +18,15 @@ describe('SecureStorageService', () => {
     SecureStore.setItemAsync.mockImplementation(() => Promise.resolve());
     SecureStore.getItemAsync.mockImplementation(() => Promise.resolve(null));
     SecureStore.deleteItemAsync.mockImplementation(() => Promise.resolve());
+
+    // Mock console methods to avoid test output noise
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
   });
 
   describe('setItem', () => {
@@ -41,6 +53,25 @@ describe('SecureStorageService', () => {
       SecureStore.setItemAsync.mockRejectedValue(error);
 
       await expect(SecureStorageService.setItem('key', 'value')).rejects.toThrow('Storage failed');
+    });
+
+    it('should throw error for invalid key', async () => {
+      await expect(SecureStorageService.setItem('', 'value')).rejects.toThrow(
+        'Storage key must be a non-empty string',
+      );
+      await expect(SecureStorageService.setItem(null, 'value')).rejects.toThrow(
+        'Storage key must be a non-empty string',
+      );
+      await expect(SecureStorageService.setItem(123, 'value')).rejects.toThrow(
+        'Storage key must be a non-empty string',
+      );
+    });
+
+    it('should throw error when value size exceeds limit', async () => {
+      const largeValue = 'x'.repeat(3000);
+      await expect(SecureStorageService.setItem('key', largeValue)).rejects.toThrow(
+        'Value size exceeds the maximum limit of 2048 bytes',
+      );
     });
   });
 
@@ -80,6 +111,12 @@ describe('SecureStorageService', () => {
 
       expect(result).toBe(invalidJson);
     });
+
+    it('should throw error for invalid key', async () => {
+      await expect(SecureStorageService.getItem('')).rejects.toThrow(
+        'Storage key must be a non-empty string',
+      );
+    });
   });
 
   describe('removeItem', () => {
@@ -94,6 +131,12 @@ describe('SecureStorageService', () => {
       SecureStore.deleteItemAsync.mockRejectedValue(error);
 
       await expect(SecureStorageService.removeItem('key')).rejects.toThrow('Removal failed');
+    });
+
+    it('should throw error for invalid key', async () => {
+      await expect(SecureStorageService.removeItem('')).rejects.toThrow(
+        'Storage key must be a non-empty string',
+      );
     });
   });
 
@@ -127,6 +170,27 @@ describe('SecureStorageService', () => {
         ['key3', null],
       ]);
     });
+
+    it('should handle errors gracefully and return null for failed items', async () => {
+      SecureStore.getItemAsync
+        .mockResolvedValueOnce(JSON.stringify({ id: 1 }))
+        .mockRejectedValueOnce(new Error('Failed to get'))
+        .mockResolvedValueOnce('value3');
+
+      const result = await SecureStorageService.multiGet(['key1', 'key2', 'key3']);
+
+      expect(result).toEqual([
+        ['key1', { id: 1 }],
+        ['key2', null],
+        ['key3', 'value3'],
+      ]);
+    });
+
+    it('should throw error for non-array input', async () => {
+      await expect(SecureStorageService.multiGet('not-an-array')).rejects.toThrow(
+        'Keys must be an array',
+      );
+    });
   });
 
   describe('multiSet', () => {
@@ -142,6 +206,24 @@ describe('SecureStorageService', () => {
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith('key1', JSON.stringify({ id: 1 }));
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith('key2', 'string value');
     });
+
+    it('should handle partial failures', async () => {
+      const kvPairs = [
+        ['key1', { id: 1 }],
+        ['key2', 'x'.repeat(3000)], // Too large
+        ['key3', 'value3'],
+      ];
+
+      await SecureStorageService.multiSet(kvPairs);
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    it('should throw error for non-array input', async () => {
+      await expect(SecureStorageService.multiSet('not-an-array')).rejects.toThrow(
+        'Key-value pairs must be an array',
+      );
+    });
   });
 
   describe('multiRemove', () => {
@@ -154,6 +236,23 @@ describe('SecureStorageService', () => {
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('key1');
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('key2');
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('key3');
+    });
+
+    it('should handle partial failures', async () => {
+      SecureStore.deleteItemAsync
+        .mockResolvedValueOnce()
+        .mockRejectedValueOnce(new Error('Failed'))
+        .mockResolvedValueOnce();
+
+      await SecureStorageService.multiRemove(['key1', 'key2', 'key3']);
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    it('should throw error for non-array input', async () => {
+      await expect(SecureStorageService.multiRemove('not-an-array')).rejects.toThrow(
+        'Keys must be an array',
+      );
     });
   });
 
@@ -188,6 +287,24 @@ describe('SecureStorageService', () => {
       await SecureStorageService.mergeItem('user', newValue);
 
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith('user', JSON.stringify(newValue));
+    });
+
+    it('should throw error for invalid value types', async () => {
+      await expect(SecureStorageService.mergeItem('key', 'string')).rejects.toThrow(
+        'Value must be a non-null object for merging',
+      );
+      await expect(SecureStorageService.mergeItem('key', null)).rejects.toThrow(
+        'Value must be a non-null object for merging',
+      );
+      await expect(SecureStorageService.mergeItem('key', [1, 2, 3])).rejects.toThrow(
+        'Value must be a non-null object for merging',
+      );
+    });
+
+    it('should throw error for invalid key', async () => {
+      await expect(SecureStorageService.mergeItem('', { name: 'John' })).rejects.toThrow(
+        'Storage key must be a non-empty string',
+      );
     });
   });
 
