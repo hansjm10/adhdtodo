@@ -36,10 +36,29 @@ As of December 2024:
 - React Native Testing Library team is working on React 19 support
 - Plan is to release RNTL v14 with React 19 support
 - RNTL v13 will continue to support React 18 and earlier
+- **UPDATE**: Issue [#1769](https://github.com/callstack/react-native-testing-library/issues/1769) confirms:
+  - React 19.0.0 works with react-test-renderer@19.0.0
+  - React 19.1.0 causes version mismatch errors
+  - Must use exact same versions for both packages
 
 ## Temporary Solutions
 
-### Option 1: Skip Problematic Tests (Current Approach)
+### Option 1: Downgrade to React 19.0.0 (Recommended)
+
+```json
+{
+  "dependencies": {
+    "react": "19.0.0"
+  },
+  "devDependencies": {
+    "react-test-renderer": "19.0.0"
+  }
+}
+```
+
+Note: Do NOT use `^19.0.0` as it may install 19.1.0 which will cause errors.
+
+### Option 2: Skip Problematic Tests
 
 ```javascript
 describe.skip('Component Tests', () => {
@@ -47,7 +66,7 @@ describe.skip('Component Tests', () => {
 });
 ```
 
-### Option 2: Mock fireEvent
+### Option 3: Mock fireEvent
 
 ```javascript
 jest.mock('@testing-library/react-native', () => ({
@@ -59,7 +78,7 @@ jest.mock('@testing-library/react-native', () => ({
 }));
 ```
 
-### Option 3: Use Direct Props Calling
+### Option 4: Use Direct Props Calling
 
 Instead of:
 
