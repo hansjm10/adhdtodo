@@ -34,6 +34,15 @@ jest.mock('../../services/NotificationService', () => ({
   getNotificationsForUser: jest.fn().mockResolvedValue([]),
 }));
 
+// Mock UserContext
+jest.mock('../../contexts/UserContext', () => ({
+  useUser: () => ({
+    user: null,
+    loading: false,
+    setUser: jest.fn(),
+  }),
+}));
+
 // Mock Expo Vector Icons
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',

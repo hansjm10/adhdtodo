@@ -7,6 +7,16 @@ import AuthScreen from '../AuthScreen';
 import AuthService from '../../services/AuthService';
 import { USER_ROLE } from '../../constants/UserConstants';
 
+// Mock UserContext
+const mockSetUser = jest.fn();
+jest.mock('../../contexts/UserContext', () => ({
+  useUser: () => ({
+    setUser: mockSetUser,
+    user: null,
+    loading: false,
+  }),
+}));
+
 // Mock navigation
 const mockNavigate = jest.fn();
 const mockReset = jest.fn();
@@ -34,6 +44,7 @@ describe('AuthScreen', () => {
     jest.clearAllMocks();
     mockNavigate.mockClear();
     mockReset.mockClear();
+    mockSetUser.mockClear();
   });
 
   describe('Login Mode', () => {
@@ -112,10 +123,7 @@ describe('AuthScreen', () => {
 
       await waitFor(() => {
         expect(AuthService.login).toHaveBeenCalledWith('test@example.com', 'Test123!@#');
-        expect(mockReset).toHaveBeenCalledWith({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        expect(mockSetUser).toHaveBeenCalledWith({ id: 'user_123', email: 'test@example.com' });
       });
     });
 
@@ -216,10 +224,7 @@ describe('AuthScreen', () => {
           'Test User',
           USER_ROLE.ADHD_USER,
         );
-        expect(mockReset).toHaveBeenCalledWith({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        expect(mockSetUser).toHaveBeenCalledWith({ id: 'user_123', email: 'test@example.com' });
       });
     });
 

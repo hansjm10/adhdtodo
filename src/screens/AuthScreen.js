@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 import AuthService from '../services/AuthService';
 import { USER_ROLE } from '../constants/UserConstants';
+import { useUser } from '../contexts/UserContext';
 
-const AuthScreen = ({ navigation }) => {
+const AuthScreen = () => {
+  const { setUser } = useUser();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,10 +57,8 @@ const AuthScreen = ({ navigation }) => {
       }
 
       if (result.success) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        // Set the user in context, which will trigger navigation update
+        await setUser(result.user);
       } else {
         Alert.alert('Error', result.error);
       }
