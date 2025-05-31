@@ -41,12 +41,12 @@ module.exports = [
     },
 
     rules: {
-      // React specific
-      'react/prop-types': 'off',
-      'react/react-in-jsx-scope': 'off', // Not needed with React 17+
-
       // React plugin recommended rules
       ...reactPlugin.configs.recommended.rules,
+
+      // React specific overrides
+      'react/prop-types': 'off', // PropTypes are superseded by TypeScript in modern React
+      'react/react-in-jsx-scope': 'off', // Not needed with React 17+
 
       // General JavaScript
       'no-console': [
@@ -61,6 +61,7 @@ module.exports = [
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrors: 'none', // Don't check error variables in catch blocks
         },
       ],
       'prefer-const': 'error',
