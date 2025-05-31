@@ -1,7 +1,7 @@
-// ABOUTME: Service for managing task persistence using AsyncStorage
+// ABOUTME: Service for managing task persistence using SecureStorageService
 // Handles saving, loading, updating, and deleting tasks from local storage
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorageService from './SecureStorageService';
 import UserStorageService from './UserStorageService';
 import ErrorHandler from '../utils/ErrorHandler';
 
@@ -10,12 +10,10 @@ const STORAGE_KEY = 'tasks';
 class TaskStorageService {
   async getAllTasks() {
     try {
-      const tasksJson = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!tasksJson) {
+      const tasks = await SecureStorageService.getItem(STORAGE_KEY);
+      if (!tasks) {
         return [];
       }
-
-      const tasks = JSON.parse(tasksJson);
       return Array.isArray(tasks) ? tasks : [];
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'load');
@@ -27,7 +25,7 @@ class TaskStorageService {
     try {
       const tasks = await this.getAllTasks();
       tasks.push(task);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      await SecureStorageService.setItem(STORAGE_KEY, tasks);
       return true;
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'save', () => this.saveTask(task));
@@ -45,7 +43,7 @@ class TaskStorageService {
       }
 
       tasks[taskIndex] = updatedTask;
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      await SecureStorageService.setItem(STORAGE_KEY, tasks);
       return true;
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'update', () => this.updateTask(updatedTask));
@@ -57,7 +55,7 @@ class TaskStorageService {
     try {
       const tasks = await this.getAllTasks();
       const filteredTasks = tasks.filter((task) => task.id !== taskId);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filteredTasks));
+      await SecureStorageService.setItem(STORAGE_KEY, filteredTasks);
       return true;
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'delete', () => this.deleteTask(taskId));
@@ -67,7 +65,7 @@ class TaskStorageService {
 
   async clearAllTasks() {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await SecureStorageService.removeItem(STORAGE_KEY);
       return true;
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'delete', () => this.clearAllTasks());
