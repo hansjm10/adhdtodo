@@ -13,20 +13,26 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { createUser, validateUser } from '../utils/UserModel';
-import UserStorageService from '../services/UserStorageService';
+import AuthService from '../services/AuthService';
 import { USER_ROLE } from '../constants/UserConstants';
 
 const AuthScreen = ({ navigation }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState(USER_ROLE.ADHD_USER);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleAuth = async () => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+
+    if (!password) {
+      Alert.alert('Error', 'Please enter your password');
       return;
     }
 
@@ -38,49 +44,23 @@ const AuthScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
+      let result;
+
       if (isLogin) {
         // Login flow
-        const existingUser = await UserStorageService.getUserByEmail(email);
-        if (!existingUser) {
-          Alert.alert('Error', 'No account found with this email');
-          setLoading(false);
-          return;
-        }
+        result = await AuthService.login(email, password);
+      } else {
+        // Signup flow
+        result = await AuthService.signUp(email, password, name, role);
+      }
 
-        await UserStorageService.setCurrentUser(existingUser);
+      if (result.success) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Main' }],
         });
       } else {
-        // Signup flow
-        const existingUser = await UserStorageService.getUserByEmail(email);
-        if (existingUser) {
-          Alert.alert('Error', 'An account already exists with this email');
-          setLoading(false);
-          return;
-        }
-
-        const newUser = createUser({
-          email: email.toLowerCase(),
-          name,
-          role,
-        });
-
-        const validation = validateUser(newUser);
-        if (!validation.isValid) {
-          Alert.alert('Error', validation.errors.join('\n'));
-          setLoading(false);
-          return;
-        }
-
-        await UserStorageService.saveUser(newUser);
-        await UserStorageService.setCurrentUser(newUser);
-
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        Alert.alert('Error', result.error);
       }
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -92,8 +72,10 @@ const AuthScreen = ({ navigation }) => {
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
     setEmail('');
+    setPassword('');
     setName('');
     setRole(USER_ROLE.ADHD_USER);
+    setShowPassword(false);
   };
 
   const RoleButton = ({ roleValue, label, description }) => (
@@ -131,8 +113,37 @@ const AuthScreen = ({ navigation }) => {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            autoCorrect={false}
             editable={!loading}
           />
+
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={styles.passwordToggle}
+              onPress={() => setShowPassword(!showPassword)}
+              disabled={loading}
+            >
+              <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!isLogin && (
+            <Text style={styles.passwordHint}>
+              Password must be at least 8 characters with uppercase, lowercase, number, and special
+              character
+            </Text>
+          )}
 
           {!isLogin && (
             <>
@@ -237,6 +248,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
     color: '#2C3E50',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 16,
+    color: '#2C3E50',
+  },
+  passwordToggle: {
+    padding: 16,
+  },
+  passwordToggleText: {
+    color: '#3498DB',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  passwordHint: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   roleSection: {
     marginBottom: 24,
