@@ -64,6 +64,9 @@ const CreateTaskScreen = () => {
             value={title}
             onChangeText={setTitle}
             maxLength={100}
+            accessible={true}
+            accessibilityLabel="Task title input"
+            accessibilityHint="Enter the title for your task"
           />
 
           <Text style={styles.label}>Description</Text>
@@ -75,6 +78,9 @@ const CreateTaskScreen = () => {
             multiline
             numberOfLines={3}
             maxLength={500}
+            accessible={true}
+            accessibilityLabel="Task description input"
+            accessibilityHint="Enter an optional description for your task"
           />
 
           <Text style={styles.label}>Category</Text>
@@ -89,6 +95,11 @@ const CreateTaskScreen = () => {
                   selectedCategory === category.id && styles.selectedCategory,
                 ]}
                 onPress={() => setSelectedCategory(category.id)}
+                accessible={true}
+                accessibilityLabel={`${category.label} category`}
+                accessibilityHint={`Double tap to categorize task as ${category.label}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedCategory === category.id }}
               >
                 <Text style={styles.categoryIcon}>{category.icon}</Text>
                 <Text style={styles.categoryText}>{category.label}</Text>
@@ -107,6 +118,11 @@ const CreateTaskScreen = () => {
                   selectedTimePreset === preset.minutes && styles.selectedTime,
                 ]}
                 onPress={() => setSelectedTimePreset(preset.minutes)}
+                accessible={true}
+                accessibilityLabel={`${preset.label} time estimate`}
+                accessibilityHint={`Double tap to set time estimate to ${preset.label}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedTimePreset === preset.minutes }}
               >
                 <Text style={styles.timeText}>{preset.label}</Text>
               </TouchableOpacity>
@@ -121,6 +137,15 @@ const CreateTaskScreen = () => {
           onPress={handleSave}
           disabled={isSaveDisabled}
           testID="save-button"
+          accessible={true}
+          accessibilityLabel="Create task button"
+          accessibilityHint={
+            isSaveDisabled
+              ? 'Enter a task title to enable this button'
+              : 'Double tap to create the task'
+          }
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSaveDisabled }}
         >
           <Text style={styles.saveButtonText}>Create Task</Text>
         </TouchableOpacity>

@@ -2,6 +2,7 @@
 // Handles user authentication, profile management, and partnership connections
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ErrorHandler from '../utils/ErrorHandler';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'current_user',
@@ -15,7 +16,7 @@ class UserStorageService {
       const userJson = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER);
       return userJson ? JSON.parse(userJson) : null;
     } catch (error) {
-      console.error('Error loading current user:', error);
+      ErrorHandler.handleStorageError(error, 'load');
       return null;
     }
   }
@@ -27,7 +28,7 @@ class UserStorageService {
       await this.updateUser(user);
       return true;
     } catch (error) {
-      console.error('Error setting current user:', error);
+      ErrorHandler.handleStorageError(error, 'save', () => this.setCurrentUser(user));
       return false;
     }
   }
@@ -41,7 +42,7 @@ class UserStorageService {
       const users = JSON.parse(usersJson);
       return Array.isArray(users) ? users : [];
     } catch (error) {
-      console.error('Error loading all users:', error);
+      ErrorHandler.handleStorageError(error, 'load');
       return [];
     }
   }

@@ -3,6 +3,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserStorageService from './UserStorageService';
+import ErrorHandler from '../utils/ErrorHandler';
 
 const STORAGE_KEY = 'tasks';
 
@@ -17,7 +18,7 @@ class TaskStorageService {
       const tasks = JSON.parse(tasksJson);
       return Array.isArray(tasks) ? tasks : [];
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      ErrorHandler.handleStorageError(error, 'load');
       return [];
     }
   }
@@ -29,7 +30,7 @@ class TaskStorageService {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
       return true;
     } catch (error) {
-      console.error('Error saving task:', error);
+      ErrorHandler.handleStorageError(error, 'save', () => this.saveTask(task));
       return false;
     }
   }
@@ -47,7 +48,7 @@ class TaskStorageService {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
       return true;
     } catch (error) {
-      console.error('Error updating task:', error);
+      ErrorHandler.handleStorageError(error, 'update', () => this.updateTask(updatedTask));
       return false;
     }
   }
@@ -59,7 +60,7 @@ class TaskStorageService {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filteredTasks));
       return true;
     } catch (error) {
-      console.error('Error deleting task:', error);
+      ErrorHandler.handleStorageError(error, 'delete', () => this.deleteTask(taskId));
       return false;
     }
   }
@@ -69,24 +70,32 @@ class TaskStorageService {
       await AsyncStorage.removeItem(STORAGE_KEY);
       return true;
     } catch (error) {
-      console.error('Error clearing tasks:', error);
+      ErrorHandler.handleStorageError(error, 'delete', () => this.clearAllTasks());
       return false;
     }
   }
 
+  // Base method for filtering tasks to reduce duplication
+  async getFilteredTasks(filterFn) {
+    try {
+      const allTasks = await this.getAllTasks();
+      return allTasks.filter(filterFn);
+    } catch (error) {
+      ErrorHandler.handleStorageError(error, 'load');
+      return [];
+    }
+  }
+
   async getTasksByCategory(categoryId) {
-    const tasks = await this.getAllTasks();
-    return tasks.filter((task) => task.category === categoryId);
+    return this.getFilteredTasks((task) => task.category === categoryId);
   }
 
   async getCompletedTasks() {
-    const tasks = await this.getAllTasks();
-    return tasks.filter((task) => task.completed);
+    return this.getFilteredTasks((task) => task.completed);
   }
 
   async getPendingTasks() {
-    const tasks = await this.getAllTasks();
-    return tasks.filter((task) => !task.completed);
+    return this.getFilteredTasks((task) => !task.completed);
   }
 
   async getTaskStats() {
@@ -105,20 +114,17 @@ class TaskStorageService {
 
   // Multi-user support methods
   async getTasksForUser(userId) {
-    const tasks = await this.getAllTasks();
-    return tasks.filter(
+    return this.getFilteredTasks(
       (task) => task.assignedTo === userId || (!task.assignedTo && !task.assignedBy), // Include non-assigned tasks for backward compatibility
     );
   }
 
   async getTasksAssignedByUser(userId) {
-    const tasks = await this.getAllTasks();
-    return tasks.filter((task) => task.assignedBy === userId);
+    return this.getFilteredTasks((task) => task.assignedBy === userId);
   }
 
   async getAssignedTasks(userId) {
-    const tasks = await this.getAllTasks();
-    return tasks.filter((task) => task.assignedTo === userId && task.assignedBy);
+    return this.getFilteredTasks((task) => task.assignedTo === userId && task.assignedBy);
   }
 
   async getPartnerTasks(userId) {
@@ -128,15 +134,14 @@ class TaskStorageService {
         return [];
       }
 
-      const tasks = await this.getAllTasks();
       // Get tasks where current user assigned to partner OR partner assigned to current user
-      return tasks.filter(
+      return this.getFilteredTasks(
         (task) =>
           (task.assignedBy === userId && task.assignedTo === currentUser.partnerId) ||
           (task.assignedBy === currentUser.partnerId && task.assignedTo === userId),
       );
     } catch (error) {
-      console.error('Error getting partner tasks:', error);
+      ErrorHandler.handleStorageError(error, 'load');
       return [];
     }
   }
