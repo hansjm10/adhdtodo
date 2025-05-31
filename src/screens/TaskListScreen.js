@@ -1,7 +1,7 @@
 // ABOUTME: Screen for displaying list of tasks with ADHD-friendly design
 // Shows tasks in a clean, organized list with visual feedback and empty states
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import TaskStorageService from '../services/TaskStorageService';
+import UserStorageService from '../services/UserStorageService';
+import PartnershipService from '../services/PartnershipService';
 import TaskItem from '../components/TaskItem';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
 
@@ -21,21 +23,69 @@ const TaskListScreen = () => {
   const [tasks, setTasks] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [partner, setPartner] = useState(null);
+  const [showAssignedOnly, setShowAssignedOnly] = useState(false);
+
+  const loadUserData = async () => {
+    try {
+      const user = await UserStorageService.getCurrentUser();
+      setCurrentUser(user);
+
+      if (user) {
+        const activePartnership = await PartnershipService.getActivePartnership(user.id);
+        if (activePartnership) {
+          const partnerId =
+            activePartnership.adhdUserId === user.id
+              ? activePartnership.partnerId
+              : activePartnership.adhdUserId;
+          const partnerUser = await UserStorageService.getUserById(partnerId);
+          setPartner(partnerUser);
+        }
+      }
+    } catch (error) {
+      // Error loading user data
+    }
+  };
 
   const loadTasks = async () => {
+    if (!currentUser) return;
+
     let loadedTasks;
-    if (selectedCategory) {
-      loadedTasks = await TaskStorageService.getTasksByCategory(selectedCategory);
+    if (showAssignedOnly) {
+      // Show only tasks assigned by/to partner
+      loadedTasks = await TaskStorageService.getAssignedTasks(currentUser.id);
+    } else if (selectedCategory) {
+      // Show tasks for current user in selected category
+      const userTasks = await TaskStorageService.getTasksForUser(currentUser.id);
+      loadedTasks = userTasks.filter((task) => task.category === selectedCategory);
     } else {
-      loadedTasks = await TaskStorageService.getAllTasks();
+      // Show all tasks for current user
+      loadedTasks = await TaskStorageService.getTasksForUser(currentUser.id);
     }
+
+    // Sort tasks: incomplete first, then by priority and due date
+    loadedTasks.sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    });
+
     setTasks(loadedTasks);
   };
 
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
   useFocusEffect(
     React.useCallback(() => {
-      loadTasks();
-    }, [selectedCategory]),
+      if (currentUser) {
+        loadTasks();
+      }
+    }, [selectedCategory, showAssignedOnly, currentUser]),
   );
 
   const onRefresh = async () => {
@@ -50,6 +100,8 @@ const TaskListScreen = () => {
         task={item}
         onUpdate={loadTasks}
         onPress={() => navigation.navigate('EditTask', { taskId: item.id })}
+        currentUser={currentUser}
+        partner={partner}
       />
     );
   };
@@ -69,36 +121,60 @@ const TaskListScreen = () => {
       contentContainerStyle={styles.categoryFilterContent}
     >
       <TouchableOpacity
-        style={[styles.categoryChip, !selectedCategory && styles.categoryChipActive]}
-        onPress={() => setSelectedCategory(null)}
+        style={[styles.categoryChip, showAssignedOnly && styles.categoryChipActive]}
+        onPress={() => {
+          setShowAssignedOnly(!showAssignedOnly);
+          setSelectedCategory(null);
+        }}
       >
-        <Text style={[styles.categoryChipText, !selectedCategory && styles.categoryChipTextActive]}>
-          All
+        <Text style={[styles.categoryChipText, showAssignedOnly && styles.categoryChipTextActive]}>
+          {partner ? `From ${partner.name}` : 'Assigned'}
         </Text>
       </TouchableOpacity>
 
-      {Object.values(TASK_CATEGORIES).map((category) => (
-        <TouchableOpacity
-          key={category.id}
+      <TouchableOpacity
+        style={[
+          styles.categoryChip,
+          !selectedCategory && !showAssignedOnly && styles.categoryChipActive,
+        ]}
+        onPress={() => {
+          setSelectedCategory(null);
+          setShowAssignedOnly(false);
+        }}
+      >
+        <Text
           style={[
-            styles.categoryChip,
-            selectedCategory === category.id && styles.categoryChipActive,
-            { borderColor: category.color },
+            styles.categoryChipText,
+            !selectedCategory && !showAssignedOnly && styles.categoryChipTextActive,
           ]}
-          onPress={() => setSelectedCategory(category.id)}
         >
-          <Text style={styles.categoryIcon}>{category.icon}</Text>
-          <Text
+          All Tasks
+        </Text>
+      </TouchableOpacity>
+
+      {!showAssignedOnly &&
+        Object.values(TASK_CATEGORIES).map((category) => (
+          <TouchableOpacity
+            key={category.id}
             style={[
-              styles.categoryChipText,
-              selectedCategory === category.id && styles.categoryChipTextActive,
-              selectedCategory === category.id && { color: category.color },
+              styles.categoryChip,
+              selectedCategory === category.id && styles.categoryChipActive,
+              { borderColor: category.color },
             ]}
+            onPress={() => setSelectedCategory(category.id)}
           >
-            {category.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Text style={styles.categoryIcon}>{category.icon}</Text>
+            <Text
+              style={[
+                styles.categoryChipText,
+                selectedCategory === category.id && styles.categoryChipTextActive,
+                selectedCategory === category.id && { color: category.color },
+              ]}
+            >
+              {category.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
     </ScrollView>
   );
 

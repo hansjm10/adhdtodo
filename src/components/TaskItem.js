@@ -3,12 +3,15 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { TASK_CATEGORIES } from '../constants/TaskConstants';
-import { completeTask, updateTask } from '../utils/TaskModel';
+import { Ionicons } from '@expo/vector-icons';
+import { TASK_CATEGORIES, TASK_PRIORITY } from '../constants/TaskConstants';
+import { completeTask, updateTask, startTask, markPartnerNotified } from '../utils/TaskModel';
 import TaskStorageService from '../services/TaskStorageService';
 import RewardService from '../services/RewardService';
+import NotificationService from '../services/NotificationService';
+import PartnershipService from '../services/PartnershipService';
 
-const TaskItem = ({ task, onUpdate, onPress }) => {
+const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }) => {
   const category = task.category
     ? Object.values(TASK_CATEGORIES).find((cat) => cat.id === task.category)
     : null;
@@ -39,11 +42,55 @@ const TaskItem = ({ task, onUpdate, onPress }) => {
 
       // Update streak
       await RewardService.updateStreak();
+
+      // Notify partner if this is an assigned task
+      if (task.assignedBy && currentUser) {
+        updatedTask = markPartnerNotified(updatedTask, 'onComplete');
+        await NotificationService.notifyTaskCompleted(updatedTask, currentUser);
+
+        // Update partnership stats
+        const partnership = await PartnershipService.getActivePartnership(currentUser.id);
+        if (partnership) {
+          await PartnershipService.incrementPartnershipStat(partnership.id, 'tasksCompleted');
+        }
+      }
     }
 
     const success = await TaskStorageService.updateTask(updatedTask);
     if (success && onUpdate) {
       onUpdate();
+    }
+  };
+
+  const handleStartTask = async () => {
+    if (task.status === 'in_progress' || task.completed) return;
+
+    let updatedTask = startTask(task);
+
+    // Notify partner if this is an assigned task
+    if (task.assignedBy && currentUser && !task.partnerNotified.onStart) {
+      updatedTask = markPartnerNotified(updatedTask, 'onStart');
+      await NotificationService.notifyTaskStarted(updatedTask, currentUser);
+    }
+
+    const success = await TaskStorageService.updateTask(updatedTask);
+    if (success && onUpdate) {
+      onUpdate();
+    }
+  };
+
+  const getPriorityColor = () => {
+    switch (task.priority) {
+      case TASK_PRIORITY.LOW:
+        return '#27AE60';
+      case TASK_PRIORITY.MEDIUM:
+        return '#F39C12';
+      case TASK_PRIORITY.HIGH:
+        return '#E74C3C';
+      case TASK_PRIORITY.URGENT:
+        return '#C0392B';
+      default:
+        return '#7F8C8D';
     }
   };
 
@@ -82,14 +129,53 @@ const TaskItem = ({ task, onUpdate, onPress }) => {
         ) : null}
 
         <View style={styles.meta}>
+          {task.assignedBy && (
+            <View style={styles.assignedBadge}>
+              <Ionicons name="person-circle-outline" size={14} color="#3498DB" />
+              <Text style={styles.assignedText}>
+                {task.assignedBy === currentUser?.id ? 'Assigned' : partner?.name || 'Partner'}
+              </Text>
+            </View>
+          )}
+          {task.priority && task.priority !== TASK_PRIORITY.MEDIUM && (
+            <View style={[styles.priorityBadge, { borderColor: getPriorityColor() }]}>
+              <Ionicons
+                name={task.priority === TASK_PRIORITY.URGENT ? 'warning' : 'flag'}
+                size={12}
+                color={getPriorityColor()}
+              />
+            </View>
+          )}
+          {task.dueDate && (
+            <Text style={[styles.dueDate, new Date(task.dueDate) < new Date() && styles.overdue]}>
+              📅 {new Date(task.dueDate).toLocaleDateString()}
+            </Text>
+          )}
           {task.timeEstimate && (
             <Text style={styles.timeEstimate}>⏱️ {formatTimeEstimate(task.timeEstimate)}</Text>
+          )}
+          {task.status === 'in_progress' && (
+            <Text style={styles.inProgressBadge}>▶️ In Progress</Text>
           )}
           {task.completed && task.xpEarned > 0 && (
             <Text style={styles.xpBadge}>✨ +{task.xpEarned} XP</Text>
           )}
         </View>
       </View>
+
+      {!task.completed && task.assignedBy && (
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={handleStartTask}
+          disabled={task.status === 'in_progress'}
+        >
+          <Ionicons
+            name={task.status === 'in_progress' ? 'pause-circle' : 'play-circle'}
+            size={32}
+            color={task.status === 'in_progress' ? '#7F8C8D' : '#3498DB'}
+          />
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 };
@@ -176,6 +262,40 @@ const styles = StyleSheet.create({
   },
   categoryIcon: {
     fontSize: 14,
+  },
+  assignedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  assignedText: {
+    fontSize: 12,
+    color: '#3498DB',
+  },
+  priorityBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dueDate: {
+    fontSize: 12,
+    color: '#888',
+  },
+  overdue: {
+    color: '#E74C3C',
+    fontWeight: '600',
+  },
+  inProgressBadge: {
+    fontSize: 12,
+    color: '#3498DB',
+    fontWeight: '600',
+  },
+  startButton: {
+    marginLeft: 8,
+    justifyContent: 'center',
   },
 });
 
