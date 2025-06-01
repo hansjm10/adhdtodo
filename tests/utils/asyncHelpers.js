@@ -122,7 +122,6 @@ export const mockAsyncStorage = (initialData = {}) => {
 export const advanceTimersAndWait = async (ms) => {
   await act(async () => {
     jest.advanceTimersByTime(ms);
-    await waitForAsyncUpdates();
   });
 };
 
@@ -133,7 +132,6 @@ export const advanceTimersAndWait = async (ms) => {
 export const runAllTimersAndWait = async () => {
   await act(async () => {
     jest.runAllTimers();
-    await waitForAsyncUpdates();
   });
 };
 
