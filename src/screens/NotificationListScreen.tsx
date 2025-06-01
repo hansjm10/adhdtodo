@@ -125,9 +125,9 @@ const NotificationListScreen: React.FC = () => {
     }
   };
 
-  const getTimeAgo = (timestamp: string): string => {
+  const getTimeAgo = (timestamp: string | Date): string => {
     const now = new Date();
-    const notificationTime = new Date(timestamp);
+    const notificationTime = timestamp instanceof Date ? timestamp : new Date(timestamp);
     const diffMs = now.getTime() - notificationTime.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
@@ -152,7 +152,7 @@ const NotificationListScreen: React.FC = () => {
             markAsRead(item.id);
           }
           // Navigate to relevant screen based on notification type
-          if ((item as any).data?.taskId) {
+          if (item.data?.taskId) {
             // Navigate to task list
             navigation.navigate('TaskList');
           }
