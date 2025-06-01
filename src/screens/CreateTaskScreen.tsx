@@ -24,7 +24,7 @@ import { useUser, useTasks } from '../contexts';
 
 type CreateTaskScreenNavigationProp = StackNavigationProp<TaskStackParamList, 'CreateTask'>;
 
-const CreateTaskScreen: React.FC = () => {
+const CreateTaskScreen = () => {
   const navigation = useNavigation<CreateTaskScreenNavigationProp>();
   const { user } = useUser();
   const { addTask } = useTasks();

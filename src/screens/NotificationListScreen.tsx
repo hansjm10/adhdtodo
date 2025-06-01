@@ -1,7 +1,7 @@
 // ABOUTME: Screen for viewing all notifications with history and read status
 // Displays notification list with timestamps and ability to mark as read
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,17 +26,13 @@ interface NotificationStyle {
   color: string;
 }
 
-const NotificationListScreen: React.FC = () => {
+const NotificationListScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       const user = await UserStorageService.getCurrentUser();
       if (user) {
@@ -51,22 +47,26 @@ const NotificationListScreen: React.FC = () => {
     } catch (error) {
       // Error loading notifications
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadNotifications();
     setRefreshing(false);
-  };
+  }, [loadNotifications]);
 
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = useCallback(async (notificationId: string) => {
     await NotificationService.markNotificationAsRead(notificationId);
     setNotifications((prev) =>
       prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
     );
-  };
+  }, []);
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = useCallback(() => {
     Alert.alert('Clear All Notifications', 'Are you sure you want to clear all notifications?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -80,7 +80,7 @@ const NotificationListScreen: React.FC = () => {
         },
       },
     ]);
-  };
+  }, [currentUser]);
 
   const getNotificationStyle = (type: string): NotificationStyle => {
     switch (type) {

@@ -20,7 +20,7 @@ import { useUser } from '../contexts/UserContext';
 import { User, UserRole } from '../types/user.types';
 import { AuthScreenNavigationProp } from '../types/navigation.types';
 
-interface AuthScreenProps {
+interface _AuthScreenProps {
   navigation?: AuthScreenNavigationProp;
 }
 
@@ -30,7 +30,7 @@ interface RoleButtonProps {
   description: string;
 }
 
-const AuthScreen: React.FC<AuthScreenProps> = () => {
+const AuthScreen = () => {
   const { setUser } = useUser();
   const [isLogin, setIsLogin] = useState<boolean>(true);
   const [email, setEmail] = useState<string>('');
@@ -91,7 +91,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
     setShowPassword(false);
   };
 
-  const RoleButton: React.FC<RoleButtonProps> = ({ roleValue, label, description }) => (
+  const RoleButton = ({ roleValue, label, description }: RoleButtonProps) => (
     <TouchableOpacity
       style={[styles.roleButton, role === roleValue && styles.roleButtonActive]}
       onPress={() => setRole(roleValue)}

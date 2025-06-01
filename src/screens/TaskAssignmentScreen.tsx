@@ -1,7 +1,7 @@
 // ABOUTME: Screen for accountability partners to assign tasks to ADHD users
 // Includes task details, due dates, preferred start times, and priority settings
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -44,7 +44,7 @@ interface TimeEstimateButtonProps {
   label: string;
 }
 
-const TaskAssignmentScreen: React.FC<Props> = ({ navigation }) => {
+const TaskAssignmentScreen = ({ navigation }: Props) => {
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [priority, setPriority] = useState<TaskPriority>(TASK_PRIORITY.MEDIUM);
@@ -58,11 +58,7 @@ const TaskAssignmentScreen: React.FC<Props> = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [partnership, setPartnership] = useState<Partnership | null>(null);
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async (): Promise<void> => {
+  const loadUserData = useCallback(async (): Promise<void> => {
     try {
       const user = await UserStorageService.getCurrentUser();
       setCurrentUser(user);
@@ -74,7 +70,11 @@ const TaskAssignmentScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error) {
       Alert.alert('Error', 'Failed to load user data');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleAssignTask = async (): Promise<void> => {
     if (!title.trim()) {
@@ -167,7 +167,7 @@ const TaskAssignmentScreen: React.FC<Props> = ({ navigation }) => {
     setTimeEstimate(30);
   };
 
-  const PriorityButton: React.FC<PriorityButtonProps> = ({ value, label, icon, color }) => (
+  const PriorityButton = ({ value, label, icon, color }: PriorityButtonProps) => (
     <TouchableOpacity
       style={[styles.priorityButton, priority === value && { backgroundColor: color + '20' }]}
       onPress={() => setPriority(value)}
@@ -177,7 +177,7 @@ const TaskAssignmentScreen: React.FC<Props> = ({ navigation }) => {
     </TouchableOpacity>
   );
 
-  const TimeEstimateButton: React.FC<TimeEstimateButtonProps> = ({ minutes, label }) => (
+  const TimeEstimateButton = ({ minutes, label }: TimeEstimateButtonProps) => (
     <TouchableOpacity
       style={[styles.timeButton, timeEstimate === minutes && styles.timeButtonActive]}
       onPress={() => setTimeEstimate(minutes)}

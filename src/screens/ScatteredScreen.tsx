@@ -14,7 +14,7 @@ import {
 } from '../utils/ResponsiveDimensions';
 import type { NavigationProp } from '../types/navigation.types';
 
-const ScatteredScreen: React.FC = () => {
+const ScatteredScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { getPendingTasks, updateTask } = useTasks();
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);

@@ -1,7 +1,7 @@
 // ABOUTME: Hyperfocus mode screen for ADHD users - single task focus with timer
 // Provides distraction-free interface with built-in timer and break reminders
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -51,7 +51,7 @@ interface Styles {
   errorText: TextStyle;
 }
 
-const HyperfocusScreen: React.FC = () => {
+const HyperfocusScreen = () => {
   const route = useRoute<HyperfocusScreenRouteProp>();
   const navigation = useNavigation<HyperfocusScreenNavigationProp>();
   const { taskId } = route.params;
@@ -68,39 +68,19 @@ const HyperfocusScreen: React.FC = () => {
     return tasks.find((t) => t.id === taskId);
   }, [tasks, taskId]);
 
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
+  const updateTaskTimeSpent = useCallback(async (): Promise<void> => {
+    if (!task) return;
 
-  useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          if (prevTime <= 1) {
-            handleTimerComplete();
-            return 0;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+    try {
+      await updateTask(task.id, {
+        timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update task progress.');
     }
+  }, [task, updateTask]);
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isRunning, timeLeft, isBreak]);
-
-  const handleTimerComplete = (): void => {
+  const handleTimerComplete = useCallback((): void => {
     // Platform-specific vibration handling
     if (Platform.OS !== 'web' && Vibration?.vibrate) {
       if (Platform.OS === 'android') {
@@ -151,42 +131,62 @@ const HyperfocusScreen: React.FC = () => {
       ];
       Alert.alert('Great Work!', 'Time for a break. You deserve it!', buttons);
     }
-  };
+  }, [navigation, isBreak, updateTaskTimeSpent]);
 
-  const updateTaskTimeSpent = async (): Promise<void> => {
-    if (!task) return;
-
-    try {
-      await updateTask(task.id, {
-        timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update task progress.');
-    }
-  };
-
-  const toggleTimer = (): void => {
+  const toggleTimer = useCallback((): void => {
     setIsRunning(!isRunning);
-  };
+  }, [isRunning]);
 
-  const resetTimer = (): void => {
+  const resetTimer = useCallback((): void => {
     setIsRunning(false);
     setTimeLeft(isBreak ? BREAK_DURATION : WORK_DURATION);
-  };
+  }, [isBreak]);
 
-  const exitHyperfocus = (): void => {
+  const exitHyperfocus = useCallback((): void => {
     const buttons: AlertButton[] = [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Exit', onPress: () => navigation.goBack() },
     ];
     Alert.alert('Exit Hyperfocus?', 'Are you sure you want to leave hyperfocus mode?', buttons);
-  };
+  }, [navigation]);
 
-  const formatTime = (seconds: number): string => {
+  const formatTime = useCallback((seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []); // This is a cleanup effect, no dependencies needed
+
+  useEffect(() => {
+    if (isRunning && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 1) {
+            handleTimerComplete();
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isRunning, timeLeft, isBreak, handleTimerComplete]);
 
   if (!task) {
     return (

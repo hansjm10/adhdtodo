@@ -26,7 +26,7 @@ interface TaskItemProps {
   partner?: Partner | null;
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, onUpdate, onPress, currentUser, partner }) => {
+const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemProps) => {
   const category = task.category
     ? Object.values(TASK_CATEGORIES).find((cat) => cat.id === task.category)
     : null;

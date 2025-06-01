@@ -26,7 +26,7 @@ interface ThemedInputProps extends Omit<TextInputProps, 'style'> {
   variant?: 'outlined' | 'filled';
 }
 
-export const ThemedInput: React.FC<ThemedInputProps> = ({
+export const ThemedInput = ({
   label,
   error,
   helper,
@@ -38,7 +38,7 @@ export const ThemedInput: React.FC<ThemedInputProps> = ({
   onBlur,
   editable = true,
   ...props
-}) => {
+}: ThemedInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const borderColorAnim = React.useRef(new Animated.Value(0)).current;
 

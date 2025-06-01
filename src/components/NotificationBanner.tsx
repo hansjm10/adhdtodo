@@ -1,7 +1,7 @@
 // ABOUTME: Animated banner component for displaying in-app notifications
 // Shows notifications at the top of the screen with auto-dismiss and swipe-to-dismiss
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -48,24 +48,20 @@ interface NotificationStyle {
   backgroundColor: string;
 }
 
-const NotificationBanner: React.FC<NotificationBannerProps> = ({
-  notification,
-  onDismiss,
-  onPress,
-}) => {
+const NotificationBanner = ({ notification, onDismiss, onPress }: NotificationBannerProps) => {
   const translateY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [isDismissing, setIsDismissing] = useState(false);
 
   // Determine if notification should auto-dismiss
-  const shouldAutoDismiss = (): boolean => {
+  const shouldAutoDismiss = useCallback((): boolean => {
     const criticalTypes = [
       NOTIFICATION_TYPES.TASK_OVERDUE,
       NOTIFICATION_TYPES.DEADLINE_CHANGE_REQUEST,
     ];
     return !criticalTypes.includes(notification.type);
-  };
+  }, [notification.type]);
 
   // Get icon and color based on notification type
   const getNotificationStyle = (): NotificationStyle => {
@@ -111,6 +107,27 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({
         return 'New notification';
     }
   };
+
+  // Dismiss animation
+  const dismissBanner = useCallback((): void => {
+    if (isDismissing) return;
+    setIsDismissing(true);
+
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -BANNER_HEIGHT,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      if (onDismiss) onDismiss();
+    });
+  }, [isDismissing, translateY, opacity, onDismiss]);
 
   // Pan responder for swipe gestures
   const panResponder = useRef(
@@ -181,28 +198,7 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({
         clearTimeout(timer);
       }
     };
-  }, []);
-
-  // Dismiss animation
-  const dismissBanner = (): void => {
-    if (isDismissing) return;
-    setIsDismissing(true);
-
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: -BANNER_HEIGHT,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      if (onDismiss) onDismiss();
-    });
-  };
+  }, [shouldAutoDismiss, dismissBanner, translateY, opacity]);
 
   const style = getNotificationStyle();
 

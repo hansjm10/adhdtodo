@@ -27,7 +27,7 @@ export interface ThemedButtonProps {
   testID?: string;
 }
 
-export const ThemedButton: React.FC<ThemedButtonProps> = ({
+export const ThemedButton = ({
   label,
   onPress,
   variant = 'primary',
@@ -38,7 +38,7 @@ export const ThemedButton: React.FC<ThemedButtonProps> = ({
   fullWidth = false,
   haptic = true,
   testID,
-}) => {
+}: ThemedButtonProps) => {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {

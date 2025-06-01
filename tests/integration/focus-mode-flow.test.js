@@ -1,7 +1,7 @@
 // ABOUTME: Integration tests for focus mode flows
 // Tests hyperfocus mode, scattered mode, timers, breaks, and rewards
 
-import { fireEvent, waitFor, act } from '@testing-library/react-native';
+import { fireEvent, waitFor, act } from '../utils';
 import { Alert, Vibration } from 'react-native';
 import {
   renderAppWithAuth,

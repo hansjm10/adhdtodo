@@ -59,7 +59,7 @@ interface TaskProviderProps {
   children: ReactNode;
 }
 
-export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
+export const TaskProvider = ({ children }: TaskProviderProps) => {
   const [tasks, setTasks] = useState<LegacyTask[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

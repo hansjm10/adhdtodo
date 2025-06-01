@@ -56,7 +56,7 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 // Note: Module-level cache removed to prevent React Fast Refresh issues
 // Tests should use the context directly instead of module-level variables
 
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+export const NotificationProvider = ({ children }: NotificationProviderProps) => {
   const [notifications, setNotifications] = useState<InternalNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

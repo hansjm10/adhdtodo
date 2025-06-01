@@ -2,10 +2,8 @@
 // Provides utilities for testing complete user flows across screens
 
 import React from 'react';
-import { render, waitFor, screen } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { renderWithProviders, waitFor, screen } from '../utils';
 import AppNavigator from '../../src/navigation/AppNavigator';
-import { AppProvider } from '../../src/contexts/AppProvider';
 import UserStorageService from '../../src/services/UserStorageService';
 import TaskStorageService from '../../src/services/TaskStorageService';
 import AuthService from '../../src/services/AuthService';
@@ -15,13 +13,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Custom render function for integration tests
 export const renderApp = (_initialRouteName = null) => {
-  const wrapper = ({ children }) => (
-    <AppProvider>
-      <NavigationContainer>{children}</NavigationContainer>
-    </AppProvider>
-  );
-
-  return render(<AppNavigator />, { wrapper });
+  // renderWithProviders already provides AppProvider and NavigationContainer
+  return renderWithProviders(<AppNavigator />);
 };
 
 // Utility function to render app with authenticated user

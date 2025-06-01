@@ -1,7 +1,7 @@
 // ABOUTME: Container component that manages the display of notification banners
 // Handles notification queue, display timing, and integration with NotificationService
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -27,7 +27,7 @@ interface NotificationWithData extends Omit<Notification, 'timestamp'> {
   timestamp?: Date | string;
 }
 
-const NotificationContainer: React.FC = () => {
+const NotificationContainer = () => {
   const navigation = useNavigation<NotificationContainerNavigationProp>();
   const [currentNotification, setCurrentNotification] = useState<NotificationWithData | null>(null);
   const [notificationQueue, setNotificationQueue] = useState<NotificationWithData[]>([]);
@@ -35,37 +35,7 @@ const NotificationContainer: React.FC = () => {
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCheckRef = useRef<Date>(new Date());
 
-  useEffect(() => {
-    void loadCurrentUser();
-    return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (currentUser) {
-      // Check for new notifications immediately
-      void checkForNewNotifications();
-
-      // Set up polling interval
-      checkIntervalRef.current = setInterval(() => {
-        void checkForNewNotifications();
-      }, 5000); // Check every 5 seconds
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    // When queue changes and no current notification, show next
-    if (!currentNotification && notificationQueue.length > 0) {
-      const [next, ...rest] = notificationQueue;
-      setCurrentNotification(next);
-      setNotificationQueue(rest);
-    }
-  }, [notificationQueue, currentNotification]);
-
-  const loadCurrentUser = async (): Promise<void> => {
+  const loadCurrentUser = useCallback(async (): Promise<void> => {
     try {
       const user = await UserStorageService.getCurrentUser();
       setCurrentUser(user);
@@ -73,9 +43,9 @@ const NotificationContainer: React.FC = () => {
       // Error loading user
       console.error('Error loading current user:', error);
     }
-  };
+  }, []);
 
-  const checkForNewNotifications = async (): Promise<void> => {
+  const checkForNewNotifications = useCallback(async (): Promise<void> => {
     if (!currentUser) return;
 
     try {
@@ -107,13 +77,13 @@ const NotificationContainer: React.FC = () => {
       // Error checking notifications
       console.error('Error checking for new notifications:', error);
     }
-  };
+  }, [currentUser]);
 
-  const handleDismiss = (): void => {
+  const handleDismiss = useCallback((): void => {
     setCurrentNotification(null);
-  };
+  }, []);
 
-  const handlePress = (): void => {
+  const handlePress = useCallback((): void => {
     // Navigate based on notification type
     if (currentNotification?.data?.taskId) {
       // Navigate to task list with focus on specific task
@@ -124,7 +94,37 @@ const NotificationContainer: React.FC = () => {
       // Default to notifications list
       navigation.navigate('NotificationList');
     }
-  };
+  }, [currentNotification, navigation]);
+
+  useEffect(() => {
+    void loadCurrentUser();
+    return () => {
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+    };
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      // Check for new notifications immediately
+      void checkForNewNotifications();
+
+      // Set up polling interval
+      checkIntervalRef.current = setInterval(() => {
+        void checkForNewNotifications();
+      }, 5000); // Check every 5 seconds
+    }
+  }, [currentUser, checkForNewNotifications]);
+
+  useEffect(() => {
+    // When queue changes and no current notification, show next
+    if (!currentNotification && notificationQueue.length > 0) {
+      const [next, ...rest] = notificationQueue;
+      setCurrentNotification(next);
+      setNotificationQueue(rest);
+    }
+  }, [notificationQueue, currentNotification]);
 
   if (!currentNotification) {
     return null;

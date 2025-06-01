@@ -32,7 +32,7 @@ interface EncouragementModalProps extends Pick<ModalProps, 'visible'> {
   onSuccess?: () => void;
 }
 
-const EncouragementModal: React.FC<EncouragementModalProps> = ({
+const EncouragementModal = ({
   visible,
   onClose,
   task = null,
@@ -40,7 +40,7 @@ const EncouragementModal: React.FC<EncouragementModalProps> = ({
   toUser,
   partnership,
   onSuccess = () => {},
-}) => {
+}: EncouragementModalProps) => {
   const [customMessage, setCustomMessage] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -78,7 +78,7 @@ const EncouragementModal: React.FC<EncouragementModalProps> = ({
     setSelectedMessage(null);
   };
 
-  const QuickMessage: React.FC<{ message: string }> = ({ message }) => (
+  const QuickMessage = ({ message }: { message: string }) => (
     <TouchableOpacity
       style={[
         styles.quickMessageButton,

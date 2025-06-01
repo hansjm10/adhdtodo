@@ -1,7 +1,7 @@
 // ABOUTME: Dashboard for accountability partners to track assigned task progress
 // Shows task completion stats, overdue tasks, and progress visualization
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -46,7 +46,7 @@ interface TabButtonProps {
   count: number;
 }
 
-const PartnerDashboardScreen: React.FC = () => {
+const PartnerDashboardScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [partner, setPartner] = useState<User | null>(null);
@@ -56,19 +56,16 @@ const PartnerDashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTab, setSelectedTab] = useState('all'); // all, active, completed, overdue
 
-  useEffect(() => {
-    loadInitialData();
+  const isOverdue = useCallback((task: Task): boolean => {
+    return !!(
+      task.dueDate &&
+      new Date(task.dueDate) < new Date() &&
+      !(task as any).completed &&
+      !(task as any).isComplete
+    );
   }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      if (currentUser) {
-        loadTasks();
-      }
-    }, [currentUser, selectedTab]),
-  );
-
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       const user = await UserStorageService.getCurrentUser();
       setCurrentUser(user);
@@ -91,9 +88,9 @@ const PartnerDashboardScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -132,22 +129,25 @@ const PartnerDashboardScreen: React.FC = () => {
     } catch (error) {
       // Error loading tasks
     }
-  };
+  }, [currentUser, selectedTab, isOverdue]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadTasks();
     setRefreshing(false);
-  };
+  }, [loadTasks]);
 
-  const isOverdue = (task: Task): boolean => {
-    return !!(
-      task.dueDate &&
-      new Date(task.dueDate) < new Date() &&
-      !(task as any).completed &&
-      !(task as any).isComplete
-    );
-  };
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (currentUser) {
+        loadTasks();
+      }
+    }, [currentUser, selectedTab, loadTasks]),
+  );
 
   const getTaskStats = (): TaskStats => {
     const total = assignedTasks.length;
@@ -163,26 +163,29 @@ const PartnerDashboardScreen: React.FC = () => {
     return { total, completed, active, overdue, completionRate };
   };
 
-  const sendEncouragement = async (task: Task) => {
-    if (!partner || !currentUser) return;
+  const sendEncouragement = useCallback(
+    async (task: Task) => {
+      if (!partner || !currentUser) return;
 
-    const randomMessage =
-      DEFAULT_ENCOURAGEMENT_MESSAGES[
-        Math.floor(Math.random() * DEFAULT_ENCOURAGEMENT_MESSAGES.length)
-      ];
+      const randomMessage =
+        DEFAULT_ENCOURAGEMENT_MESSAGES[
+          Math.floor(Math.random() * DEFAULT_ENCOURAGEMENT_MESSAGES.length)
+        ];
 
-    const sent = await NotificationService.sendEncouragement(
-      currentUser.id,
-      partner.id,
-      randomMessage,
-      task.id,
-    );
+      const sent = await NotificationService.sendEncouragement(
+        currentUser.id,
+        partner.id,
+        randomMessage,
+        task.id,
+      );
 
-    if (sent && partnership) {
-      await PartnershipService.incrementPartnershipStat(partnership.id, 'encouragementsSent');
-      Alert.alert('Success', 'Encouragement sent! 💪');
-    }
-  };
+      if (sent && partnership) {
+        await PartnershipService.incrementPartnershipStat(partnership.id, 'encouragementsSent');
+        Alert.alert('Success', 'Encouragement sent! 💪');
+      }
+    },
+    [partner, currentUser, partnership],
+  );
 
   const getPriorityColor = (priority: string): string => {
     switch (priority) {
@@ -211,7 +214,7 @@ const PartnerDashboardScreen: React.FC = () => {
     }
   };
 
-  const TabButton: React.FC<TabButtonProps> = ({ tab, label, count }) => (
+  const TabButton = ({ tab, label, count }: TabButtonProps) => (
     <TouchableOpacity
       style={[styles.tabButton, selectedTab === tab && styles.tabButtonActive]}
       onPress={() => setSelectedTab(tab)}

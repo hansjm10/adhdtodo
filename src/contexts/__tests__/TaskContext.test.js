@@ -4,7 +4,7 @@
 import React from 'react';
 import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
-import { TaskProvider, useTasks, _resetCache } from '../TaskContext';
+import { TaskProvider, useTasks } from '../TaskContext';
 import TaskStorageService from '../../services/TaskStorageService';
 
 // Mock TaskStorageService
@@ -46,7 +46,6 @@ describe('TaskContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    _resetCache(); // Reset the cache before each test
     TaskStorageService.getAllTasks.mockResolvedValue(mockTasks);
     TaskStorageService.saveTask.mockResolvedValue(true);
     TaskStorageService.updateTask.mockResolvedValue(true);

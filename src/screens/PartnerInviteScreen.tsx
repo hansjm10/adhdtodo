@@ -27,7 +27,7 @@ interface Props {
   navigation: PartnerInviteScreenNavigationProp;
 }
 
-const PartnerInviteScreen: React.FC<Props> = ({ navigation }) => {
+const PartnerInviteScreen = ({ navigation }: Props) => {
   const [inviteCode, setInviteCode] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState<boolean>(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);

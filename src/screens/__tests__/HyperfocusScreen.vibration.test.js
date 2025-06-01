@@ -44,11 +44,15 @@ const TestNavigator = ({ initialParams }) => {
 };
 
 describe('HyperfocusScreen - Platform-specific Vibration', () => {
-  const mockTask = createTask({
+  const mockTask = {
+    ...createTask({
+      title: 'Test Task',
+      timeSpent: 0,
+      userId: 'user1',
+    }),
     id: 'task1',
-    title: 'Test Task',
-    timeSpent: 0,
-  });
+    isComplete: false,
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();

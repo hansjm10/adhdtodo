@@ -15,7 +15,7 @@ interface ThemedCardProps {
   disabled?: boolean;
 }
 
-export const ThemedCard: React.FC<ThemedCardProps> = ({
+export const ThemedCard = ({
   children,
   variant = 'elevated',
   spacing: cardSpacing = 'medium',
@@ -23,7 +23,7 @@ export const ThemedCard: React.FC<ThemedCardProps> = ({
   style,
   testID,
   disabled = false,
-}) => {
+}: ThemedCardProps) => {
   const cardStyles = [
     styles.base,
     styles[variant],

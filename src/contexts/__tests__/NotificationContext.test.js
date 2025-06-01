@@ -4,11 +4,7 @@
 import React from 'react';
 import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
-import {
-  NotificationProvider,
-  useNotifications,
-  _resetNotifications,
-} from '../NotificationContext';
+import { NotificationProvider, useNotifications } from '../NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock AsyncStorage
@@ -47,7 +43,6 @@ describe('NotificationContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    _resetNotifications(); // Reset notifications before each test
     AsyncStorage.getItem.mockResolvedValue(JSON.stringify(mockNotifications));
     AsyncStorage.setItem.mockResolvedValue(undefined);
     AsyncStorage.removeItem.mockResolvedValue(undefined);

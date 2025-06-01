@@ -1,7 +1,7 @@
 // ABOUTME: Integration tests for partnership flows
 // Tests invite sending, accepting, task sharing, and partner collaboration
 
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '../utils';
 import { Alert, Share } from 'react-native';
 import {
   renderAppWithAuth,

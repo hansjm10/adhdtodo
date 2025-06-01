@@ -1,7 +1,7 @@
 // ABOUTME: Screen for displaying list of tasks with ADHD-friendly design
 // Shows tasks in a clean, organized list with visual feedback and empty states
 
-import React, { useState, useMemo, FC } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -46,7 +46,7 @@ interface Styles {
   categoryIcon: TextStyle;
 }
 
-const TaskListScreen: FC = () => {
+const TaskListScreen = () => {
   const navigation = useNavigation<TaskListScreenNavigationProp>();
   const { user: currentUser, partner } = useUser();
   const { tasks: allTasks, refreshTasks } = useTasks();
@@ -113,14 +113,14 @@ const TaskListScreen: FC = () => {
     );
   };
 
-  const EmptyState: FC = () => (
+  const EmptyState = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyTitle}>No tasks yet</Text>
       <Text style={styles.emptySubtitle}>Tap the + button to create your first task</Text>
     </View>
   );
 
-  const CategoryFilter: FC = () => (
+  const CategoryFilter = () => (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
