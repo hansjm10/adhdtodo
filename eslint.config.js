@@ -107,7 +107,7 @@ module.exports = [
     rules: {
       // TypeScript ESLint recommended rules
       ...typescriptPlugin.configs.recommended.rules,
-      
+
       // React plugin recommended rules
       ...reactPlugin.configs.recommended.rules,
 
@@ -122,11 +122,11 @@ module.exports = [
       ],
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      
+
       // React specific overrides
       'react/prop-types': 'off', // Using TypeScript for prop validation
       'react/react-in-jsx-scope': 'off', // Not needed with React 17+
-      
+
       // General
       'no-console': [
         'error',
@@ -137,7 +137,7 @@ module.exports = [
       'no-debugger': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
-      
+
       // Code style
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
@@ -146,7 +146,20 @@ module.exports = [
 
   // Test files configuration
   {
-    files: ['*.test.js', '*.spec.js', '*.test.ts', '*.spec.ts', '*.test.tsx', '*.spec.tsx', '**/__tests__/**/*.js', '**/__tests__/**/*.ts', '**/__tests__/**/*.tsx', 'tests/**/*.js', 'tests/**/*.ts', 'tests/**/*.tsx'],
+    files: [
+      '*.test.js',
+      '*.spec.js',
+      '*.test.ts',
+      '*.spec.ts',
+      '*.test.tsx',
+      '*.spec.tsx',
+      '**/__tests__/**/*.js',
+      '**/__tests__/**/*.ts',
+      '**/__tests__/**/*.tsx',
+      'tests/**/*.js',
+      'tests/**/*.ts',
+      'tests/**/*.tsx',
+    ],
     languageOptions: {
       globals: {
         ...globals.jest,

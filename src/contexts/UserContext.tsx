@@ -1,7 +1,14 @@
 // ABOUTME: UserContext provides centralized user, partner, and partnership state management
 // Eliminates prop drilling and duplicate data fetching across screens
 
-import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
 import UserStorageService from '../services/UserStorageService';

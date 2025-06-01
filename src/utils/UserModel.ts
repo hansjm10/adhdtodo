@@ -1,7 +1,12 @@
 // ABOUTME: User model utilities for creating and managing user accounts
 // Provides functions to create users, manage partnerships, and handle notifications
 
-import { User, UserRole, NotificationPreference, UserNotificationPreferences } from '../types/user.types';
+import {
+  User,
+  UserRole,
+  NotificationPreference,
+  UserNotificationPreferences,
+} from '../types/user.types';
 
 export const generateUserId = (): string => {
   return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -106,8 +111,8 @@ export const setUserPartner = (user: User, partnerId: string): User => {
 };
 
 export const updateNotificationPreferences = (
-  user: User, 
-  preferences: Partial<UserNotificationPreferences>
+  user: User,
+  preferences: Partial<UserNotificationPreferences>,
 ): User => {
   return {
     ...user,

@@ -1,7 +1,15 @@
 // ABOUTME: TaskContext provides centralized task state management with caching
 // Single source of truth for tasks, eliminating duplicate fetches across screens
 
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react';
 import TaskStorageService from '../services/TaskStorageService';
 import { Task } from '../types/task.types';
 
@@ -82,7 +90,7 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const loadedTasks = await TaskStorageService.getAllTasks() as unknown as LegacyTask[];
+      const loadedTasks = (await TaskStorageService.getAllTasks()) as unknown as LegacyTask[];
 
       if (isMountedRef.current) {
         setTasks(loadedTasks);

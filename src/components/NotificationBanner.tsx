@@ -48,7 +48,11 @@ interface NotificationStyle {
   backgroundColor: string;
 }
 
-const NotificationBanner: React.FC<NotificationBannerProps> = ({ notification, onDismiss, onPress }) => {
+const NotificationBanner: React.FC<NotificationBannerProps> = ({
+  notification,
+  onDismiss,
+  onPress,
+}) => {
   const translateY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -111,7 +115,10 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({ notification, o
   // Pan responder for swipe gestures
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+      onMoveShouldSetPanResponder: (
+        _: GestureResponderEvent,
+        gestureState: PanResponderGestureState,
+      ) => {
         return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
       },
       onPanResponderMove: (_: GestureResponderEvent, gestureState: PanResponderGestureState) => {

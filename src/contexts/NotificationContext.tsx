@@ -1,7 +1,14 @@
 // ABOUTME: NotificationContext provides centralized notification state management
 // Handles notification display, read status, and real-time updates across screens
 
-import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NotificationPriority } from '../types/notification.types';
 

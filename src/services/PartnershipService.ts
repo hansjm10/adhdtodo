@@ -17,13 +17,23 @@ export interface IPartnershipService {
   getAllPartnerships(): Promise<Partnership[]>;
   savePartnership(partnership: Partnership): Promise<boolean>;
   updatePartnership(updatedPartnership: Partnership): Promise<boolean>;
-  createPartnershipInvite(invitingUserId: string, invitedUserRole: string): Promise<Partnership | null>;
-  acceptPartnershipInvite(inviteCode: string, acceptingUserId: string): Promise<{ success: boolean; error?: string; partnership?: Partnership }>;
+  createPartnershipInvite(
+    invitingUserId: string,
+    invitedUserRole: string,
+  ): Promise<Partnership | null>;
+  acceptPartnershipInvite(
+    inviteCode: string,
+    acceptingUserId: string,
+  ): Promise<{ success: boolean; error?: string; partnership?: Partnership }>;
   getPartnershipByUsers(userId1: string, userId2: string): Promise<Partnership | null>;
   getPartnershipByInviteCode(inviteCode: string): Promise<Partnership | null>;
   getUserPartnerships(userId: string): Promise<Partnership[]>;
   getActivePartnership(userId: string): Promise<Partnership | null>;
-  incrementPartnershipStat(partnershipId: string, statKey: keyof PartnershipStats, increment?: number): Promise<boolean>;
+  incrementPartnershipStat(
+    partnershipId: string,
+    statKey: keyof PartnershipStats,
+    increment?: number,
+  ): Promise<boolean>;
   clearAllPartnerships(): Promise<boolean>;
 }
 
@@ -71,7 +81,10 @@ class PartnershipService implements IPartnershipService {
     }
   }
 
-  async createPartnershipInvite(invitingUserId: string, invitedUserRole: string): Promise<Partnership | null> {
+  async createPartnershipInvite(
+    invitingUserId: string,
+    invitedUserRole: string,
+  ): Promise<Partnership | null> {
     try {
       const partnership = createPartnership({
         inviteSentBy: invitingUserId,
@@ -88,7 +101,10 @@ class PartnershipService implements IPartnershipService {
     }
   }
 
-  async acceptPartnershipInvite(inviteCode: string, acceptingUserId: string): Promise<{ success: boolean; error?: string; partnership?: Partnership }> {
+  async acceptPartnershipInvite(
+    inviteCode: string,
+    acceptingUserId: string,
+  ): Promise<{ success: boolean; error?: string; partnership?: Partnership }> {
     try {
       const partnerships = await this.getAllPartnerships();
       const partnership = partnerships.find((p) => p.inviteCode === inviteCode);
@@ -182,7 +198,11 @@ class PartnershipService implements IPartnershipService {
     }
   }
 
-  async incrementPartnershipStat(partnershipId: string, statKey: keyof PartnershipStats, increment: number = 1): Promise<boolean> {
+  async incrementPartnershipStat(
+    partnershipId: string,
+    statKey: keyof PartnershipStats,
+    increment: number = 1,
+  ): Promise<boolean> {
     try {
       const partnerships = await this.getAllPartnerships();
       const partnership = partnerships.find((p) => p.id === partnershipId);

@@ -104,7 +104,7 @@ const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => 
   const createInvite = async (): Promise<void> => {
     try {
       if (!currentUser) return;
-      
+
       const invitedRole: UserRole =
         currentUser.role === USER_ROLE.ADHD_USER ? USER_ROLE.PARTNER : USER_ROLE.ADHD_USER;
 
@@ -147,7 +147,7 @@ const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => 
 
   const endPartnership = async (): Promise<void> => {
     if (!partnership) return;
-    
+
     Alert.alert(
       'End Partnership?',
       'Are you sure you want to end this partnership? This action cannot be undone.',

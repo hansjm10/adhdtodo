@@ -93,7 +93,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = () => {
     );
   }
 
-  const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress, color = '#333', showArrow = true }) => (
+  const MenuItem: React.FC<MenuItemProps> = ({
+    icon,
+    label,
+    onPress,
+    color = '#333',
+    showArrow = true,
+  }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={loading}>
       <View style={styles.menuItemContent}>
         <Ionicons name={icon} size={24} color={color} style={styles.menuIcon} />

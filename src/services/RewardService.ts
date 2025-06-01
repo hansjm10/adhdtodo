@@ -80,7 +80,9 @@ class RewardService implements IRewardService {
       const lastCompletion = new Date(lastCompletionStr);
       lastCompletion.setHours(0, 0, 0, 0);
 
-      const daysDiff = Math.floor((today.getTime() - lastCompletion.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.floor(
+        (today.getTime() - lastCompletion.getTime()) / (1000 * 60 * 60 * 24),
+      );
 
       if (daysDiff === 0) {
         // Same day, maintain streak but check if we need to start from stored data

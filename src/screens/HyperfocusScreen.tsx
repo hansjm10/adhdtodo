@@ -2,17 +2,17 @@
 // Provides distraction-free interface with built-in timer and break reminders
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
-  Vibration, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Vibration,
   Platform,
   ViewStyle,
   TextStyle,
-  AlertButton
+  AlertButton,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';

@@ -27,18 +27,6 @@
       "@navigation/*": ["src/navigation/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*",
-    "App.tsx",
-    "index.js",
-    "*.ts",
-    "*.tsx"
-  ],
-  "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js",
-    "jest.config.js"
-  ]
+  "include": ["src/**/*", "tests/**/*", "App.tsx", "index.js", "*.ts", "*.tsx"],
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]
 }

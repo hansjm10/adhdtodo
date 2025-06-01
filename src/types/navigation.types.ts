@@ -8,10 +8,10 @@ import { Task } from './task.types';
 export type RootStackParamList = {
   // Main Tabs
   MainTabs: undefined;
-  
+
   // Auth Stack
   Auth: undefined;
-  
+
   // Task Stack
   TaskList: undefined;
   CreateTask: {
@@ -23,7 +23,7 @@ export type RootStackParamList = {
   TaskAssignment: {
     taskId: string;
   };
-  
+
   // Focus Modes
   FocusMode: {
     taskId: string;
@@ -32,15 +32,15 @@ export type RootStackParamList = {
     taskId: string;
   };
   ScatteredMode: undefined;
-  
+
   // Partnership Stack
   Partnership: undefined;
   PartnerInvite: undefined;
   PartnerDashboard: undefined;
-  
+
   // Profile Stack
   Profile: undefined;
-  
+
   // Notifications
   NotificationList: undefined;
 };
@@ -51,9 +51,18 @@ export type TaskListScreenNavigationProp = StackNavigationProp<RootStackParamLis
 export type CreateTaskScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CreateTask'>;
 export type EditTaskScreenNavigationProp = StackNavigationProp<RootStackParamList, 'EditTask'>;
 export type FocusModeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'FocusMode'>;
-export type HyperfocusModeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HyperfocusMode'>;
-export type ScatteredModeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ScatteredMode'>;
-export type PartnershipScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Partnership'>;
+export type HyperfocusModeScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'HyperfocusMode'
+>;
+export type ScatteredModeScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'ScatteredMode'
+>;
+export type PartnershipScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'Partnership'
+>;
 export type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Profile'>;
 
 // Route prop types for each screen

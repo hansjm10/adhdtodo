@@ -130,8 +130,8 @@ export const assignTask = (
 };
 
 export const addEncouragement = (
-  task: Task, 
-  encouragement: Omit<TaskEncouragement, 'timestamp'>
+  task: Task,
+  encouragement: Omit<TaskEncouragement, 'timestamp'>,
 ): Task => {
   return {
     ...task,
@@ -148,8 +148,8 @@ export const addEncouragement = (
 };
 
 export const markPartnerNotified = (
-  task: Task, 
-  notificationType: keyof Task['partnerNotified']
+  task: Task,
+  notificationType: keyof Task['partnerNotified'],
 ): Task => {
   return {
     ...task,

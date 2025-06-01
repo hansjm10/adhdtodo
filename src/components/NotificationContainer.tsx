@@ -82,13 +82,11 @@ const NotificationContainer: React.FC = () => {
       const allNotifications = await NotificationService.getNotificationsForUser(currentUser.id);
 
       // Filter for new notifications since last check
-      const newNotifications = allNotifications.filter(
-        (n: NotificationWithData) => {
-          // Handle both timestamp and createdAt properties
-          const notificationTime = n.timestamp ? new Date(n.timestamp) : n.createdAt;
-          return !n.read && notificationTime && notificationTime > lastCheckRef.current;
-        },
-      );
+      const newNotifications = allNotifications.filter((n: NotificationWithData) => {
+        // Handle both timestamp and createdAt properties
+        const notificationTime = n.timestamp ? new Date(n.timestamp) : n.createdAt;
+        return !n.read && notificationTime && notificationTime > lastCheckRef.current;
+      });
 
       if (newNotifications.length > 0) {
         // Add new notifications to queue

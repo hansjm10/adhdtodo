@@ -2,15 +2,15 @@
 // Shows tasks in a clean, organized list with visual feedback and empty states
 
 import React, { useState, useMemo, FC } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  RefreshControl, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
   ScrollView,
   ViewStyle,
-  TextStyle
+  TextStyle,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';

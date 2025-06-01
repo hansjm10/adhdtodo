@@ -380,8 +380,12 @@ class AuthService implements IAuthService {
 
   // Remove sensitive fields from user object
   sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'> {
-     
-    const { passwordHash: _passwordHash, passwordSalt: _passwordSalt, sessionToken: _sessionToken, ...sanitized } = user;
+    const {
+      passwordHash: _passwordHash,
+      passwordSalt: _passwordSalt,
+      sessionToken: _sessionToken,
+      ...sanitized
+    } = user;
     return sanitized;
   }
 }

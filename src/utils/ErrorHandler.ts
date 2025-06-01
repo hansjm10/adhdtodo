@@ -16,9 +16,9 @@ class ErrorHandler {
   }
 
   static handleStorageError(
-    error: Error | unknown, 
-    operation: StorageOperation, 
-    retry: RetryFunction | null = null
+    error: Error | unknown,
+    operation: StorageOperation,
+    retry: RetryFunction | null = null,
   ): void {
     console.error(`Storage error during ${operation}:`, error);
 

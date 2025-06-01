@@ -117,8 +117,8 @@ export const terminatePartnership = (partnership: Partnership): Partnership => {
 };
 
 export const updatePartnershipSettings = (
-  partnership: Partnership, 
-  settings: Partial<PartnershipSettings>
+  partnership: Partnership,
+  settings: Partial<PartnershipSettings>,
 ): Partnership => {
   return {
     ...partnership,
@@ -131,8 +131,8 @@ export const updatePartnershipSettings = (
 };
 
 export const updatePartnershipStats = (
-  partnership: Partnership, 
-  statUpdates: Partial<Partnership['stats']>
+  partnership: Partnership,
+  statUpdates: Partial<Partnership['stats']>,
 ): Partnership => {
   return {
     ...partnership,
