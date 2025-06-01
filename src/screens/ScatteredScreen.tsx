@@ -12,9 +12,10 @@ import {
   responsiveFontSize,
   responsivePadding,
 } from '../utils/ResponsiveDimensions';
+import type { NavigationProp } from '../types/navigation.types';
 
-const ScatteredScreen = () => {
-  const navigation = useNavigation();
+const ScatteredScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const { getPendingTasks, updateTask } = useTasks();
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
@@ -23,7 +24,9 @@ const ScatteredScreen = () => {
   // Get quick tasks from context
   const quickTasks = useMemo(() => {
     const pendingTasks = getPendingTasks();
-    return pendingTasks.filter((task) => task.timeEstimate && task.timeEstimate <= 15);
+    return pendingTasks.filter(
+      (task) => task.timeEstimate && task.timeEstimate <= 15 && !task.isComplete,
+    );
   }, [getPendingTasks]);
 
   useEffect(() => {
@@ -40,10 +43,14 @@ const ScatteredScreen = () => {
     if (currentTaskIndex >= quickTasks.length) return;
 
     const task = quickTasks[currentTaskIndex];
-    const xp = RewardService.calculateTaskXP(task);
+    const xp = RewardService.calculateTaskXP(task as any);
 
     try {
-      await updateTask(task.id, { completed: true, completedAt: new Date().toISOString(), xp });
+      await updateTask(task.id, {
+        isComplete: true,
+        completedAt: new Date().toISOString(),
+        xpEarned: xp,
+      });
       await RewardService.updateStreak();
 
       setCompletedCount((prev) => prev + 1);
@@ -130,7 +137,9 @@ const ScatteredScreen = () => {
                 <Text style={styles.categoryText}>{currentTask.category}</Text>
               </View>
             )}
-            <Text style={styles.xpPreview}>+{RewardService.calculateTaskXP(currentTask)} XP</Text>
+            <Text style={styles.xpPreview}>
+              +{RewardService.calculateTaskXP(currentTask as any)} XP
+            </Text>
           </View>
         </View>
       </View>

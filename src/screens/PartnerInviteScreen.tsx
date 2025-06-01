@@ -12,17 +12,27 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  NativeSyntheticEvent,
+  TextInputKeyPressEventData,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { StackNavigationProp } from '@react-navigation/stack';
 import PartnershipService from '../services/PartnershipService';
 import UserStorageService from '../services/UserStorageService';
+import { RootStackParamList } from '../types/navigation.types';
 
-const PartnerInviteScreen = ({ navigation }) => {
-  const [inviteCode, setInviteCode] = useState(['', '', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
-  const inputRefs = useRef([]);
+type PartnerInviteScreenNavigationProp = StackNavigationProp<RootStackParamList, 'PartnerInvite'>;
 
-  const handleCodeChange = (value, index) => {
+interface Props {
+  navigation: PartnerInviteScreenNavigationProp;
+}
+
+const PartnerInviteScreen: React.FC<Props> = ({ navigation }) => {
+  const [inviteCode, setInviteCode] = useState<string[]>(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState<boolean>(false);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
+
+  const handleCodeChange = (value: string, index: number): void => {
     if (value.length > 1) {
       // Handle paste
       const pastedCode = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -48,13 +58,16 @@ const PartnerInviteScreen = ({ navigation }) => {
     }
   };
 
-  const handleKeyPress = (e, index) => {
+  const handleKeyPress = (
+    e: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    index: number,
+  ): void => {
     if (e.nativeEvent.key === 'Backspace' && !inviteCode[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleAcceptInvite = async () => {
+  const handleAcceptInvite = async (): Promise<void> => {
     const code = inviteCode.join('');
     if (code.length !== 6) {
       Alert.alert('Invalid Code', 'Please enter a complete 6-character code');
@@ -113,7 +126,9 @@ const PartnerInviteScreen = ({ navigation }) => {
           {inviteCode.map((char, index) => (
             <TextInput
               key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
+              ref={(ref) => {
+                inputRefs.current[index] = ref;
+              }}
               style={[styles.codeInput, char && styles.codeInputFilled]}
               value={char}
               onChangeText={(value) => handleCodeChange(value, index)}

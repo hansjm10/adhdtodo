@@ -11,21 +11,47 @@ import {
   RefreshControl,
   ActivityIndicator,
   FlatList,
+  ListRenderItem,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import UserStorageService from '../services/UserStorageService';
 import TaskStorageService from '../services/TaskStorageService';
 import PartnershipService from '../services/PartnershipService';
 import NotificationService from '../services/NotificationService';
 import { TASK_PRIORITY, TASK_STATUS } from '../constants/TaskConstants';
 import { DEFAULT_ENCOURAGEMENT_MESSAGES } from '../constants/UserConstants';
+import type { NavigationProp } from '../types/navigation.types';
+import type { User } from '../types/user.types';
+import type { Task } from '../types/task.types';
+import type { Partnership } from '../types/user.types';
 
-const PartnerDashboardScreen = ({ navigation }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [partner, setPartner] = useState(null);
-  const [partnership, setPartnership] = useState(null);
-  const [assignedTasks, setAssignedTasks] = useState([]);
+interface TaskStats {
+  total: number;
+  completed: number;
+  active: number;
+  overdue: number;
+  completionRate: number;
+}
+
+interface StatusIcon {
+  name: keyof typeof Ionicons.glyphMap;
+  color: string;
+}
+
+interface TabButtonProps {
+  tab: string;
+  label: string;
+  count: number;
+}
+
+const PartnerDashboardScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [partner, setPartner] = useState<User | null>(null);
+  const [partnership, setPartnership] = useState<Partnership | null>(null);
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTab, setSelectedTab] = useState('all'); // all, active, completed, overdue
@@ -56,7 +82,7 @@ const PartnerDashboardScreen = ({ navigation }) => {
             activePartnership.adhdUserId === user.id
               ? activePartnership.partnerId
               : activePartnership.adhdUserId;
-          const partnerUser = await UserStorageService.getUserById(partnerId);
+          const partnerUser = partnerId ? await UserStorageService.getUserById(partnerId) : null;
           setPartner(partnerUser);
         }
       }
@@ -76,22 +102,29 @@ const PartnerDashboardScreen = ({ navigation }) => {
       let filteredTasks = tasks;
       switch (selectedTab) {
         case 'active':
-          filteredTasks = tasks.filter((t) => !t.completed && !isOverdue(t));
+          filteredTasks = tasks.filter(
+            (t) => !(t as any).completed && !(t as any).isComplete && !isOverdue(t),
+          );
           break;
         case 'completed':
-          filteredTasks = tasks.filter((t) => t.completed);
+          filteredTasks = tasks.filter((t) => (t as any).completed || (t as any).isComplete);
           break;
         case 'overdue':
-          filteredTasks = tasks.filter((t) => !t.completed && isOverdue(t));
+          filteredTasks = tasks.filter(
+            (t) => !(t as any).completed && !(t as any).isComplete && isOverdue(t),
+          );
           break;
       }
 
       // Sort tasks by priority and due date
       filteredTasks.sort((a, b) => {
-        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        const aCompleted = (a as any).completed || (a as any).isComplete;
+        const bCompleted = (b as any).completed || (b as any).isComplete;
+        if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
         if (isOverdue(a) && !isOverdue(b)) return -1;
         if (!isOverdue(a) && isOverdue(b)) return 1;
-        if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+        if (a.dueDate && b.dueDate)
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         return 0;
       });
 
@@ -107,21 +140,30 @@ const PartnerDashboardScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const isOverdue = (task) => {
-    return task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+  const isOverdue = (task: Task): boolean => {
+    return !!(
+      task.dueDate &&
+      new Date(task.dueDate) < new Date() &&
+      !(task as any).completed &&
+      !(task as any).isComplete
+    );
   };
 
-  const getTaskStats = () => {
+  const getTaskStats = (): TaskStats => {
     const total = assignedTasks.length;
-    const completed = assignedTasks.filter((t) => t.completed).length;
-    const active = assignedTasks.filter((t) => !t.completed && !isOverdue(t)).length;
+    const completed = assignedTasks.filter(
+      (t) => (t as any).completed || (t as any).isComplete,
+    ).length;
+    const active = assignedTasks.filter(
+      (t) => !(t as any).completed && !(t as any).isComplete && !isOverdue(t),
+    ).length;
     const overdue = assignedTasks.filter((t) => isOverdue(t)).length;
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return { total, completed, active, overdue, completionRate };
   };
 
-  const sendEncouragement = async (task) => {
+  const sendEncouragement = async (task: Task) => {
     if (!partner || !currentUser) return;
 
     const randomMessage =
@@ -138,11 +180,11 @@ const PartnerDashboardScreen = ({ navigation }) => {
 
     if (sent && partnership) {
       await PartnershipService.incrementPartnershipStat(partnership.id, 'encouragementsSent');
-      alert('Encouragement sent! 💪');
+      Alert.alert('Success', 'Encouragement sent! 💪');
     }
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority) {
       case TASK_PRIORITY.LOW:
         return '#27AE60';
@@ -157,8 +199,8 @@ const PartnerDashboardScreen = ({ navigation }) => {
     }
   };
 
-  const getStatusIcon = (task) => {
-    if (task.completed) {
+  const getStatusIcon = (task: Task): StatusIcon => {
+    if ((task as any).completed || (task as any).isComplete) {
       return { name: 'checkmark-circle', color: '#27AE60' };
     } else if (task.status === TASK_STATUS.IN_PROGRESS) {
       return { name: 'play-circle', color: '#3498DB' };
@@ -169,7 +211,7 @@ const PartnerDashboardScreen = ({ navigation }) => {
     }
   };
 
-  const TabButton = ({ tab, label, count }) => (
+  const TabButton: React.FC<TabButtonProps> = ({ tab, label, count }) => (
     <TouchableOpacity
       style={[styles.tabButton, selectedTab === tab && styles.tabButtonActive]}
       onPress={() => setSelectedTab(tab)}
@@ -185,9 +227,11 @@ const PartnerDashboardScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
-  const renderTaskItem = ({ item: task }) => {
+  const renderTaskItem: ListRenderItem<Task> = ({ item: task }) => {
     const statusIcon = getStatusIcon(task);
-    const timeUntilDue = task.dueDate ? new Date(task.dueDate) - new Date() : null;
+    const timeUntilDue = task.dueDate
+      ? new Date(task.dueDate).getTime() - new Date().getTime()
+      : null;
     const daysUntilDue = timeUntilDue ? Math.ceil(timeUntilDue / (1000 * 60 * 60 * 24)) : null;
 
     return (
@@ -210,9 +254,9 @@ const PartnerDashboardScreen = ({ navigation }) => {
               {task.dueDate && (
                 <Text style={[styles.dueText, isOverdue(task) && styles.overdueText]}>
                   {isOverdue(task)
-                    ? `Overdue by ${Math.abs(daysUntilDue)} days`
-                    : task.completed
-                      ? `Completed ${new Date(task.completedAt).toLocaleDateString()}`
+                    ? `Overdue by ${Math.abs(daysUntilDue!)} days`
+                    : (task as any).completed || (task as any).isComplete
+                      ? `Completed ${task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'recently'}`
                       : `Due in ${daysUntilDue} days`}
                 </Text>
               )}
@@ -223,14 +267,14 @@ const PartnerDashboardScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {!task.completed && (
+        {!((task as any).completed || (task as any).isComplete) && (
           <TouchableOpacity style={styles.encourageButton} onPress={() => sendEncouragement(task)}>
             <Ionicons name="heart-outline" size={20} color="#E74C3C" />
             <Text style={styles.encourageButtonText}>Encourage</Text>
           </TouchableOpacity>
         )}
 
-        {task.completed && task.timeSpent > 0 && (
+        {((task as any).completed || (task as any).isComplete) && task.timeSpent > 0 && (
           <Text style={styles.timeSpentText}>
             Time spent: {Math.round(task.timeSpent / 60)} min
           </Text>
@@ -254,7 +298,7 @@ const PartnerDashboardScreen = ({ navigation }) => {
         <Text style={styles.emptyText}>No active partnership</Text>
         <TouchableOpacity
           style={styles.goToPartnershipButton}
-          onPress={() => navigation.navigate('Partnership')}
+          onPress={() => navigation.navigate('Partnership' as any)}
         >
           <Text style={styles.goToPartnershipText}>Set up Partnership</Text>
         </TouchableOpacity>
@@ -326,7 +370,7 @@ const PartnerDashboardScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={styles.assignButton}
-        onPress={() => navigation.navigate('TaskAssignment')}
+        onPress={() => navigation.navigate('TaskAssignment' as any)}
       >
         <Ionicons name="add-circle" size={24} color="white" />
         <Text style={styles.assignButtonText}>Assign New Task</Text>
