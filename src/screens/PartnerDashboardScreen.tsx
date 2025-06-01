@@ -163,26 +163,29 @@ const PartnerDashboardScreen = () => {
     return { total, completed, active, overdue, completionRate };
   };
 
-  const sendEncouragement = useCallback(async (task: Task) => {
-    if (!partner || !currentUser) return;
+  const sendEncouragement = useCallback(
+    async (task: Task) => {
+      if (!partner || !currentUser) return;
 
-    const randomMessage =
-      DEFAULT_ENCOURAGEMENT_MESSAGES[
-        Math.floor(Math.random() * DEFAULT_ENCOURAGEMENT_MESSAGES.length)
-      ];
+      const randomMessage =
+        DEFAULT_ENCOURAGEMENT_MESSAGES[
+          Math.floor(Math.random() * DEFAULT_ENCOURAGEMENT_MESSAGES.length)
+        ];
 
-    const sent = await NotificationService.sendEncouragement(
-      currentUser.id,
-      partner.id,
-      randomMessage,
-      task.id,
-    );
+      const sent = await NotificationService.sendEncouragement(
+        currentUser.id,
+        partner.id,
+        randomMessage,
+        task.id,
+      );
 
-    if (sent && partnership) {
-      await PartnershipService.incrementPartnershipStat(partnership.id, 'encouragementsSent');
-      Alert.alert('Success', 'Encouragement sent! 💪');
-    }
-  }, [partner, currentUser, partnership]);
+      if (sent && partnership) {
+        await PartnershipService.incrementPartnershipStat(partnership.id, 'encouragementsSent');
+        Alert.alert('Success', 'Encouragement sent! 💪');
+      }
+    },
+    [partner, currentUser, partnership],
+  );
 
   const getPriorityColor = (priority: string): string => {
     switch (priority) {

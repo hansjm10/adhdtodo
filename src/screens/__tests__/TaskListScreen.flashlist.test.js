@@ -40,9 +40,18 @@ const mockUser = {
 
 // Mock task context - convert to legacy format with isComplete
 const mockTasks = [
-  { ...createTask({ id: '1', title: 'Task 1', category: 'home', userId: 'user-1' }), isComplete: false },
-  { ...createTask({ id: '2', title: 'Task 2', category: 'work', userId: 'user-1' }), isComplete: false },
-  { ...createTask({ id: '3', title: 'Task 3', category: 'personal', userId: 'user-1' }), isComplete: false },
+  {
+    ...createTask({ id: '1', title: 'Task 1', category: 'home', userId: 'user-1' }),
+    isComplete: false,
+  },
+  {
+    ...createTask({ id: '2', title: 'Task 2', category: 'work', userId: 'user-1' }),
+    isComplete: false,
+  },
+  {
+    ...createTask({ id: '3', title: 'Task 3', category: 'personal', userId: 'user-1' }),
+    isComplete: false,
+  },
 ];
 
 describe('TaskListScreen - FlashList Performance', () => {

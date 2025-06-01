@@ -93,13 +93,7 @@ const ProfileScreen = () => {
     );
   }
 
-  const MenuItem = ({
-    icon,
-    label,
-    onPress,
-    color = '#333',
-    showArrow = true,
-  }: MenuItemProps) => (
+  const MenuItem = ({ icon, label, onPress, color = '#333', showArrow = true }: MenuItemProps) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={loading}>
       <View style={styles.menuItemContent}>
         <Ionicons name={icon} size={24} color={color} style={styles.menuIcon} />

@@ -48,11 +48,7 @@ interface NotificationStyle {
   backgroundColor: string;
 }
 
-const NotificationBanner = ({
-  notification,
-  onDismiss,
-  onPress,
-}: NotificationBannerProps) => {
+const NotificationBanner = ({ notification, onDismiss, onPress }: NotificationBannerProps) => {
   const translateY = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
