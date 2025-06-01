@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Component Helpers testSnapshot should accept custom snapshot name: Custom Test Snapshot 1`] = `
+<Text>
+  Custom snapshot
+</Text>
+`;
+
+exports[`Component Helpers testSnapshot should accept custom snapshot name: Custom Test Snapshot 2`] = `
+<Text>
+  Custom snapshot
+</Text>
+`;
+
+exports[`Component Helpers testSnapshot should create snapshot: Component Snapshot 1`] = `
+<Text>
+  Snapshot test
+</Text>
+`;
+
+exports[`Component Helpers testSnapshot should create snapshot: Component Snapshot 2`] = `
+<Text>
+  Snapshot test
+</Text>
+`;
