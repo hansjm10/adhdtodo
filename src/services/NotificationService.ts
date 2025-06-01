@@ -32,7 +32,7 @@ export interface INotificationService {
   clearNotificationsForUser(userId: string): Promise<boolean>;
 }
 
-interface StoredNotification extends Omit<Notification, 'createdAt'> {
+interface StoredNotification extends Omit<Notification, 'createdAt' | 'timestamp'> {
   toUserId: string;
   timestamp: Date;
   data: Record<string, unknown>;
@@ -225,7 +225,8 @@ class NotificationService implements INotificationService {
       .map((n) => ({
         ...n,
         createdAt: n.timestamp,
-      })) as Notification[];
+        timestamp: n.timestamp.toISOString(),
+      }));
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {

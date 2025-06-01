@@ -10,18 +10,27 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  ListRenderItem,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import NotificationService from '../services/NotificationService';
 import UserStorageService from '../services/UserStorageService';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
+import type { NavigationProp } from '../types/navigation.types';
+import type { Notification } from '../types/notification.types';
+import type { User } from '../types/user.types';
 
-const NotificationListScreen = () => {
-  const navigation = useNavigation();
-  const [notifications, setNotifications] = useState([]);
+interface NotificationStyle {
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+}
+
+const NotificationListScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     loadNotifications();
@@ -35,7 +44,7 @@ const NotificationListScreen = () => {
         const userNotifications = await NotificationService.getNotificationsForUser(user.id);
         // Sort by timestamp, newest first
         const sortedNotifications = userNotifications.sort(
-          (a, b) => new Date(b.timestamp) - new Date(a.timestamp),
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
         );
         setNotifications(sortedNotifications);
       }
@@ -50,7 +59,7 @@ const NotificationListScreen = () => {
     setRefreshing(false);
   };
 
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notificationId: string) => {
     await NotificationService.markNotificationAsRead(notificationId);
     setNotifications((prev) =>
       prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
@@ -73,7 +82,7 @@ const NotificationListScreen = () => {
     ]);
   };
 
-  const getNotificationStyle = (type) => {
+  const getNotificationStyle = (type: string): NotificationStyle => {
     switch (type) {
       case NOTIFICATION_TYPES.TASK_ASSIGNED:
         return { icon: 'add-circle', color: '#3498DB' };
@@ -94,7 +103,7 @@ const NotificationListScreen = () => {
     }
   };
 
-  const getMessage = (notification) => {
+  const getMessage = (notification: Notification): string => {
     const data = notification.data || {};
     switch (notification.type) {
       case NOTIFICATION_TYPES.TASK_ASSIGNED:
@@ -116,10 +125,10 @@ const NotificationListScreen = () => {
     }
   };
 
-  const getTimeAgo = (timestamp) => {
+  const getTimeAgo = (timestamp: string): string => {
     const now = new Date();
     const notificationTime = new Date(timestamp);
-    const diffMs = now - notificationTime;
+    const diffMs = now.getTime() - notificationTime.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -132,7 +141,7 @@ const NotificationListScreen = () => {
     return notificationTime.toLocaleDateString();
   };
 
-  const renderNotification = ({ item }) => {
+  const renderNotification: ListRenderItem<Notification> = ({ item }) => {
     const style = getNotificationStyle(item.type);
 
     return (
@@ -143,11 +152,9 @@ const NotificationListScreen = () => {
             markAsRead(item.id);
           }
           // Navigate to relevant screen based on notification type
-          if (item.data?.taskId) {
-            navigation.navigate('Tasks', {
-              screen: 'TasksList',
-              params: { focusTaskId: item.data.taskId },
-            });
+          if ((item as any).data?.taskId) {
+            // Navigate to task list
+            navigation.navigate('TaskList');
           }
         }}
       >

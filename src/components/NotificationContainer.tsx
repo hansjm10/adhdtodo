@@ -14,7 +14,7 @@ import { Notification, User, RootStackParamList, NotificationTypes } from '../ty
 type NotificationContainerNavigationProp = StackNavigationProp<RootStackParamList>;
 
 // Extended notification type that includes the data property from the service
-interface NotificationWithData extends Notification {
+interface NotificationWithData extends Omit<Notification, 'timestamp'> {
   data?: {
     taskId?: string;
     assignedBy?: string;
@@ -24,7 +24,7 @@ interface NotificationWithData extends Notification {
     message?: string;
     fromUser?: string;
   };
-  timestamp?: Date;
+  timestamp?: Date | string;
 }
 
 const NotificationContainer: React.FC = () => {
@@ -82,15 +82,19 @@ const NotificationContainer: React.FC = () => {
       const allNotifications = await NotificationService.getNotificationsForUser(currentUser.id);
 
       // Filter for new notifications since last check
-      const newNotifications = allNotifications.filter((n: NotificationWithData) => {
+      const newNotifications = allNotifications.filter((n) => {
         // Handle both timestamp and createdAt properties
-        const notificationTime = n.timestamp ? new Date(n.timestamp) : n.createdAt;
+        const notificationTime = n.timestamp
+          ? typeof n.timestamp === 'string'
+            ? new Date(n.timestamp)
+            : n.timestamp
+          : n.createdAt;
         return !n.read && notificationTime && notificationTime > lastCheckRef.current;
-      });
+      }) as NotificationWithData[];
 
       if (newNotifications.length > 0) {
         // Add new notifications to queue
-        setNotificationQueue((prev: NotificationWithData[]) => [...prev, ...newNotifications]);
+        setNotificationQueue((prev) => [...prev, ...newNotifications]);
 
         // Mark them as read immediately to prevent re-showing
         for (const notification of newNotifications) {

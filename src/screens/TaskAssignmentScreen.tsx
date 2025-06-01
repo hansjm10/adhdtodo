@@ -13,34 +13,56 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { createTask, validateTask } from '../utils/TaskModel';
 import { TASK_PRIORITY, TASK_CATEGORIES } from '../constants/TaskConstants';
 import TaskStorageService from '../services/TaskStorageService';
 import UserStorageService from '../services/UserStorageService';
 import PartnershipService from '../services/PartnershipService';
 import NotificationService from '../services/NotificationService';
+import { RootStackParamList } from '../types/navigation.types';
+import { TaskPriority, TaskCategory } from '../types/task.types';
+import { User, Partnership } from '../types/user.types';
 
-const TaskAssignmentScreen = ({ navigation }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState(TASK_PRIORITY.MEDIUM);
-  const [category, setCategory] = useState(null);
-  const [dueDate, setDueDate] = useState(null);
-  const [preferredStartTime, setPreferredStartTime] = useState(null);
-  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [timeEstimate, setTimeEstimate] = useState(30);
-  const [loading, setLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [partnership, setPartnership] = useState(null);
+type TaskAssignmentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TaskAssignment'>;
+
+interface Props {
+  navigation: TaskAssignmentScreenNavigationProp;
+}
+
+interface PriorityButtonProps {
+  value: TaskPriority;
+  label: string;
+  icon: string;
+  color: string;
+}
+
+interface TimeEstimateButtonProps {
+  minutes: number;
+  label: string;
+}
+
+const TaskAssignmentScreen: React.FC<Props> = ({ navigation }) => {
+  const [title, setTitle] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+  const [priority, setPriority] = useState<TaskPriority>(TASK_PRIORITY.MEDIUM);
+  const [category, setCategory] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [preferredStartTime, setPreferredStartTime] = useState<Date | null>(null);
+  const [showDueDatePicker, setShowDueDatePicker] = useState<boolean>(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState<boolean>(false);
+  const [timeEstimate, setTimeEstimate] = useState<number>(30);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [partnership, setPartnership] = useState<Partnership | null>(null);
 
   useEffect(() => {
     loadUserData();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = async (): Promise<void> => {
     try {
       const user = await UserStorageService.getCurrentUser();
       setCurrentUser(user);
@@ -54,7 +76,7 @@ const TaskAssignmentScreen = ({ navigation }) => {
     }
   };
 
-  const handleAssignTask = async () => {
+  const handleAssignTask = async (): Promise<void> => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a task title');
       return;
@@ -65,12 +87,22 @@ const TaskAssignmentScreen = ({ navigation }) => {
       return;
     }
 
+    if (!currentUser) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+
     setLoading(true);
 
     try {
       // Determine the assignee (the ADHD user in the partnership)
       const assignedTo =
         partnership.adhdUserId === currentUser.id ? partnership.partnerId : partnership.adhdUserId;
+
+      if (!assignedTo) {
+        Alert.alert('Error', 'Partnership user not found');
+        return;
+      }
 
       // Create the task
       const newTask = createTask({
@@ -125,7 +157,7 @@ const TaskAssignmentScreen = ({ navigation }) => {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (): void => {
     setTitle('');
     setDescription('');
     setPriority(TASK_PRIORITY.MEDIUM);
@@ -135,17 +167,17 @@ const TaskAssignmentScreen = ({ navigation }) => {
     setTimeEstimate(30);
   };
 
-  const PriorityButton = ({ value, label, icon, color }) => (
+  const PriorityButton: React.FC<PriorityButtonProps> = ({ value, label, icon, color }) => (
     <TouchableOpacity
       style={[styles.priorityButton, priority === value && { backgroundColor: color + '20' }]}
       onPress={() => setPriority(value)}
     >
-      <Ionicons name={icon} size={24} color={priority === value ? color : '#BDC3C7'} />
+      <Ionicons name={icon as any} size={24} color={priority === value ? color : '#BDC3C7'} />
       <Text style={[styles.priorityLabel, priority === value && { color }]}>{label}</Text>
     </TouchableOpacity>
   );
 
-  const TimeEstimateButton = ({ minutes, label }) => (
+  const TimeEstimateButton: React.FC<TimeEstimateButtonProps> = ({ minutes, label }) => (
     <TouchableOpacity
       style={[styles.timeButton, timeEstimate === minutes && styles.timeButtonActive]}
       onPress={() => setTimeEstimate(minutes)}
@@ -157,6 +189,20 @@ const TaskAssignmentScreen = ({ navigation }) => {
       </Text>
     </TouchableOpacity>
   );
+
+  const handleDueDateChange = (event: DateTimePickerEvent, selectedDate?: Date): void => {
+    setShowDueDatePicker(false);
+    if (selectedDate) {
+      setDueDate(selectedDate);
+    }
+  };
+
+  const handleStartTimeChange = (event: DateTimePickerEvent, selectedTime?: Date): void => {
+    setShowStartTimePicker(false);
+    if (selectedTime) {
+      setPreferredStartTime(selectedTime);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -266,7 +312,7 @@ const TaskAssignmentScreen = ({ navigation }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Category</Text>
             <View style={styles.categoryContainer}>
-              {Object.values(TASK_CATEGORIES).map((cat) => (
+              {Object.values(TASK_CATEGORIES).map((cat: TaskCategory) => (
                 <TouchableOpacity
                   key={cat.id}
                   style={[
@@ -300,12 +346,7 @@ const TaskAssignmentScreen = ({ navigation }) => {
           mode="date"
           display="default"
           minimumDate={new Date()}
-          onChange={(event, selectedDate) => {
-            setShowDueDatePicker(false);
-            if (selectedDate) {
-              setDueDate(selectedDate);
-            }
-          }}
+          onChange={handleDueDateChange}
         />
       )}
 
@@ -314,12 +355,7 @@ const TaskAssignmentScreen = ({ navigation }) => {
           value={preferredStartTime || new Date()}
           mode="time"
           display="default"
-          onChange={(event, selectedTime) => {
-            setShowStartTimePicker(false);
-            if (selectedTime) {
-              setPreferredStartTime(selectedTime);
-            }
-          }}
+          onChange={handleStartTimeChange}
         />
       )}
     </KeyboardAvoidingView>

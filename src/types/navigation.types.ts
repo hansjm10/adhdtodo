@@ -82,3 +82,6 @@ export type MainTabParamList = {
   Partnership: undefined;
   Profile: undefined;
 };
+
+// Generic navigation prop for screens that don't need specific navigation
+export type NavigationProp = StackNavigationProp<RootStackParamList>;
