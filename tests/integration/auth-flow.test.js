@@ -1,13 +1,20 @@
 // ABOUTME: Integration tests for complete authentication flows
 // Tests registration, login, logout, and session persistence
 
-import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import {
+  renderWithProviders,
+  fireEvent,
+  waitFor,
+  createMockUser,
+  mockAsyncCall,
+  mockAsyncError,
+  mockAsyncStorage,
+} from '../utils';
 import {
   renderApp,
   renderAppWithAuth,
   clearAllStorage,
-  createTestUser,
   setupMocks,
   cleanupIntegrationTest,
   mockAuthService,
@@ -55,8 +62,8 @@ describe('Authentication Flow Integration Tests', () => {
       fireEvent.changeText(nameInput, 'New User');
 
       // Mock successful registration
-      const newUser = createTestUser({ email: 'newuser123@example.com', name: 'New User' });
-      mockAuthService.signUp.mockResolvedValue({
+      const newUser = createMockUser({ email: 'newuser123@example.com', name: 'New User' });
+      mockAuthService.signUp = mockAsyncCall({
         success: true,
         user: newUser,
       });
@@ -91,7 +98,7 @@ describe('Authentication Flow Integration Tests', () => {
       fireEvent.changeText(getByPlaceholderText('Name'), 'Existing User');
 
       // Mock registration failure
-      mockAuthService.signUp.mockResolvedValue({
+      mockAuthService.signUp = mockAsyncCall({
         success: false,
         error: 'Username already exists',
       });

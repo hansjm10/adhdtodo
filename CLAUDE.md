@@ -278,6 +278,27 @@ When implementing features for ADHD users:
 - Test on real devices/simulators
 - Use Detox or similar framework
 
+### Test Utilities
+
+We have a comprehensive test utilities library to standardize testing:
+
+- **Location**: `tests/utils/`
+- **Documentation**: `docs/testing/TESTING_GUIDE.md` and `docs/testing/TEST_EXAMPLES.md`
+- **Key Features**:
+  - `renderWithProviders`: Render components with all contexts
+  - Mock factories for Users, Tasks, and Notifications
+  - Navigation testing helpers
+  - Async operation helpers
+  - Component state testing helpers
+
+**Usage**:
+
+```javascript
+import { renderWithProviders, createMockUser, mockAsyncCall } from '../tests/utils';
+```
+
+See the [Testing Guide](docs/testing/TESTING_GUIDE.md) for detailed usage instructions.
+
 ## Important Context
 
 ### Environment Variables
