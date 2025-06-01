@@ -2,21 +2,23 @@
 // Verifies task listing, empty states, and navigation with context providers
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import {
+  renderWithProviders,
+  fireEvent,
+  waitFor,
+  createMockUser,
+  createMockTask,
+  mockAsyncCall,
+  createNavigationMock,
+} from '../../../tests/utils';
 import TaskListScreen from '../TaskListScreen';
-import { AppProvider } from '../../contexts/AppProvider';
-import { createTask } from '../../utils/TaskModel';
 import { TASK_CATEGORIES } from '../../constants/TaskConstants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createTask } from '../../utils/TaskModel'; // Still needed for some tests
+import { render } from '@testing-library/react-native'; // Still needed for some tests
+import { AppProvider } from '../../contexts/AppProvider'; // Still needed for TestWrapper
 
-// Mock dependencies
-jest.mock('@react-native-async-storage/async-storage');
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: jest.fn(),
-  }),
-  useFocusEffect: jest.fn((callback) => callback()),
-}));
+// Test wrapper component with contexts - still used in some tests
+const TestWrapper = ({ children }) => <AppProvider>{children}</AppProvider>;
 
 // Mock TaskStorageService at the module level
 jest.mock('../../services/TaskStorageService', () => ({
@@ -29,22 +31,8 @@ jest.mock('../../services/TaskStorageService', () => ({
 // Import after mocking
 const TaskStorageService = require('../../services/TaskStorageService');
 
-// Test wrapper component with contexts
-const TestWrapper = ({ children }) => <AppProvider>{children}</AppProvider>;
-
-// Helper to wait for contexts to load
-const _waitForContextsToLoad = async (getByTestId) => {
-  // Wait for any loading states to complete
-  await waitFor(
-    () => {
-      expect(getByTestId('task-list')).toBeTruthy();
-    },
-    { timeout: 3000 },
-  );
-};
-
 describe('TaskListScreen', () => {
-  const mockUser = { id: 'user1', name: 'Test User' };
+  const mockUser = createMockUser({ id: 'user1', name: 'Test User' });
 
   // Increase timeout for these tests
   jest.setTimeout(10000);
@@ -55,25 +43,16 @@ describe('TaskListScreen', () => {
     require('../../contexts/TaskContext')._resetCache();
     require('../../contexts/NotificationContext')._resetNotifications();
 
-    // Setup default mocks - by default, return a logged in user
-    AsyncStorage.getItem.mockImplementation((key) => {
-      if (key === 'currentUser') {
-        return Promise.resolve(JSON.stringify(mockUser));
-      }
-      return Promise.resolve(null);
-    });
-    AsyncStorage.setItem.mockResolvedValue(undefined);
-    TaskStorageService.getAllTasks.mockResolvedValue([]);
+    // Setup default mocks
+    TaskStorageService.getAllTasks = mockAsyncCall([]);
   });
 
   it('should show empty state when no tasks exist', async () => {
-    TaskStorageService.getAllTasks.mockResolvedValue([]);
+    TaskStorageService.getAllTasks = mockAsyncCall([]);
 
-    const { getByText } = render(
-      <TestWrapper>
-        <TaskListScreen />
-      </TestWrapper>,
-    );
+    const { getByText } = renderWithProviders(<TaskListScreen />, {
+      initialState: { user: mockUser },
+    });
 
     await waitFor(() => {
       expect(getByText('No tasks yet')).toBeTruthy();
@@ -83,12 +62,12 @@ describe('TaskListScreen', () => {
 
   it('should display list of tasks', async () => {
     const mockTasks = [
-      createTask({ title: 'Task 1', description: 'Description 1', userId: 'user1' }),
-      createTask({ title: 'Task 2', category: TASK_CATEGORIES.WORK.id, userId: 'user1' }),
-      createTask({ title: 'Task 3', timeEstimate: 30, userId: 'user1' }),
+      createMockTask({ title: 'Task 1', description: 'Description 1', userId: 'user1' }),
+      createMockTask({ title: 'Task 2', category: TASK_CATEGORIES.WORK.id, userId: 'user1' }),
+      createMockTask({ title: 'Task 3', timeEstimate: 30, userId: 'user1' }),
     ];
 
-    TaskStorageService.getAllTasks.mockResolvedValue(mockTasks);
+    TaskStorageService.getAllTasks = mockAsyncCall(mockTasks);
 
     const { getByText, getByTestId } = render(
       <TestWrapper>
@@ -114,38 +93,32 @@ describe('TaskListScreen', () => {
   });
 
   it('should have add task button', () => {
-    TaskStorageService.getAllTasks.mockResolvedValue([]);
+    TaskStorageService.getAllTasks = mockAsyncCall([]);
 
-    const { getByTestId } = render(
-      <TestWrapper>
-        <TaskListScreen />
-      </TestWrapper>,
-    );
+    const { getByTestId } = renderWithProviders(<TaskListScreen />, {
+      initialState: { user: mockUser },
+    });
 
     expect(getByTestId('add-task-button')).toBeTruthy();
   });
 
   it('should navigate to create task screen when add button pressed', () => {
-    const mockNavigate = jest.fn();
-    jest.spyOn(require('@react-navigation/native'), 'useNavigation').mockReturnValue({
-      navigate: mockNavigate,
+    const navigation = createNavigationMock();
+    jest.spyOn(require('@react-navigation/native'), 'useNavigation').mockReturnValue(navigation);
+
+    TaskStorageService.getAllTasks = mockAsyncCall([]);
+
+    const { getByTestId } = renderWithProviders(<TaskListScreen />, {
+      initialState: { user: mockUser },
     });
-
-    TaskStorageService.getAllTasks.mockResolvedValue([]);
-
-    const { getByTestId } = render(
-      <TestWrapper>
-        <TaskListScreen />
-      </TestWrapper>,
-    );
 
     fireEvent.press(getByTestId('add-task-button'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('CreateTask');
+    expect(navigation.navigate).toHaveBeenCalledWith('CreateTask');
   });
 
   it('should refresh tasks on focus', async () => {
-    const mockTasks = [createTask({ title: 'Task 1', userId: 'user1' })];
+    const mockTasks = [createMockTask({ title: 'Task 1', userId: 'user1' })];
     TaskStorageService.getAllTasks.mockResolvedValue(mockTasks);
 
     render(

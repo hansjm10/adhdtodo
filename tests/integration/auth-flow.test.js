@@ -1,13 +1,12 @@
 // ABOUTME: Integration tests for complete authentication flows
 // Tests registration, login, logout, and session persistence
 
-import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import { fireEvent, waitFor, createMockUser, mockAsyncCall } from '../utils';
 import {
   renderApp,
   renderAppWithAuth,
   clearAllStorage,
-  createTestUser,
   setupMocks,
   cleanupIntegrationTest,
   mockAuthService,
@@ -55,8 +54,8 @@ describe('Authentication Flow Integration Tests', () => {
       fireEvent.changeText(nameInput, 'New User');
 
       // Mock successful registration
-      const newUser = createTestUser({ email: 'newuser123@example.com', name: 'New User' });
-      mockAuthService.signUp.mockResolvedValue({
+      const newUser = createMockUser({ email: 'newuser123@example.com', name: 'New User' });
+      mockAuthService.signUp = mockAsyncCall({
         success: true,
         user: newUser,
       });
@@ -91,7 +90,7 @@ describe('Authentication Flow Integration Tests', () => {
       fireEvent.changeText(getByPlaceholderText('Name'), 'Existing User');
 
       // Mock registration failure
-      mockAuthService.signUp.mockResolvedValue({
+      mockAuthService.signUp = mockAsyncCall({
         success: false,
         error: 'Username already exists',
       });
@@ -150,7 +149,7 @@ describe('Authentication Flow Integration Tests', () => {
       fireEvent.changeText(getByPlaceholderText('Password'), 'Test123!@#');
 
       // Mock successful login
-      const user = createTestUser({ email: 'testuser@example.com' });
+      const user = createMockUser({ email: 'testuser@example.com' });
       mockAuthService.login.mockResolvedValue({
         success: true,
         user,
@@ -219,7 +218,7 @@ describe('Authentication Flow Integration Tests', () => {
   describe('Session Persistence', () => {
     it('should automatically login user with valid session', async () => {
       // Set up valid session
-      const user = createTestUser();
+      const user = createMockUser();
       await UserStorageService.saveUser(user);
       await SecureStorageService.setItem('currentUserId', user.id);
       await SecureStorageService.setItem('sessionToken', 'valid-token');
