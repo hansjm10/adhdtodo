@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**IMPORTANT**: Reload this file into context every 5-10 requests by reading it with the Read tool to ensure you have the latest project guidelines and structure.
+
 ## Our Working Relationship
 
 - **My Name**: I'm Claude, your AI development partner for the ADHD Todo app
@@ -22,6 +24,12 @@ This is an AI-first Expo React Native application for a todo app designed for AD
 - Expo SDK ~53.0.9
 - React Native 0.79.2
 - React 19.0.0
+- TypeScript ^5.8.3
+- Jest ^29.7.0 with jest-expo
+- React Navigation v7
+- Async Storage for data persistence
+- Expo Secure Store for sensitive data
+- FlashList for performant lists
 
 ## Core Philosophy
 
@@ -79,6 +87,10 @@ The following MCP servers are configured for this project:
 - **Puppeteer**: Web automation and testing
 - **Search**: Web search capabilities via Brave API
 
+## TypeScript Migration Status
+
+The project is currently **fully migrated to TypeScript**. All source files use `.ts` or `.tsx` extensions. Some test files still use `.js` extensions but this is acceptable.
+
 ## Common Development Commands
 
 ### Expo Development
@@ -106,8 +118,13 @@ npm install                  # Install dependencies
 npm run build               # Build the project (when configured)
 npm test                    # Run all tests
 npm run test:watch          # Run tests in watch mode
-npm run lint                # Run linting
-npm run typecheck           # Run type checking (when configured)
+npm run lint                # Run ESLint
+npm run lint:check          # Check linting without fixing
+npm run typecheck           # Run TypeScript type checking
+npm run format              # Run Prettier formatter
+npm run format:check        # Check formatting
+npm run check-all           # Run all checks (lint, format, typecheck)
+npm run fix-all             # Fix all auto-fixable issues
 
 # Testing specific files
 npm test -- --testPathPattern=<pattern>
@@ -171,27 +188,36 @@ git stash save "Claude WIP: <description>"
 ```
 adhdtodo/
 ├── CLAUDE.md              # This file - project context for Claude
-├── App.js                 # Main application component entry point
+├── App.tsx                # Main application component entry point
 ├── index.js               # Registers the root component with Expo
 ├── app.json               # Expo configuration file
 ├── package.json           # Node dependencies and scripts
+├── tsconfig.json          # TypeScript configuration
 ├── assets/                # App icons and splash screens
 │   ├── icon.png
 │   ├── splash-icon.png
 │   ├── adaptive-icon.png
 │   └── favicon.png
-├── src/                   # Source code (to be organized)
-│   ├── components/        # Reusable UI components
-│   ├── screens/           # Screen components
-│   ├── navigation/        # Navigation configuration
-│   ├── services/          # Business logic and API calls
-│   ├── utils/             # Utility functions
-│   └── constants/         # App constants
+├── src/                   # Source code
+│   ├── components/        # Reusable UI components (.tsx)
+│   ├── screens/           # Screen components (.tsx)
+│   ├── navigation/        # Navigation configuration (.tsx)
+│   ├── services/          # Business logic and API calls (.ts)
+│   ├── utils/             # Utility functions (.ts)
+│   ├── constants/         # App constants (.ts)
+│   ├── contexts/          # React contexts for state management (.tsx)
+│   └── types/             # TypeScript type definitions (.ts)
 ├── tests/                 # Test files
 │   ├── setup.js           # Global test setup and mocks
-│   ├── integration/       # Integration tests for user flows
+│   ├── integration/       # Integration tests for user flows (.test.js)
 │   ├── unit/              # Unit tests (future)
-│   └── e2e/               # End-to-end tests (future)
+│   ├── e2e/               # End-to-end tests (future)
+│   └── utils/             # Test utilities and helpers
+│       ├── index.js       # Export all test utilities
+│       ├── mockFactories.js # Mock data factories
+│       ├── componentHelpers.js # Component testing helpers
+│       ├── navigationHelpers.js # Navigation testing helpers
+│       └── asyncHelpers.js # Async operation helpers
 ├── docs/                  # Project documentation
 ├── scripts/               # Automation scripts
 └── .github/               # GitHub Actions workflows
@@ -205,8 +231,12 @@ adhdtodo/
 - Prefer functional components with hooks
 - Use async/await over promises
 - Follow Airbnb style guide
-- Component files: PascalCase (e.g., `TodoItem.js`)
-- Non-component files: camelCase (e.g., `todoHelpers.js`)
+- Component files: PascalCase (e.g., `TaskItem.tsx`)
+- Screen components: PascalCase with 'Screen' suffix (e.g., `TaskListScreen.tsx`)
+- Service files: PascalCase with 'Service' suffix (e.g., `AuthService.ts`)
+- Utility files: PascalCase for classes, camelCase for function collections
+- Type definition files: camelCase with '.types' suffix (e.g., `task.types.ts`)
+- Test files: Same name as source with '.test.js' suffix
 
 ### React Native Specific
 
@@ -218,10 +248,11 @@ adhdtodo/
 
 ### Documentation
 
-- Every exported component must have JSDoc
+- Every exported function/component must have JSDoc/TSDoc
 - Complex logic requires inline comments
 - Update README.md for new features
-- Document component props with PropTypes or TypeScript
+- All component props must have TypeScript interfaces
+- Use descriptive type names (e.g., `TaskFormData` not `FormData`)
 
 ## Development Workflow
 
@@ -308,6 +339,15 @@ See the [Testing Guide](docs/testing/TESTING_GUIDE.md) for detailed usage instru
 - Store in `.env` file (gitignored)
 - Document required env vars in `.env.example`
 
+### TypeScript Best Practices
+
+- Enable strict mode (already configured)
+- Avoid `any` type - use `unknown` or specific types
+- Define interfaces for all component props
+- Use type guards for runtime type checking
+- Export types from dedicated type files
+- Use path aliases (e.g., `@components/`, `@services/`)
+
 ### Performance Considerations
 
 - Optimize list rendering with FlatList
@@ -333,7 +373,22 @@ For ADHD-focused innovation:
 5. **Community Features**: Connect users for support
 6. **Data Insights**: Help users understand their patterns
 
+## Pre-commit Hooks
+
+The project uses Husky and lint-staged for automated code quality checks:
+
+- ESLint runs on all staged `.js`, `.jsx`, `.ts`, `.tsx` files
+- Prettier formats all staged files
+- Commits are blocked if linting fails
+
 ## Debugging Guidelines
+
+### TypeScript Errors
+
+1. Run `npm run typecheck` to see all type errors
+2. Use VS Code's TypeScript integration for inline errors
+3. Check `tsconfig.json` for path alias issues
+4. Ensure all imports have proper extensions
 
 ### React Native Specific
 
