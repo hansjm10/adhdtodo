@@ -1,7 +1,7 @@
 // ABOUTME: Partnership management screen for viewing and managing accountability partnerships
 // Displays current partnership status, allows invite creation, and partnership settings
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -63,18 +63,14 @@ interface Styles {
   endPartnershipText: TextStyle;
 }
 
-const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => {
+const PartnershipScreen = ({ navigation }: PartnershipScreenProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [partnership, setPartnership] = useState<Partnership | null>(null);
   const [partner, setPartner] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPartnershipData();
-  }, []);
-
-  const loadPartnershipData = async (): Promise<void> => {
+  const loadPartnershipData = useCallback(async (): Promise<void> => {
     try {
       const user = await UserStorageService.getCurrentUser();
       setCurrentUser(user);
@@ -99,9 +95,9 @@ const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => 
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const createInvite = async (): Promise<void> => {
+  const createInvite = useCallback(async (): Promise<void> => {
     try {
       if (!currentUser) return;
 
@@ -125,9 +121,9 @@ const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => 
     } catch (error) {
       Alert.alert('Error', 'Failed to create invite');
     }
-  };
+  }, [currentUser]);
 
-  const shareInviteCode = async (): Promise<void> => {
+  const shareInviteCode = useCallback(async (): Promise<void> => {
     if (!inviteCode || !currentUser) return;
 
     try {
@@ -139,13 +135,13 @@ const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => 
     } catch (error) {
       Alert.alert('Error', 'Failed to share invite code');
     }
-  };
+  }, [inviteCode, currentUser]);
 
-  const navigateToInviteScreen = (): void => {
+  const navigateToInviteScreen = useCallback((): void => {
     navigation.navigate('PartnerInvite');
-  };
+  }, [navigation]);
 
-  const endPartnership = async (): Promise<void> => {
+  const endPartnership = useCallback(async (): Promise<void> => {
     if (!partnership) return;
 
     Alert.alert(
@@ -171,7 +167,11 @@ const PartnershipScreen: React.FC<PartnershipScreenProps> = ({ navigation }) => 
         },
       ],
     );
-  };
+  }, [partnership, loadPartnershipData]);
+
+  useEffect(() => {
+    loadPartnershipData();
+  }, [loadPartnershipData]);
 
   if (loading) {
     return (

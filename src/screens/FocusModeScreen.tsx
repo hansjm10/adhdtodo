@@ -33,7 +33,7 @@ interface LegacyTask extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' 
 type FocusModeScreenNavigationProp = StackNavigationProp<FocusStackParamList, 'FocusMode'>;
 type FocusMode = 'hyperfocus' | 'scattered' | null;
 
-const FocusModeScreen: React.FC = () => {
+const FocusModeScreen = () => {
   const navigation = useNavigation<FocusModeScreenNavigationProp>();
   const [selectedMode, setSelectedMode] = useState<FocusMode>(null);
   const [selectedTask, setSelectedTask] = useState<LegacyTask | null>(null);

@@ -2,11 +2,11 @@
 // Verifies that FlashList is used for better performance
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { renderWithProviders, waitFor } from '../../../tests/utils';
 import TaskListScreen from '../TaskListScreen';
-import { AppProvider } from '../../contexts/AppProvider';
 import { createTask } from '../../utils/TaskModel';
+import * as TaskContext from '../../contexts/TaskContext';
+import * as UserContext from '../../contexts/UserContext';
 
 // Mock dependencies
 jest.mock('@react-native-async-storage/async-storage');
@@ -21,8 +21,6 @@ jest.mock('../../services/TaskStorageService', () => ({
   deleteTask: jest.fn(),
 }));
 
-const TaskStorageService = require('../../services/TaskStorageService');
-
 // Mock navigation
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -32,31 +30,45 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const wrapper = ({ children }) => (
-  <AppProvider>
-    <NavigationContainer>{children}</NavigationContainer>
-  </AppProvider>
-);
+// Mock user context
+const mockUser = {
+  id: 'user-1',
+  username: 'testuser',
+  role: 'ADHD',
+  notifications: [],
+};
+
+// Mock task context - convert to legacy format with isComplete
+const mockTasks = [
+  { ...createTask({ id: '1', title: 'Task 1', category: 'home', userId: 'user-1' }), isComplete: false },
+  { ...createTask({ id: '2', title: 'Task 2', category: 'work', userId: 'user-1' }), isComplete: false },
+  { ...createTask({ id: '3', title: 'Task 3', category: 'personal', userId: 'user-1' }), isComplete: false },
+];
 
 describe('TaskListScreen - FlashList Performance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockNavigate.mockClear();
 
-    // Setup default mocks
-    const mockTasks = [
-      createTask({ id: '1', title: 'Task 1', category: 'home' }),
-      createTask({ id: '2', title: 'Task 2', category: 'work' }),
-      createTask({ id: '3', title: 'Task 3', category: 'personal' }),
-    ];
+    // Mock the context hooks
+    jest.spyOn(UserContext, 'useUser').mockReturnValue({
+      user: mockUser,
+      partner: null,
+      setUser: jest.fn(),
+      setPartner: jest.fn(),
+    });
 
-    TaskStorageService.getAllTasks.mockResolvedValue(mockTasks);
-    TaskStorageService.getAllTasksFromCategories.mockResolvedValue(mockTasks);
-    TaskStorageService.getTasksByCategory.mockResolvedValue(mockTasks);
+    jest.spyOn(TaskContext, 'useTasks').mockReturnValue({
+      tasks: mockTasks,
+      refreshTasks: jest.fn(),
+      addTask: jest.fn(),
+      updateTask: jest.fn(),
+      deleteTask: jest.fn(),
+    });
   });
 
   it('should use FlashList instead of FlatList for better performance', async () => {
-    const { getByTestId } = render(<TaskListScreen />, { wrapper });
+    const { getByTestId } = renderWithProviders(<TaskListScreen />);
 
     await waitFor(() => {
       expect(getByTestId('task-list')).toBeTruthy();
@@ -68,11 +80,11 @@ describe('TaskListScreen - FlashList Performance', () => {
   });
 
   it('should render tasks properly', async () => {
-    const { findByText } = render(<TaskListScreen />, { wrapper });
+    const { findByText } = renderWithProviders(<TaskListScreen />);
 
     // Verify tasks are rendered
-    await waitFor(() => {
-      expect(findByText('Task 1')).toBeTruthy();
+    await waitFor(async () => {
+      expect(await findByText('Task 1')).toBeTruthy();
     });
 
     expect(await findByText('Task 2')).toBeTruthy();
@@ -83,19 +95,27 @@ describe('TaskListScreen - FlashList Performance', () => {
     // Create a large list of tasks
     const largeMockTasks = [];
     for (let i = 0; i < 100; i++) {
-      largeMockTasks.push(
-        createTask({
+      largeMockTasks.push({
+        ...createTask({
           id: `task-${i}`,
           title: `Task ${i}`,
           category: i % 2 === 0 ? 'home' : 'work',
+          userId: 'user-1',
         }),
-      );
+        isComplete: false,
+      });
     }
 
-    TaskStorageService.getAllTasks.mockResolvedValue(largeMockTasks);
-    TaskStorageService.getAllTasksFromCategories.mockResolvedValue(largeMockTasks);
+    // Update the mock to return large list
+    jest.spyOn(TaskContext, 'useTasks').mockReturnValue({
+      tasks: largeMockTasks,
+      refreshTasks: jest.fn(),
+      addTask: jest.fn(),
+      updateTask: jest.fn(),
+      deleteTask: jest.fn(),
+    });
 
-    const { getByTestId, findByText } = render(<TaskListScreen />, { wrapper });
+    const { getByTestId, findByText } = renderWithProviders(<TaskListScreen />);
 
     await waitFor(() => {
       expect(getByTestId('task-list')).toBeTruthy();

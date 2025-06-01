@@ -2,7 +2,7 @@
 // Tests the complete signup process including validation, storage, and navigation
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { renderWithProviders, fireEvent, waitFor } from '../utils';
 import { Alert } from 'react-native';
 import AuthScreen from '../../src/screens/AuthScreen';
 import AuthService from '../../src/services/AuthService';
@@ -74,7 +74,7 @@ describe('Account Creation Integration Tests', () => {
   describe('Successful Account Creation', () => {
     it('should create a new account with all valid data', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -114,7 +114,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should create account with Partner role', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -140,7 +140,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should create account with Both role', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -168,7 +168,7 @@ describe('Account Creation Integration Tests', () => {
   describe('Email Validation', () => {
     it('should show error for empty email', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -189,7 +189,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for invalid email format', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -219,7 +219,7 @@ describe('Account Creation Integration Tests', () => {
       );
 
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -246,7 +246,7 @@ describe('Account Creation Integration Tests', () => {
   describe('Password Validation', () => {
     it('should show error for empty password', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -267,7 +267,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for password too short', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -292,7 +292,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for password missing uppercase', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -317,7 +317,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for password missing lowercase', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -342,7 +342,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for password missing number', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -364,7 +364,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for password missing special character', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -391,7 +391,7 @@ describe('Account Creation Integration Tests', () => {
   describe('Name Validation', () => {
     it('should show error for empty name', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -412,7 +412,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should show error for name with only spaces', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -436,7 +436,7 @@ describe('Account Creation Integration Tests', () => {
   describe('UI State and Navigation', () => {
     it('should show password hint text during signup', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByText } = render(<AuthScreen navigation={mockNavigation} />);
+      const { getByText } = renderWithProviders(<AuthScreen navigation={mockNavigation} />);
 
       // Switch to signup mode
       fireEvent.press(getByText('Sign Up'));
@@ -447,7 +447,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should toggle password visibility', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -470,7 +470,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should disable form inputs while loading', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -496,7 +496,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should reset form when switching between login and signup', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -529,7 +529,7 @@ describe('Account Creation Integration Tests', () => {
         return <AuthScreen {...props} navigation={mockNavigation} />;
       };
 
-      const { getByPlaceholderText, getByText } = render(<MockedAuthScreen />);
+      const { getByPlaceholderText, getByText } = renderWithProviders(<MockedAuthScreen />);
 
       // Switch to signup mode
       fireEvent.press(getByText('Sign Up'));
@@ -554,7 +554,7 @@ describe('Account Creation Integration Tests', () => {
   describe('Session Management', () => {
     it('should save session token after successful signup', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 
@@ -578,7 +578,7 @@ describe('Account Creation Integration Tests', () => {
 
     it('should verify session after signup', async () => {
       const mockNavigation = { reset: jest.fn() };
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = renderWithProviders(
         <AuthScreen navigation={mockNavigation} />,
       );
 

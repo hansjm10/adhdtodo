@@ -53,9 +53,6 @@ describe('HyperfocusScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    // Reset context caches
-    require('../../contexts/TaskContext')._resetCache();
-    require('../../contexts/NotificationContext')._resetNotifications();
 
     // Setup default mocks
     AsyncStorage.getItem.mockImplementation((key) => {

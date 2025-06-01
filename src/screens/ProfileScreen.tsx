@@ -21,7 +21,7 @@ import { USER_ROLE } from '../constants/UserConstants';
 import { ProfileScreenNavigationProp } from '../types/navigation.types';
 import { UserRole } from '../types/user.types';
 
-interface ProfileScreenProps {
+interface _ProfileScreenProps {
   navigation?: ProfileScreenNavigationProp;
 }
 
@@ -33,7 +33,7 @@ interface MenuItemProps {
   showArrow?: boolean;
 }
 
-const ProfileScreen: React.FC<ProfileScreenProps> = () => {
+const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user: currentUser } = useUser();
   const [loading, setLoading] = useState<boolean>(false);
@@ -93,13 +93,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = () => {
     );
   }
 
-  const MenuItem: React.FC<MenuItemProps> = ({
+  const MenuItem = ({
     icon,
     label,
     onPress,
     color = '#333',
     showArrow = true,
-  }) => (
+  }: MenuItemProps) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={loading}>
       <View style={styles.menuItemContent}>
         <Ionicons name={icon} size={24} color={color} style={styles.menuIcon} />

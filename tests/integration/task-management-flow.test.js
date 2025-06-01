@@ -1,7 +1,7 @@
 // ABOUTME: Integration tests for task management flows
 // Tests creating, viewing, editing, completing, and filtering tasks
 
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '../utils';
 import { Alert } from 'react-native';
 import {
   renderAppWithAuth,

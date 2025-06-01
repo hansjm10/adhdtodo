@@ -1,7 +1,7 @@
 // ABOUTME: Main navigation structure for the ADHD Todo app with authentication
 // Defines tab navigation with Tasks, Focus, Partnership, and Rewards screens
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, ActivityIndicator } from 'react-native';
@@ -74,18 +74,11 @@ type TasksStackProps = {
 };
 
 // Tasks Stack Navigator with notification support
-const TasksStack: React.FC<TasksStackProps> = ({ navigation }) => {
+const TasksStack = ({ navigation }: TasksStackProps) => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [, setCurrentUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    loadUnreadCount();
-    // Set up interval to check for new notifications
-    const interval = setInterval(loadUnreadCount, 10000); // Check every 10 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadUnreadCount = async (): Promise<void> => {
+  const loadUnreadCount = useCallback(async (): Promise<void> => {
     try {
       const user = await UserStorageService.getCurrentUser();
       if (user) {
@@ -97,7 +90,14 @@ const TasksStack: React.FC<TasksStackProps> = ({ navigation }) => {
     } catch (error) {
       // Error loading notification count
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUnreadCount();
+    // Set up interval to check for new notifications
+    const interval = setInterval(loadUnreadCount, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, [loadUnreadCount]);
 
   return (
     <Stack.Navigator>
@@ -125,7 +125,7 @@ const TasksStack: React.FC<TasksStackProps> = ({ navigation }) => {
 };
 
 // Focus Stack Navigator
-const FocusStack: React.FC = () => (
+const FocusStack = () => (
   <FocusStackNav.Navigator>
     <FocusStackNav.Screen
       name="FocusMode"
@@ -152,7 +152,7 @@ const FocusStack: React.FC = () => (
 );
 
 // Partnership Stack Navigator
-const PartnershipStack: React.FC = () => (
+const PartnershipStack = () => (
   <PartnershipStackNav.Navigator>
     <PartnershipStackNav.Screen
       name="Partnership"
@@ -192,7 +192,7 @@ type TabBarIconProps = {
 };
 
 // Main Tab Navigator
-const MainTabs: React.FC = () => {
+const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -253,7 +253,7 @@ const MainTabs: React.FC = () => {
 };
 
 // Loading Screen
-const LoadingScreen: React.FC = () => (
+const LoadingScreen = () => (
   <View
     style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}
   >
@@ -262,7 +262,7 @@ const LoadingScreen: React.FC = () => (
 );
 
 // Root Navigator with Authentication Flow
-const AppNavigator: React.FC = () => {
+const AppNavigator = () => {
   const { user, loading } = useUser();
   const isAuthenticated = !!user;
 

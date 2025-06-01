@@ -34,7 +34,7 @@ interface UserProviderProps {
   children: ReactNode;
 }
 
-export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
+export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUserState] = useState<User | null>(null);
   const [partner, setPartner] = useState<User | null>(null);
   const [partnership, setPartnership] = useState<Partnership | null>(null);

@@ -21,7 +21,7 @@ import { TASK_CATEGORIES, TIME_PRESETS, TaskCategory, TimePreset } from '../type
 import { useTasks } from '../contexts';
 import { EditTaskScreenNavigationProp, EditTaskScreenRouteProp } from '../types/navigation.types';
 
-const EditTaskScreen: React.FC = () => {
+const EditTaskScreen = () => {
   const navigation = useNavigation<EditTaskScreenNavigationProp>();
   const route = useRoute<EditTaskScreenRouteProp>();
   const { task } = route.params;

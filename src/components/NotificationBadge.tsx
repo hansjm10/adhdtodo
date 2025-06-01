@@ -10,7 +10,7 @@ interface NotificationBadgeProps {
   onPress: () => void;
 }
 
-const NotificationBadge: React.FC<NotificationBadgeProps> = ({ count, onPress }) => {
+const NotificationBadge = ({ count, onPress }: NotificationBadgeProps) => {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <Ionicons name="notifications-outline" size={24} color="#2C3E50" />

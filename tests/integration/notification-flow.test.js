@@ -1,7 +1,7 @@
 // ABOUTME: Integration tests for notification flows
 // Tests reminders, viewing, clearing, and various notification types
 
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '../utils';
 import { Alert } from 'react-native';
 import {
   renderAppWithAuth,
