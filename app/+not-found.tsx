@@ -8,7 +8,7 @@ export default function NotFoundScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>404 - Page Not Found</Text>
-      <Text style={styles.subtitle}>This screen doesn't exist.</Text>
+      <Text style={styles.subtitle}>This screen doesn&apos;t exist.</Text>
       <Link href="/" style={styles.link}>
         Go to home screen
       </Link>
