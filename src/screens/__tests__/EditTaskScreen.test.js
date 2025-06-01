@@ -12,13 +12,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock dependencies
 jest.mock('@react-native-async-storage/async-storage');
+// Create a mutable mock task that we can update
+let mockRouteTask = null;
+
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     goBack: jest.fn(),
   }),
   useRoute: () => ({
     params: {
-      taskId: 'test-task-id',
+      task: mockRouteTask,
     },
   }),
 }));
@@ -52,6 +55,9 @@ describe('EditTaskScreen', () => {
     // Reset context caches
     require('../../contexts/TaskContext')._resetCache();
     require('../../contexts/NotificationContext')._resetNotifications();
+
+    // Set the mock task for the route
+    mockRouteTask = mockTask;
 
     // Setup default mocks
     AsyncStorage.getItem.mockImplementation((key) => {
@@ -167,6 +173,8 @@ describe('EditTaskScreen', () => {
   });
 
   it('should handle task not found', async () => {
+    // Clear the mock task to simulate task not found
+    mockRouteTask = null;
     TaskStorageService.getAllTasks.mockResolvedValue([]);
 
     const { getByText } = render(
