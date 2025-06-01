@@ -7,6 +7,7 @@ import React, {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
   useRef,
   ReactNode,
 } from 'react';
@@ -51,63 +52,60 @@ interface TaskContextValue {
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
-// Cache to persist tasks between component unmounts
-let taskCache: LegacyTask[] | null = null;
-let cacheTimestamp: number | null = null;
+// Cache duration constant
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Export for testing purposes only
-export const _resetCache = () => {
-  taskCache = null;
-  cacheTimestamp = null;
-};
 
 interface TaskProviderProps {
   children: ReactNode;
 }
 
 export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
-  const [tasks, setTasks] = useState<LegacyTask[]>(taskCache || []);
-  const [loading, setLoading] = useState<boolean>(!taskCache);
+  const [tasks, setTasks] = useState<LegacyTask[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [taskCache, setTaskCache] = useState<LegacyTask[] | null>(null);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
   const isMountedRef = useRef<boolean>(true);
 
   // Load tasks from storage
-  const loadTasks = useCallback(async (forceRefresh: boolean = false): Promise<void> => {
-    try {
-      // Use cache if available and not expired
-      if (
-        !forceRefresh &&
-        taskCache &&
-        cacheTimestamp &&
-        Date.now() - cacheTimestamp < CACHE_DURATION
-      ) {
-        setTasks(taskCache);
-        setLoading(false);
-        return;
-      }
+  const loadTasks = useCallback(
+    async (forceRefresh: boolean = false): Promise<void> => {
+      try {
+        // Use cache if available and not expired
+        if (
+          !forceRefresh &&
+          taskCache &&
+          cacheTimestamp &&
+          Date.now() - cacheTimestamp < CACHE_DURATION
+        ) {
+          setTasks(taskCache);
+          setLoading(false);
+          return;
+        }
 
-      setLoading(true);
-      setError(null);
+        setLoading(true);
+        setError(null);
 
-      const loadedTasks = (await TaskStorageService.getAllTasks()) as unknown as LegacyTask[];
+        const loadedTasks = (await TaskStorageService.getAllTasks()) as unknown as LegacyTask[];
 
-      if (isMountedRef.current) {
-        setTasks(loadedTasks);
-        taskCache = loadedTasks;
-        cacheTimestamp = Date.now();
+        if (isMountedRef.current) {
+          setTasks(loadedTasks);
+          setTaskCache(loadedTasks);
+          setCacheTimestamp(Date.now());
+        }
+      } catch (err) {
+        if (isMountedRef.current) {
+          setError((err as Error).message);
+          console.error('Error loading tasks:', err);
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      if (isMountedRef.current) {
-        setError((err as Error).message);
-        console.error('Error loading tasks:', err);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
+    },
+    [taskCache, cacheTimestamp],
+  );
 
   // Load tasks on mount
   useEffect(() => {
@@ -165,8 +163,8 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
 
         const updatedTasks = [...tasks, newTask];
         setTasks(updatedTasks);
-        taskCache = updatedTasks;
-        cacheTimestamp = Date.now();
+        setTaskCache(updatedTasks);
+        setCacheTimestamp(Date.now());
       } catch (err) {
         setError((err as Error).message);
         console.error('Error adding task:', err);
@@ -192,8 +190,8 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
 
         const updatedTasks = tasks.map((task) => (task.id === taskId ? updatedTask : task));
         setTasks(updatedTasks);
-        taskCache = updatedTasks;
-        cacheTimestamp = Date.now();
+        setTaskCache(updatedTasks);
+        setCacheTimestamp(Date.now());
       } catch (err) {
         setError((err as Error).message);
         console.error('Error updating task:', err);
@@ -213,8 +211,8 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
 
         const updatedTasks = tasks.filter((task) => task.id !== taskId);
         setTasks(updatedTasks);
-        taskCache = updatedTasks;
-        cacheTimestamp = Date.now();
+        setTaskCache(updatedTasks);
+        setCacheTimestamp(Date.now());
       } catch (err) {
         setError((err as Error).message);
         console.error('Error deleting task:', err);
@@ -231,25 +229,41 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
 
   // Clear cache (useful for logout)
   const clearCache = useCallback((): void => {
-    taskCache = null;
-    cacheTimestamp = null;
+    setTaskCache(null);
+    setCacheTimestamp(null);
     setTasks([]);
   }, []);
 
-  const value: TaskContextValue = {
-    tasks,
-    loading,
-    error,
-    getTasksByUser,
-    getTasksByCategory,
-    getPendingTasks,
-    getTasksAssignedByUser,
-    addTask,
-    updateTask,
-    deleteTask,
-    refreshTasks,
-    clearCache,
-  };
+  const value = useMemo<TaskContextValue>(
+    () => ({
+      tasks,
+      loading,
+      error,
+      getTasksByUser,
+      getTasksByCategory,
+      getPendingTasks,
+      getTasksAssignedByUser,
+      addTask,
+      updateTask,
+      deleteTask,
+      refreshTasks,
+      clearCache,
+    }),
+    [
+      tasks,
+      loading,
+      error,
+      getTasksByUser,
+      getTasksByCategory,
+      getPendingTasks,
+      getTasksAssignedByUser,
+      addTask,
+      updateTask,
+      deleteTask,
+      refreshTasks,
+      clearCache,
+    ],
+  );
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
 };

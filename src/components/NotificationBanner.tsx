@@ -168,12 +168,19 @@ const NotificationBanner: React.FC<NotificationBannerProps> = ({
     ]).start();
 
     // Auto-dismiss after 5 seconds for non-critical notifications
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (shouldAutoDismiss()) {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         dismissBanner();
       }, 5000);
-      return () => clearTimeout(timer);
     }
+
+    // Always return cleanup function
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, []);
 
   // Dismiss animation

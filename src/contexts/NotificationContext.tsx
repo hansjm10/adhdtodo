@@ -7,6 +7,7 @@ import React, {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,11 +53,8 @@ interface NotificationProviderProps {
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
 
-// For testing purposes only
-let _notificationsList: InternalNotification[] = [];
-export const _resetNotifications = () => {
-  _notificationsList = [];
-};
+// Note: Module-level cache removed to prevent React Fast Refresh issues
+// Tests should use the context directly instead of module-level variables
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<InternalNotification[]>([]);
@@ -76,7 +74,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       if (storedNotifications) {
         const parsed = JSON.parse(storedNotifications) as InternalNotification[];
         setNotifications(parsed);
-        _notificationsList = parsed;
       }
     } catch (err) {
       setError((err as Error).message);
@@ -95,7 +92,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const saveNotifications = useCallback(async (newNotifications: InternalNotification[]) => {
     try {
       await AsyncStorage.setItem('notifications', JSON.stringify(newNotifications));
-      _notificationsList = newNotifications;
     } catch (err) {
       console.error('Error saving notifications:', err);
     }
@@ -196,7 +192,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
       setNotifications([]);
       await AsyncStorage.removeItem('notifications');
-      _notificationsList = [];
     } catch (err) {
       setError((err as Error).message);
       console.error('Error clearing notifications:', err);
@@ -216,19 +211,34 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     await loadNotifications();
   }, [loadNotifications]);
 
-  const value: NotificationContextValue = {
-    notifications,
-    unreadCount,
-    loading,
-    error,
-    addNotification,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    clearAllNotifications,
-    getNotificationsByType,
-    refreshNotifications,
-  };
+  const value = useMemo<NotificationContextValue>(
+    () => ({
+      notifications,
+      unreadCount,
+      loading,
+      error,
+      addNotification,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      clearAllNotifications,
+      getNotificationsByType,
+      refreshNotifications,
+    }),
+    [
+      notifications,
+      unreadCount,
+      loading,
+      error,
+      addNotification,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      clearAllNotifications,
+      getNotificationsByType,
+      refreshNotifications,
+    ],
+  );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 };
