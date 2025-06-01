@@ -3,7 +3,7 @@
 
 export enum NotificationPriority {
   LOW = 'low',
-  MEDIUM = 'medium', 
+  MEDIUM = 'medium',
   HIGH = 'high',
   URGENT = 'urgent',
 }
@@ -42,16 +42,20 @@ export interface NotificationContextValue {
 }
 
 // Type guard
-export function isNotification(obj: any): obj is Notification {
+export function isNotification(obj: unknown): obj is Notification {
+  if (!obj || typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const notification = obj as Record<string, unknown>;
+
   return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.id === 'string' &&
-    typeof obj.title === 'string' &&
-    typeof obj.message === 'string' &&
-    typeof obj.type === 'string' &&
-    Object.values(NotificationPriority).includes(obj.priority) &&
-    typeof obj.read === 'boolean' &&
-    obj.createdAt instanceof Date
+    typeof notification.id === 'string' &&
+    typeof notification.title === 'string' &&
+    typeof notification.message === 'string' &&
+    typeof notification.type === 'string' &&
+    Object.values(NotificationPriority).includes(notification.priority as NotificationPriority) &&
+    typeof notification.read === 'boolean' &&
+    notification.createdAt instanceof Date
   );
 }

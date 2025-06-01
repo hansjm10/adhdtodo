@@ -101,22 +101,30 @@ export interface Partnership {
 }
 
 // Type guards
-export function isUser(obj: any): obj is User {
+export function isUser(obj: unknown): obj is User {
+  if (!obj || typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const user = obj as Record<string, unknown>;
+
   return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.id === 'string' &&
-    typeof obj.email === 'string' &&
-    typeof obj.name === 'string' &&
-    Object.values(UserRole).includes(obj.role)
+    typeof user.id === 'string' &&
+    typeof user.email === 'string' &&
+    typeof user.name === 'string' &&
+    Object.values(UserRole).includes(user.role as UserRole)
   );
 }
 
-export function isPartnership(obj: any): obj is Partnership {
+export function isPartnership(obj: unknown): obj is Partnership {
+  if (!obj || typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const partnership = obj as Record<string, unknown>;
+
   return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.id === 'string' &&
-    Object.values(PartnershipStatus).includes(obj.status)
+    typeof partnership.id === 'string' &&
+    Object.values(PartnershipStatus).includes(partnership.status as PartnershipStatus)
   );
 }

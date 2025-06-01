@@ -4,15 +4,15 @@
 import * as SecureStore from 'expo-secure-store';
 
 export interface ISecureStorageService {
-  setItem(key: string, value: any): Promise<void>;
-  getItem<T = any>(key: string): Promise<T | null>;
+  setItem<T = unknown>(key: string, value: T): Promise<void>;
+  getItem<T = unknown>(key: string): Promise<T | null>;
   removeItem(key: string): Promise<void>;
   getAllKeys(): Promise<string[]>;
   clear(): Promise<void>;
-  multiGet(keys: string[]): Promise<Array<[string, any]>>;
-  multiSet(kvPairs: Array<[string, any]>): Promise<void>;
+  multiGet<T = unknown>(keys: string[]): Promise<Array<[string, T | null]>>;
+  multiSet<T = unknown>(kvPairs: Array<[string, T]>): Promise<void>;
   multiRemove(keys: string[]): Promise<void>;
-  mergeItem(key: string, value: Record<string, any>): Promise<void>;
+  mergeItem<T extends Record<string, unknown>>(key: string, value: T): Promise<void>;
 }
 
 class SecureStorageService implements ISecureStorageService {
@@ -25,7 +25,7 @@ class SecureStorageService implements ISecureStorageService {
     }
   }
 
-  async setItem(key: string, value: any): Promise<void> {
+  async setItem<T = unknown>(key: string, value: T): Promise<void> {
     this.validateKey(key);
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
@@ -39,7 +39,7 @@ class SecureStorageService implements ISecureStorageService {
     await SecureStore.setItemAsync(key, stringValue);
   }
 
-  async getItem<T = any>(key: string): Promise<T | null> {
+  async getItem<T = unknown>(key: string): Promise<T | null> {
     this.validateKey(key);
     const value = await SecureStore.getItemAsync(key);
     if (value === null) {
@@ -70,7 +70,7 @@ class SecureStorageService implements ISecureStorageService {
     throw new Error('SecureStore does not support clearing all items');
   }
 
-  async multiGet(keys: string[]): Promise<Array<[string, any]>> {
+  async multiGet<T = unknown>(keys: string[]): Promise<Array<[string, T | null]>> {
     if (!Array.isArray(keys)) {
       throw new Error('Keys must be an array');
     }
@@ -78,17 +78,17 @@ class SecureStorageService implements ISecureStorageService {
     const promises = keys.map(async (key) => {
       try {
         const value = await this.getItem(key);
-        return [key, value] as [string, any];
+        return [key, value] as [string, T | null];
       } catch (error) {
         console.error(`Error getting item for key ${key}:`, error);
-        return [key, null] as [string, any];
+        return [key, null] as [string, T | null];
       }
     });
 
     return Promise.all(promises);
   }
 
-  async multiSet(kvPairs: Array<[string, any]>): Promise<void> {
+  async multiSet<T = unknown>(kvPairs: Array<[string, T]>): Promise<void> {
     if (!Array.isArray(kvPairs)) {
       throw new Error('Key-value pairs must be an array');
     }
@@ -97,9 +97,13 @@ class SecureStorageService implements ISecureStorageService {
       try {
         await this.setItem(key, value);
         return { key, success: true };
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Error setting item for key ${key}:`, error);
-        return { key, success: false, error: error.message };
+        return {
+          key,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
     });
 
@@ -120,9 +124,13 @@ class SecureStorageService implements ISecureStorageService {
       try {
         await this.removeItem(key);
         return { key, success: true };
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Error removing item for key ${key}:`, error);
-        return { key, success: false, error: error.message };
+        return {
+          key,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
     });
 
@@ -134,14 +142,14 @@ class SecureStorageService implements ISecureStorageService {
     }
   }
 
-  async mergeItem(key: string, value: Record<string, any>): Promise<void> {
+  async mergeItem<T extends Record<string, unknown>>(key: string, value: T): Promise<void> {
     this.validateKey(key);
 
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       throw new Error('Value must be a non-null object for merging');
     }
 
-    const existing = await this.getItem<Record<string, any>>(key);
+    const existing = await this.getItem<Record<string, unknown>>(key);
 
     if (existing === null || typeof existing !== 'object' || Array.isArray(existing)) {
       // If no existing value or it's not an object, just set the new value

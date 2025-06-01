@@ -257,15 +257,15 @@ class TaskStorageService implements ITaskStorageService {
       await this.saveCategoryTasks(category, categoryTasks);
 
       // Update index
-      const index = (await SecureStorageService.getItem(TASK_INDEX_KEY) as TaskIndex) || {};
+      const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
       index[task.id] = category;
       await SecureStorageService.setItem(TASK_INDEX_KEY, index);
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       // If it's a size error, it means saveCategoryTasks failed to properly chunk
       // This shouldn't happen with proper chunking, but log it
-      if (error.message && error.message.includes('size exceeds')) {
+      if (error instanceof Error && error.message.includes('size exceeds')) {
         console.error('Size limit exceeded despite chunking:', error);
       }
       ErrorHandler.handleStorageError(error, 'save', () => this.saveTask(task));
@@ -278,7 +278,7 @@ class TaskStorageService implements ITaskStorageService {
       await this.checkAndMigrate();
 
       // Get task's current category from index
-      const index = (await SecureStorageService.getItem(TASK_INDEX_KEY) as TaskIndex) || {};
+      const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
       const oldCategory = index[updatedTask.id];
       const newCategory = updatedTask.category || 'uncategorized';
 
@@ -327,7 +327,7 @@ class TaskStorageService implements ITaskStorageService {
       await this.checkAndMigrate();
 
       // Get task's category from index
-      const index = (await SecureStorageService.getItem(TASK_INDEX_KEY) as TaskIndex) || {};
+      const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
       const category = index[taskId];
 
       if (!category) {

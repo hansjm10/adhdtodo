@@ -127,7 +127,11 @@ const TasksStack: React.FC<TasksStackProps> = ({ navigation }) => {
 // Focus Stack Navigator
 const FocusStack: React.FC = () => (
   <FocusStackNav.Navigator>
-    <FocusStackNav.Screen name="FocusMode" component={FocusModeScreen} options={{ title: 'Focus Modes' }} />
+    <FocusStackNav.Screen
+      name="FocusMode"
+      component={FocusModeScreen}
+      options={{ title: 'Focus Modes' }}
+    />
     <FocusStackNav.Screen
       name="Hyperfocus"
       component={HyperfocusScreen}
@@ -187,7 +191,6 @@ type TabBarIconProps = {
   size: number;
 };
 
-
 // Main Tab Navigator
 const MainTabs: React.FC = () => {
   return (
@@ -218,32 +221,32 @@ const MainTabs: React.FC = () => {
         name="Tasks"
         component={TasksStack}
         options={{
-          tabBarTestID: 'tab-tasks',
+          tabBarButtonTestID: 'tab-tasks',
           headerShown: false,
-        } as any}
+        }}
       />
       <Tab.Screen
         name="Focus"
         component={FocusStack}
         options={{
-          tabBarTestID: 'tab-focus',
+          tabBarButtonTestID: 'tab-focus',
           headerShown: false,
-        } as any}
+        }}
       />
       <Tab.Screen
         name="Partner"
         component={PartnershipStack}
         options={{
-          tabBarTestID: 'tab-partner',
+          tabBarButtonTestID: 'tab-partner',
           headerShown: false,
-        } as any}
+        }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarTestID: 'tab-profile',
-        } as any}
+          tabBarButtonTestID: 'tab-profile',
+        }}
       />
     </Tab.Navigator>
   );

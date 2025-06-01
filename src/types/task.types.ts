@@ -103,24 +103,32 @@ export const REWARD_POINTS = {
 } as const;
 
 // Type guards
-export function isTask(obj: any): obj is Task {
+export function isTask(obj: unknown): obj is Task {
+  if (!obj || typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const task = obj as Record<string, unknown>;
+
   return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.id === 'string' &&
-    typeof obj.title === 'string' &&
-    Object.values(TaskStatus).includes(obj.status) &&
-    Object.values(TaskPriority).includes(obj.priority)
+    typeof task.id === 'string' &&
+    typeof task.title === 'string' &&
+    Object.values(TaskStatus).includes(task.status as TaskStatus) &&
+    Object.values(TaskPriority).includes(task.priority as TaskPriority)
   );
 }
 
-export function isTaskCategory(obj: any): obj is TaskCategory {
+export function isTaskCategory(obj: unknown): obj is TaskCategory {
+  if (!obj || typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const category = obj as Record<string, unknown>;
+
   return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.id === 'string' &&
-    typeof obj.label === 'string' &&
-    typeof obj.color === 'string' &&
-    typeof obj.icon === 'string'
+    typeof category.id === 'string' &&
+    typeof category.label === 'string' &&
+    typeof category.color === 'string' &&
+    typeof category.icon === 'string'
   );
 }

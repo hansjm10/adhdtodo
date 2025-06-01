@@ -9,12 +9,21 @@ import { User, NotificationTypes } from '../types';
 import { Task } from '../types';
 
 export interface INotificationService {
-  sendNotification(toUserId: string, type: NotificationTypes, data: any): Promise<boolean>;
+  sendNotification(
+    toUserId: string,
+    type: NotificationTypes,
+    data: Record<string, unknown>,
+  ): Promise<boolean>;
   notifyTaskAssigned(task: Task, assignedByUser: User): Promise<boolean>;
   notifyTaskStarted(task: Task, startedByUser: User): Promise<boolean>;
   notifyTaskCompleted(task: Task, completedByUser: User): Promise<boolean>;
   notifyTaskOverdue(task: Task): Promise<boolean>;
-  sendEncouragement(fromUserId: string, toUserId: string, message: string, taskId?: string | null): Promise<boolean>;
+  sendEncouragement(
+    fromUserId: string,
+    toUserId: string,
+    message: string,
+    taskId?: string | null,
+  ): Promise<boolean>;
   sendCheckIn(fromUserId: string, toUserId: string, message: string): Promise<boolean>;
   getNotificationsForUser(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
@@ -26,7 +35,7 @@ export interface INotificationService {
 interface StoredNotification extends Omit<Notification, 'createdAt'> {
   toUserId: string;
   timestamp: Date;
-  data: any;
+  data: Record<string, unknown>;
 }
 
 class NotificationService implements INotificationService {
@@ -60,7 +69,11 @@ class NotificationService implements INotificationService {
     }
   }
 
-  async sendNotification(toUserId: string, type: NotificationTypes, data: any): Promise<boolean> {
+  async sendNotification(
+    toUserId: string,
+    type: NotificationTypes,
+    data: Record<string, unknown>,
+  ): Promise<boolean> {
     try {
       const user = await UserStorageService.getUserById(toUserId);
       if (!user) {
@@ -178,7 +191,12 @@ class NotificationService implements INotificationService {
     });
   }
 
-  async sendEncouragement(fromUserId: string, toUserId: string, message: string, taskId: string | null = null): Promise<boolean> {
+  async sendEncouragement(
+    fromUserId: string,
+    toUserId: string,
+    message: string,
+    taskId: string | null = null,
+  ): Promise<boolean> {
     const fromUser = await UserStorageService.getUserById(fromUserId);
     if (!fromUser) return false;
 
@@ -201,8 +219,13 @@ class NotificationService implements INotificationService {
 
   async getNotificationsForUser(userId: string): Promise<Notification[]> {
     // In a real app, this would fetch from a backend
-    // Return the stored notifications as-is to maintain compatibility with tests
-    return this.pendingNotifications.filter((n) => n.toUserId === userId) as any;
+    // Convert StoredNotification to Notification by mapping timestamp to createdAt
+    return this.pendingNotifications
+      .filter((n) => n.toUserId === userId)
+      .map((n) => ({
+        ...n,
+        createdAt: n.timestamp,
+      })) as Notification[];
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {
