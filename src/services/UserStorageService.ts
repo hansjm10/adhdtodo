@@ -2,6 +2,7 @@
 // Handles user authentication, profile management, and partnership connections
 
 import SecureStorageService from './SecureStorageService';
+import SecureLogger from './SecureLogger';
 import ErrorHandler from '../utils/ErrorHandler';
 import { User } from '../types/user.types';
 
@@ -77,7 +78,7 @@ class UserStorageService implements IUserStorageService {
       await SecureStorageService.setItem(STORAGE_KEYS.ALL_USERS, users);
       return true;
     } catch (error) {
-      console.error('Error saving user:', error);
+      SecureLogger.error('Failed to save user data', { code: 'USER_SAVE_001' });
       return false;
     }
   }
@@ -103,7 +104,7 @@ class UserStorageService implements IUserStorageService {
 
       return true;
     } catch (error) {
-      console.error('Error updating user:', error);
+      SecureLogger.error('Failed to update user data', { code: 'USER_UPDATE_001' });
       return false;
     }
   }
@@ -113,7 +114,7 @@ class UserStorageService implements IUserStorageService {
       const users = await this.getAllUsers();
       return users.find((u) => u.id === userId) || null;
     } catch (error) {
-      console.error('Error getting user by ID:', error);
+      SecureLogger.error('Failed to retrieve user by ID', { code: 'USER_GET_BY_ID_001' });
       return null;
     }
   }
@@ -123,7 +124,7 @@ class UserStorageService implements IUserStorageService {
       const users = await this.getAllUsers();
       return users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
     } catch (error) {
-      console.error('Error getting user by email:', error);
+      SecureLogger.error('Failed to retrieve user by email', { code: 'USER_GET_BY_EMAIL_001' });
       return null;
     }
   }
@@ -134,7 +135,7 @@ class UserStorageService implements IUserStorageService {
       await SecureStorageService.removeItem(STORAGE_KEYS.USER_TOKEN);
       return true;
     } catch (error) {
-      console.error('Error during logout:', error);
+      SecureLogger.error('Failed to complete logout operation', { code: 'USER_LOGOUT_001' });
       return false;
     }
   }
@@ -144,7 +145,7 @@ class UserStorageService implements IUserStorageService {
       await SecureStorageService.setItem(STORAGE_KEYS.USER_TOKEN, token);
       return true;
     } catch (error) {
-      console.error('Error saving user token:', error);
+      SecureLogger.error('Failed to save user token', { code: 'USER_TOKEN_SAVE_001' });
       return false;
     }
   }
@@ -153,7 +154,7 @@ class UserStorageService implements IUserStorageService {
     try {
       return await SecureStorageService.getItem<string>(STORAGE_KEYS.USER_TOKEN);
     } catch (error) {
-      console.error('Error getting user token:', error);
+      SecureLogger.error('Failed to retrieve user token', { code: 'USER_TOKEN_GET_001' });
       return null;
     }
   }
@@ -165,7 +166,7 @@ class UserStorageService implements IUserStorageService {
       await SecureStorageService.removeItem(STORAGE_KEYS.USER_TOKEN);
       return true;
     } catch (error) {
-      console.error('Error clearing users:', error);
+      SecureLogger.error('Failed to clear user data', { code: 'USER_CLEAR_001' });
       return false;
     }
   }

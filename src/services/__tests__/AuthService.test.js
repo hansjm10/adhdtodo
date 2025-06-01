@@ -389,7 +389,7 @@ describe('AuthService', () => {
       const result = await AuthService.resetPassword('test@example.com', 'NewPass123!');
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Password has been reset');
+      expect(result.message).toBe('If an account exists, the password has been reset');
       expect(updateUser).toHaveBeenCalledWith(
         mockUser,
         expect.objectContaining({

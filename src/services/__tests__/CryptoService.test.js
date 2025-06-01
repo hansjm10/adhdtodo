@@ -48,8 +48,8 @@ describe('CryptoService', () => {
 
       const hash = await CryptoService.hashPassword(password, salt);
 
-      // Should call digestStringAsync 10000 times (the iteration count)
-      expect(mockCrypto.digestStringAsync).toHaveBeenCalledTimes(10000);
+      // Should call digestStringAsync 100000 times (OWASP recommendation)
+      expect(mockCrypto.digestStringAsync).toHaveBeenCalledTimes(100000);
 
       // First call should be with password + salt
       expect(mockCrypto.digestStringAsync).toHaveBeenNthCalledWith(
@@ -60,7 +60,7 @@ describe('CryptoService', () => {
       );
 
       // Final hash should be from the last iteration
-      expect(hash).toBe('hash-iteration-10000');
+      expect(hash).toBe('hash-iteration-100000');
     });
 
     it('should throw error for empty password', async () => {
@@ -78,23 +78,25 @@ describe('CryptoService', () => {
     it('should produce different hashes for different passwords', async () => {
       const salt = '1234567890abcdef1234567890abcdef';
 
-      // Mock different outputs for different inputs
-      mockCrypto.digestStringAsync.mockImplementation((algo, data) => {
-        // Return different hash based on password in the data
-        if (data.includes('password1')) {
+      // Use a counter to track which password is being hashed
+      let callIndex = 0;
+      mockCrypto.digestStringAsync.mockImplementation(() => {
+        callIndex++;
+        // First 100000 calls are for password1!, next 100000 for password2!
+        if (callIndex <= 100000) {
           return Promise.resolve('hash-for-password1');
         }
         return Promise.resolve('hash-for-password2');
       });
 
-      const hash1 = await CryptoService.hashPassword('password1', salt);
-      const hash2 = await CryptoService.hashPassword('password2', salt);
+      const hash1 = await CryptoService.hashPassword('password1!', salt);
+      const hash2 = await CryptoService.hashPassword('password2!', salt);
 
       expect(hash1).not.toBe(hash2);
     });
 
     it('should produce different hashes for same password with different salts', async () => {
-      const password = 'testPassword';
+      const password = 'testPassword123!';
 
       // Mock different outputs for different salts
       mockCrypto.digestStringAsync.mockImplementation((algo, data) => {
@@ -114,7 +116,7 @@ describe('CryptoService', () => {
 
   describe('verifyPassword', () => {
     it('should verify correct password', async () => {
-      const password = 'correctPassword';
+      const password = 'correctPassword123!';
       const salt = '1234567890abcdef1234567890abcdef';
       const expectedHash = 'consistent-hash-value';
 
@@ -132,13 +134,13 @@ describe('CryptoService', () => {
 
       // First, generate hash for correct password
       mockCrypto.digestStringAsync.mockResolvedValue('hash-for-correct-password');
-      const hash = await CryptoService.hashPassword('correctPassword', salt);
+      const hash = await CryptoService.hashPassword('correctPassword123!', salt);
 
       // Clear mock and set different hash for wrong password
       mockCrypto.digestStringAsync.mockClear();
       mockCrypto.digestStringAsync.mockResolvedValue('hash-for-wrong-password');
 
-      const isValid = await CryptoService.verifyPassword('wrongPassword', hash, salt);
+      const isValid = await CryptoService.verifyPassword('wrongPassword123!', hash, salt);
 
       expect(isValid).toBe(false);
     });
