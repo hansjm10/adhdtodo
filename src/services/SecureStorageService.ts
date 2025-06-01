@@ -2,6 +2,7 @@
 // for sensitive data like user profiles, tokens, and tasks
 
 import * as SecureStore from 'expo-secure-store';
+import SecureLogger from './SecureLogger';
 
 export interface ISecureStorageService {
   setItem<T = unknown>(key: string, value: T): Promise<void>;
@@ -80,7 +81,9 @@ class SecureStorageService implements ISecureStorageService {
         const value = await this.getItem(key);
         return [key, value] as [string, T | null];
       } catch (error) {
-        console.error(`Error getting item for key ${key}:`, error);
+        SecureLogger.error('Failed to get item from secure storage', {
+          code: 'SECURE_STORE_GET_001',
+        });
         return [key, null] as [string, T | null];
       }
     });
@@ -98,7 +101,9 @@ class SecureStorageService implements ISecureStorageService {
         await this.setItem(key, value);
         return { key, success: true };
       } catch (error) {
-        console.error(`Error setting item for key ${key}:`, error);
+        SecureLogger.error('Failed to set item in secure storage', {
+          code: 'SECURE_STORE_SET_001',
+        });
         return {
           key,
           success: false,
@@ -111,7 +116,9 @@ class SecureStorageService implements ISecureStorageService {
     const failures = results.filter((r) => !r.success);
 
     if (failures.length > 0) {
-      console.warn('Some items failed to save:', failures);
+      SecureLogger.warn('Some items failed to save in secure storage', {
+        code: 'SECURE_STORE_MULTI_SET_001',
+      });
     }
   }
 
@@ -125,7 +132,9 @@ class SecureStorageService implements ISecureStorageService {
         await this.removeItem(key);
         return { key, success: true };
       } catch (error) {
-        console.error(`Error removing item for key ${key}:`, error);
+        SecureLogger.error('Failed to remove item from secure storage', {
+          code: 'SECURE_STORE_REMOVE_001',
+        });
         return {
           key,
           success: false,
@@ -138,7 +147,9 @@ class SecureStorageService implements ISecureStorageService {
     const failures = results.filter((r) => !r.success);
 
     if (failures.length > 0) {
-      console.warn('Some items failed to remove:', failures);
+      SecureLogger.warn('Some items failed to remove from secure storage', {
+        code: 'SECURE_STORE_MULTI_REMOVE_001',
+      });
     }
   }
 

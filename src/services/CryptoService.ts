@@ -18,6 +18,7 @@ export interface ICryptoService {
   parseSessionToken(token: string): SessionTokenInfo | null;
   isTokenExpired(token: string, maxAgeMs?: number): boolean;
   hashData(data: string): Promise<string>;
+  safeCompare(a: string, b: string): boolean;
 }
 
 class CryptoService implements ICryptoService {
@@ -39,9 +40,25 @@ class CryptoService implements ICryptoService {
       throw new Error('Salt must be a non-empty string');
     }
 
-    // Use multiple iterations of SHA-256 to simulate PBKDF2-like key stretching
-    // This is not as secure as proper PBKDF2 but provides reasonable protection
-    const iterations = 10000; // Reduced from 100k due to performance constraints
+    // Validate password strength
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters long');
+    }
+
+    if (password.length > 200) {
+      throw new Error('Password must not exceed 200 characters');
+    }
+
+    // Check for at least one number and one special character
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
+
+    if (!hasNumber || !hasSpecial) {
+      throw new Error('Password must contain at least one number and one special character');
+    }
+
+    // Use OWASP recommended 100,000 iterations for password hashing
+    const iterations = 100000;
 
     let hash = password + salt;
 
@@ -60,7 +77,7 @@ class CryptoService implements ICryptoService {
   // Verify a password against a hash
   async verifyPassword(password: string, hash: string, salt: string): Promise<boolean> {
     const computedHash = await this.hashPassword(password, salt);
-    return computedHash === hash;
+    return this.safeCompare(computedHash, hash);
   }
 
   // Generate a secure random token
@@ -101,8 +118,8 @@ class CryptoService implements ICryptoService {
     };
   }
 
-  // Check if a session token is expired (default 30 days)
-  isTokenExpired(token: string, maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): boolean {
+  // Check if a session token is expired (default 7 days for security)
+  isTokenExpired(token: string, maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): boolean {
     const parsed = this.parseSessionToken(token);
     if (!parsed || !parsed.isValid) {
       return true;
@@ -140,6 +157,25 @@ class CryptoService implements ICryptoService {
     });
 
     return hash;
+  }
+
+  // Constant-time string comparison to prevent timing attacks
+  safeCompare(a: string, b: string): boolean {
+    if (typeof a !== 'string' || typeof b !== 'string') {
+      return false;
+    }
+
+    // Always compare same-length strings to avoid timing differences
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+
+    return result === 0;
   }
 }
 

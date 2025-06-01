@@ -4,6 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
 import UserStorageService from './UserStorageService';
+import SecureLogger from './SecureLogger';
 import { Notification, NotificationPriority } from '../types';
 import { User, NotificationTypes } from '../types';
 import { Task } from '../types';
@@ -55,7 +56,7 @@ class NotificationService implements INotificationService {
         this.pendingNotifications = JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      SecureLogger.error('Failed to load notifications from storage', { code: 'NOTIF_LOAD_001' });
     }
   }
 
@@ -65,7 +66,7 @@ class NotificationService implements INotificationService {
       const toSave = this.pendingNotifications.slice(-this.MAX_NOTIFICATIONS);
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
     } catch (error) {
-      console.error('Error saving notifications:', error);
+      SecureLogger.error('Failed to save notifications to storage', { code: 'NOTIF_SAVE_001' });
     }
   }
 

@@ -3,6 +3,9 @@
 
 import CryptoService, { ICryptoService } from './CryptoService';
 import UserStorageService, { IUserStorageService } from './UserStorageService';
+import SecureLogger from './SecureLogger';
+import RateLimiter, { IRateLimiter } from './RateLimiter';
+import ValidationService from './ValidationService';
 import { createUser, validateUser, updateUser } from '../utils/UserModel';
 import { User, UserRole } from '../types/user.types';
 
@@ -51,13 +54,16 @@ class AuthService implements IAuthService {
 
   private cryptoService: ICryptoService;
   private userStorageService: IUserStorageService;
+  private rateLimiter: IRateLimiter;
 
   constructor(
     cryptoService: ICryptoService = CryptoService,
     userStorageService: IUserStorageService = UserStorageService,
+    rateLimiter: IRateLimiter = RateLimiter,
   ) {
     this.cryptoService = cryptoService;
     this.userStorageService = userStorageService;
+    this.rateLimiter = rateLimiter;
   }
 
   // Validate password strength
@@ -101,7 +107,7 @@ class AuthService implements IAuthService {
   async signUp(email: string, password: string, name: string, role: UserRole): Promise<AuthResult> {
     try {
       // Validate email format
-      if (!email || !email.includes('@')) {
+      if (!ValidationService.validateEmail(email)) {
         throw new Error('Invalid email address');
       }
 
@@ -167,6 +173,15 @@ class AuthService implements IAuthService {
         throw new Error('Email and password are required');
       }
 
+      // Check rate limiting
+      if (!this.rateLimiter.canAttemptLogin(email)) {
+        const lockoutEnd = this.rateLimiter.getLockoutEndTime(email);
+        const minutesRemaining = lockoutEnd ? Math.ceil((lockoutEnd - Date.now()) / 60000) : 15;
+        throw new Error(
+          `Too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
+        );
+      }
+
       // Find user by email
       const user = await this.userStorageService.getUserByEmail(email);
       if (!user) {
@@ -186,6 +201,7 @@ class AuthService implements IAuthService {
       );
 
       if (!isPasswordValid) {
+        this.rateLimiter.recordLoginAttempt(email, false);
         throw new Error('Invalid email or password');
       }
 
@@ -203,6 +219,9 @@ class AuthService implements IAuthService {
       await this.userStorageService.updateUser(updatedUser);
       await this.userStorageService.setCurrentUser(updatedUser);
       await this.userStorageService.saveUserToken(sessionToken);
+
+      // Record successful login
+      this.rateLimiter.recordLoginAttempt(email, true);
 
       return {
         success: true,
@@ -253,7 +272,7 @@ class AuthService implements IAuthService {
         user: this.sanitizeUser(updatedUser),
       };
     } catch (error) {
-      console.error('Session verification error:', error);
+      SecureLogger.error('Session verification failed', { code: 'AUTH_SESSION_001' });
       return { isValid: false, reason: 'Verification error' };
     }
   }
@@ -276,7 +295,7 @@ class AuthService implements IAuthService {
 
       return { success: true };
     } catch (error) {
-      console.error('Logout error:', error);
+      SecureLogger.error('Logout operation failed', { code: 'AUTH_LOGOUT_001' });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -368,7 +387,7 @@ class AuthService implements IAuthService {
 
       return {
         success: true,
-        message: 'Password has been reset. Please login with your new password.',
+        message: 'If an account exists, the password has been reset',
       };
     } catch (error) {
       return {
