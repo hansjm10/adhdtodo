@@ -1,7 +1,7 @@
 {
   "name": "adhdtodo",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -49,7 +49,8 @@
     "react-native": "0.79.2",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.10.0"
+    "react-native-screens": "~4.10.0",
+    "expo-router": "~5.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

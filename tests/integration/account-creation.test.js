@@ -5,9 +5,9 @@ import React from 'react';
 import { renderWithProviders, fireEvent, waitFor } from '../utils';
 import { Alert } from 'react-native';
 import AuthScreen from '../../src/screens/AuthScreen';
-import AuthService from '../../src/services/AuthService';
-import UserStorageService from '../../src/services/UserStorageService';
-import { USER_ROLE } from '../../src/constants/UserConstants';
+import AuthService from '../../src/services/AuthService.ts';
+import UserStorageService from '../../src/services/UserStorageService.ts';
+import { USER_ROLE } from '../../src/constants/UserConstants.ts';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({

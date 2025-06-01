@@ -3,15 +3,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useRouter } from 'expo-router';
 import NotificationBanner from './NotificationBanner';
 import NotificationService from '../services/NotificationService';
 import UserStorageService from '../services/UserStorageService';
-import { Notification, User, RootStackParamList, NotificationTypes } from '../types';
-
-// Navigation type for this component
-type NotificationContainerNavigationProp = StackNavigationProp<RootStackParamList>;
+import { Notification, User, NotificationTypes } from '../types';
 
 // Extended notification type that includes the data property from the service
 interface NotificationWithData extends Omit<Notification, 'timestamp'> {
@@ -28,7 +24,7 @@ interface NotificationWithData extends Omit<Notification, 'timestamp'> {
 }
 
 const NotificationContainer = () => {
-  const navigation = useNavigation<NotificationContainerNavigationProp>();
+  const router = useRouter();
   const [currentNotification, setCurrentNotification] = useState<NotificationWithData | null>(null);
   const [notificationQueue, setNotificationQueue] = useState<NotificationWithData[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -87,14 +83,13 @@ const NotificationContainer = () => {
     // Navigate based on notification type
     if (currentNotification?.data?.taskId) {
       // Navigate to task list with focus on specific task
-      navigation.navigate('TaskList');
-      // Note: React Navigation doesn't support nested params like this by default
-      // The TaskList screen would need to handle focusing the task via route params or context
+      router.push('/(tabs)');
+      // Note: The TaskList screen would need to handle focusing the task via route params or context
     } else {
       // Default to notifications list
-      navigation.navigate('NotificationList');
+      router.push('/notifications');
     }
-  }, [currentNotification, navigation]);
+  }, [currentNotification, router]);
 
   useEffect(() => {
     void loadCurrentUser();
