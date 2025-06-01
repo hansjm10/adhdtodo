@@ -11,6 +11,8 @@ import {
   TextStyle,
   TextInputProps,
   Animated,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '../../styles/theme';
 
@@ -40,7 +42,7 @@ export const ThemedInput: React.FC<ThemedInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const borderColorAnim = React.useRef(new Animated.Value(0)).current;
 
-  const handleFocus = (e: React.SyntheticEvent) => {
+  const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
     setIsFocused(true);
     Animated.timing(borderColorAnim, {
       toValue: 1,
@@ -50,7 +52,7 @@ export const ThemedInput: React.FC<ThemedInputProps> = ({
     onFocus?.(e);
   };
 
-  const handleBlur = (e: React.SyntheticEvent) => {
+  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
     setIsFocused(false);
     Animated.timing(borderColorAnim, {
       toValue: 0,
