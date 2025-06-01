@@ -1,7 +1,6 @@
 // ABOUTME: Tests for async testing helpers
 // Verifies that async utilities handle promises and timers correctly
 
-import { act } from '@testing-library/react-native';
 import {
   waitForAsyncUpdates,
   mockAsyncCall,

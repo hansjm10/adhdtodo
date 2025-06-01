@@ -2,15 +2,7 @@
 // Tests registration, login, logout, and session persistence
 
 import { Alert } from 'react-native';
-import {
-  renderWithProviders,
-  fireEvent,
-  waitFor,
-  createMockUser,
-  mockAsyncCall,
-  mockAsyncError,
-  mockAsyncStorage,
-} from '../utils';
+import { fireEvent, waitFor, createMockUser, mockAsyncCall } from '../utils';
 import {
   renderApp,
   renderAppWithAuth,
@@ -157,7 +149,7 @@ describe('Authentication Flow Integration Tests', () => {
       fireEvent.changeText(getByPlaceholderText('Password'), 'Test123!@#');
 
       // Mock successful login
-      const user = createTestUser({ email: 'testuser@example.com' });
+      const user = createMockUser({ email: 'testuser@example.com' });
       mockAuthService.login.mockResolvedValue({
         success: true,
         user,
@@ -226,7 +218,7 @@ describe('Authentication Flow Integration Tests', () => {
   describe('Session Persistence', () => {
     it('should automatically login user with valid session', async () => {
       // Set up valid session
-      const user = createTestUser();
+      const user = createMockUser();
       await UserStorageService.saveUser(user);
       await SecureStorageService.setItem('currentUserId', user.id);
       await SecureStorageService.setItem('sessionToken', 'valid-token');

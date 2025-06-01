@@ -2,7 +2,7 @@
 // Verifies component testing utilities work correctly
 
 import React from 'react';
-import { Text, View, ActivityIndicator, TextInput } from 'react-native';
+import { Text, View, ActivityIndicator } from 'react-native';
 import {
   testLoadingState,
   testErrorState,

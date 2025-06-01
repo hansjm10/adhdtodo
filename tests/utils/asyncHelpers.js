@@ -181,7 +181,7 @@ export const createTimeout = (ms, message = 'Timeout') => {
  * @returns {jest.Mock} Mock fetch function
  */
 export const mockFetch = (responses = {}) => {
-  return jest.fn((url, options) => {
+  return jest.fn((url) => {
     const matchingUrl = Object.keys(responses).find((pattern) => url.includes(pattern));
 
     if (matchingUrl) {

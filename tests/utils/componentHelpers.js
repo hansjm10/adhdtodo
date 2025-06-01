@@ -135,7 +135,7 @@ export const testFormValidation = async (formElements, validationRules) => {
  */
 export const testListRendering = async (Component, testDataSets, options = {}) => {
   for (const dataSet of testDataSets) {
-    const { data, expectedCount, description } = dataSet;
+    const { data, expectedCount } = dataSet;
 
     const { getAllByTestId, rerender } = renderWithProviders(<Component data={data} />, options);
 
@@ -186,7 +186,7 @@ export const testStateTransitions = async (Component, transitions, options = {})
   );
 
   for (let i = 0; i < transitions.length; i++) {
-    const { props, validate, description } = transitions[i];
+    const { props, validate } = transitions[i];
 
     if (i > 0) {
       rerender(<Component {...props} />);
