@@ -1,8 +1,6 @@
 // ABOUTME: Jest setup file for configuring test environment
 // Imports testing utilities and sets up mocks for React Native
 
-/* eslint-disable no-undef */
-
 import '@testing-library/jest-native/extend-expect';
 
 // Mock SafeAreaProvider
@@ -133,5 +131,58 @@ jest.mock('@react-navigation/bottom-tabs', () => {
       Screen: ({ children, component: Component }) =>
         Component ? React.createElement(Component) : children,
     }),
+  };
+});
+
+// Mock FlashList
+jest.mock('@shopify/flash-list', () => {
+  const React = require('react');
+  const { FlatList } = require('react-native');
+
+  const MockFlashList = React.forwardRef((props, ref) => {
+    // Filter out FlashList-specific props that FlatList doesn't support
+    const {
+      estimatedItemSize: _estimatedItemSize,
+      drawDistance: _drawDistance,
+      ...flatListProps
+    } = props;
+
+    // Only pass supported contentContainerStyle props
+    if (flatListProps.contentContainerStyle) {
+      const {
+        padding,
+        paddingHorizontal,
+        paddingVertical,
+        paddingTop,
+        paddingBottom,
+        paddingLeft,
+        paddingRight,
+        backgroundColor,
+        ..._unsupportedStyles
+      } = flatListProps.contentContainerStyle;
+
+      // Only include the style object if there are supported properties
+      const supportedStyles = {
+        ...(padding !== undefined && { padding }),
+        ...(paddingHorizontal !== undefined && { paddingHorizontal }),
+        ...(paddingVertical !== undefined && { paddingVertical }),
+        ...(paddingTop !== undefined && { paddingTop }),
+        ...(paddingBottom !== undefined && { paddingBottom }),
+        ...(paddingLeft !== undefined && { paddingLeft }),
+        ...(paddingRight !== undefined && { paddingRight }),
+        ...(backgroundColor !== undefined && { backgroundColor }),
+      };
+
+      flatListProps.contentContainerStyle =
+        Object.keys(supportedStyles).length > 0 ? supportedStyles : undefined;
+    }
+
+    return React.createElement(FlatList, { ref, ...flatListProps });
+  });
+
+  MockFlashList.displayName = 'MockFlashList';
+
+  return {
+    FlashList: MockFlashList,
   };
 });
