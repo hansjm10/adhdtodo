@@ -7,6 +7,7 @@ import React, {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -152,18 +153,32 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const value: UserContextValue = {
-    user,
-    partner,
-    partnership,
-    loading,
-    error,
-    setUser,
-    setPartner: setPartnerData,
-    setPartnership: setPartnershipData,
-    refreshUserData,
-    logout,
-  };
+  const value = useMemo<UserContextValue>(
+    () => ({
+      user,
+      partner,
+      partnership,
+      loading,
+      error,
+      setUser,
+      setPartner: setPartnerData,
+      setPartnership: setPartnershipData,
+      refreshUserData,
+      logout,
+    }),
+    [
+      user,
+      partner,
+      partnership,
+      loading,
+      error,
+      setUser,
+      setPartnerData,
+      setPartnershipData,
+      refreshUserData,
+      logout,
+    ],
+  );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
