@@ -4,4 +4,4 @@
 export * from './user.types';
 export * from './task.types';
 export * from './notification.types';
-export * from './navigation.types';
+export * from './router.types'; // New Expo Router types
