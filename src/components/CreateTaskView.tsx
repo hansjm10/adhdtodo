@@ -35,8 +35,8 @@ interface Styles {
   scrollView: ViewStyle;
   formContainer: ViewStyle;
   label: TextStyle;
-  input: ViewStyle;
-  textArea: ViewStyle;
+  input: TextStyle;
+  textArea: TextStyle;
   categoryContainer: ViewStyle;
   categoryGrid: ViewStyle;
   categoryButton: ViewStyle;
@@ -51,7 +51,7 @@ interface Styles {
   timeText: TextStyle;
   timeTextSelected: TextStyle;
   customTimeContainer: ViewStyle;
-  customTimeInput: ViewStyle;
+  customTimeInput: TextStyle;
   customTimeLabel: TextStyle;
   actions: ViewStyle;
   actionButton: ViewStyle;

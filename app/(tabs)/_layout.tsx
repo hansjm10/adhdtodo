@@ -99,7 +99,6 @@ export default function TabLayout() {
         options={{
           href: null, // Hide from tab bar
           headerShown: false,
-          presentation: 'modal',
         }}
       />
       <Tabs.Screen
@@ -107,7 +106,6 @@ export default function TabLayout() {
         options={{
           href: null, // Hide from tab bar
           headerShown: false,
-          presentation: 'modal',
         }}
       />
     </Tabs>

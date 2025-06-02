@@ -12,7 +12,8 @@ const WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const BREAK_DURATION = 5 * 60; // 5 minutes in seconds
 
 // Convert context's LegacyTask to Task
-interface LegacyTask extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' | 'completedAt'> {
+interface LegacyTask
+  extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' | 'completedAt' | 'timeSpent'> {
   isComplete: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -26,6 +27,7 @@ const legacyToTask = (legacy: LegacyTask): Task => ({
   createdAt: new Date(legacy.createdAt),
   updatedAt: legacy.updatedAt ? new Date(legacy.updatedAt) : new Date(legacy.createdAt),
   completedAt: legacy.completedAt ? new Date(legacy.completedAt) : null,
+  timeSpent: legacy.timeSpent || 0,
 });
 
 export const HyperfocusContainer: React.FC = () => {
