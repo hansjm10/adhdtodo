@@ -135,16 +135,17 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
             <Text style={styles.sectionTitle}>
               {selectedMode === 'hyperfocus' ? 'Select a Task' : 'Quick Tasks'}
             </Text>
-            <FlashList
-              testID="task-list"
-              data={selectedMode === 'scattered' ? quickTasks : tasks}
-              renderItem={renderTask}
-              keyExtractor={(item) => item.id}
-              ListEmptyComponent={EmptyTaskList}
-              contentContainerStyle={styles.taskList}
-              scrollEnabled={false}
-              estimatedItemSize={60}
-            />
+            <View style={styles.taskList}>
+              <FlashList
+                testID="task-list"
+                data={selectedMode === 'scattered' ? quickTasks : tasks}
+                renderItem={renderTask}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={EmptyTaskList}
+                scrollEnabled={false}
+                estimatedItemSize={60}
+              />
+            </View>
           </View>
         )}
 
