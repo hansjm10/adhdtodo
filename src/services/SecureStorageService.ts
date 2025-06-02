@@ -14,6 +14,9 @@ export interface ISecureStorageService {
   multiSet<T = unknown>(kvPairs: Array<[string, T]>): Promise<void>;
   multiRemove(keys: string[]): Promise<void>;
   mergeItem<T extends Record<string, unknown>>(key: string, value: T): Promise<void>;
+  saveSecure<T = unknown>(key: string, value: T): Promise<void>;
+  getSecure<T = unknown>(key: string): Promise<T | null>;
+  deleteSecure(key: string): Promise<void>;
 }
 
 class SecureStorageService implements ISecureStorageService {
@@ -171,6 +174,21 @@ class SecureStorageService implements ISecureStorageService {
       await this.setItem(key, merged);
     }
   }
+
+  // Alias methods for security-specific operations
+  async saveSecure<T = unknown>(key: string, value: T): Promise<void> {
+    return this.setItem(key, value);
+  }
+
+  async getSecure<T = unknown>(key: string): Promise<T | null> {
+    return this.getItem<T>(key);
+  }
+
+  async deleteSecure(key: string): Promise<void> {
+    return this.removeItem(key);
+  }
 }
 
-export default new SecureStorageService();
+const secureStorageService = new SecureStorageService();
+export { secureStorageService as SecureStorageService };
+export default secureStorageService;

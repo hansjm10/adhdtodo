@@ -27,6 +27,12 @@ interface TaskItemProps {
 }
 
 const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemProps) => {
+  // Development helper for tracking renders
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('TaskItem render');
+  }
+
   const category = task.category
     ? Object.values(TASK_CATEGORIES).find((cat) => cat.id === task.category)
     : null;

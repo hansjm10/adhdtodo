@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Component Helpers testSnapshot should render component correctly: Component Snapshot 1`] = `
+<Text>
+  Snapshot test
+</Text>
+`;
+
+exports[`Component Helpers testSnapshot should render with custom props: Component Snapshot 1`] = `
+<Text>
+  Custom snapshot
+</Text>
+`;
