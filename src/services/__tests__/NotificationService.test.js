@@ -4,11 +4,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NotificationService from '../NotificationService';
 import UserStorageService from '../UserStorageService';
+import SecureLogger from '../SecureLogger';
 import { NOTIFICATION_TYPES, NOTIFICATION_PREFERENCES } from '../../constants/UserConstants';
 
 // Mock dependencies
 jest.mock('@react-native-async-storage/async-storage');
 jest.mock('../UserStorageService');
+jest.mock('../SecureLogger');
 
 describe('NotificationService', () => {
   const mockUser = {
@@ -69,18 +71,14 @@ describe('NotificationService', () => {
     });
 
     it('should handle storage errors gracefully', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
       AsyncStorage.getItem.mockRejectedValue(new Error('Storage error'));
 
       await NotificationService.loadNotifications();
 
-      expect(consoleError).toHaveBeenCalledWith(
-        '[ERROR] Failed to load notifications from storage',
-        'Code: NOTIF_LOAD_001',
-      );
+      expect(SecureLogger.error).toHaveBeenCalledWith('Failed to load notifications from storage', {
+        code: 'NOTIF_LOAD_001',
+      });
       expect(NotificationService.pendingNotifications).toEqual([]);
-
-      consoleError.mockRestore();
     });
   });
 
@@ -119,18 +117,14 @@ describe('NotificationService', () => {
     });
 
     it('should handle save errors gracefully', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
       AsyncStorage.setItem.mockRejectedValue(new Error('Save error'));
 
       NotificationService.pendingNotifications = [{ id: 'notif_1' }];
       await NotificationService.saveNotifications();
 
-      expect(consoleError).toHaveBeenCalledWith(
-        '[ERROR] Failed to save notifications to storage',
-        'Code: NOTIF_SAVE_001',
-      );
-
-      consoleError.mockRestore();
+      expect(SecureLogger.error).toHaveBeenCalledWith('Failed to save notifications to storage', {
+        code: 'NOTIF_SAVE_001',
+      });
     });
   });
 
@@ -191,17 +185,22 @@ describe('NotificationService', () => {
       expect(NotificationService.pendingNotifications.length).toBe(0);
     });
 
-    it('should handle errors gracefully', async () => {
-      UserStorageService.getUserById.mockRejectedValue(new Error('Database error'));
+    it('should handle errors gracefully and log them', async () => {
+      const mockError = new Error('Database error');
+      UserStorageService.getUserById.mockRejectedValue(mockError);
 
       const result = await NotificationService.sendNotification(
         'user_123',
         NOTIFICATION_TYPES.TASK_ASSIGNED,
-        {},
+        { taskTitle: 'Test Task' },
       );
 
       expect(result).toBe(false);
       expect(NotificationService.pendingNotifications.length).toBe(0);
+      expect(SecureLogger.error).toHaveBeenCalledWith('Failed to send notification', {
+        code: 'NOTIF_SEND_001',
+        context: 'Database error - User: user_123, Type: ' + NOTIFICATION_TYPES.TASK_ASSIGNED,
+      });
     });
   });
 

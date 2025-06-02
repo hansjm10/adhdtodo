@@ -109,7 +109,10 @@ class NotificationService implements INotificationService {
       // In production, this would trigger actual notification delivery
       return true;
     } catch (error) {
-      // Error handling would be more robust in production
+      SecureLogger.error('Failed to send notification', {
+        code: 'NOTIF_SEND_001',
+        context: `${error instanceof Error ? error.message : 'Unknown error'} - User: ${toUserId}, Type: ${type}`,
+      });
       return false;
     }
   }
