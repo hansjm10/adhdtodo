@@ -17,6 +17,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "maestro test tests/e2e/flows",
+    "test:e2e:ios": "maestro test tests/e2e/flows --platform ios",
+    "test:e2e:android": "maestro test tests/e2e/flows --platform android",
+    "test:e2e:studio": "maestro studio",
+    "test:e2e:record": "maestro record tests/e2e/flows",
     "prepare": "husky",
     "pre-commit": "lint-staged"
   },

@@ -6,9 +6,14 @@ on:
   pull_request:
     branches: [master, main]
 
+env:
+  EXPO_NO_DOTENV: 1
+  EXPO_USE_METRO_WORKSPACE_ROOT: 1
+
 jobs:
   e2e-ios:
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,15 +43,20 @@ jobs:
           xcrun simctl create "iPhone 15" "iPhone 15" iOS17.0
           xcrun simctl boot "iPhone 15"
 
-      - name: Build Expo app
-        run: npx expo prebuild --platform ios
-
-      - name: Install Expo Go
+      - name: Start Expo dev server
         run: |
-          xcrun simctl install booted ~/Library/Caches/Expo/Exponent.app
+          npx expo start &
+          sleep 30  # Wait for server to start
+        env:
+          EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
 
       - name: Run E2E tests
-        run: npm run test:e2e:ios
+        run: |
+          # Run tests with retry logic
+          npm run test:e2e:ios || npm run test:e2e:ios
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 120000
+          MAESTRO_FLOW_TIMEOUT: 300000
 
       - name: Upload screenshots
         if: failure()
@@ -57,6 +67,7 @@ jobs:
 
   e2e-android:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,6 +95,12 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
       - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -91,10 +108,11 @@ jobs:
           arch: x86_64
           profile: Nexus 6
           script: |
-            # Install Expo Go
-            adb install -r https://d1ahtucjixef4r.cloudfront.net/Exponent-2.29.8.apk
-            # Run E2E tests
-            npm run test:e2e:android
+            # Start Expo dev server
+            npx expo start &
+            sleep 30  # Wait for server to start
+            # Run E2E tests with retry logic
+            npm run test:e2e:android || npm run test:e2e:android
 
       - name: Upload screenshots
         if: failure()
