@@ -3,6 +3,7 @@
 import AuthService from '../AuthService';
 import CryptoService from '../CryptoService';
 import UserStorageService from '../UserStorageService';
+import * as SecureStore from 'expo-secure-store';
 import { createUser, updateUser } from '../../utils/UserModel';
 import { USER_ROLE } from '../../constants/UserConstants';
 
@@ -13,6 +14,10 @@ jest.mock('../../utils/UserModel', () => ({
   ...jest.requireActual('../../utils/UserModel'),
   createUser: jest.fn(),
   updateUser: jest.fn(),
+}));
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(),
+  setItemAsync: jest.fn(),
 }));
 
 describe('AuthService', () => {
@@ -30,6 +35,15 @@ describe('AuthService', () => {
       timestamp: 1234567890,
       isValid: true,
     });
+    CryptoService.generateToken.mockResolvedValue('reference-token');
+    CryptoService.generateSecureBytes.mockResolvedValue(new Uint8Array(32));
+    CryptoService.encrypt.mockResolvedValue('encrypted-token');
+    CryptoService.decrypt.mockResolvedValue('reference-token');
+    CryptoService.hash.mockResolvedValue('token-fingerprint');
+
+    // SecureStore mocks
+    SecureStore.getItemAsync.mockResolvedValue(null);
+    SecureStore.setItemAsync.mockResolvedValue(undefined);
 
     UserStorageService.getUserByEmail.mockResolvedValue(null);
     UserStorageService.saveUser.mockResolvedValue(true);
@@ -115,13 +129,13 @@ describe('AuthService', () => {
 
       expect(result.success).toBe(true);
       expect(result.user).toBeDefined();
-      expect(result.token).toBe('mocktoken.1234567890');
+      expect(result.token).toBe('reference-token');
 
       expect(CryptoService.generateSalt).toHaveBeenCalled();
       expect(CryptoService.hashPassword).toHaveBeenCalledWith('Test123!@#', 'mocksalt');
       expect(UserStorageService.saveUser).toHaveBeenCalled();
       expect(UserStorageService.setCurrentUser).toHaveBeenCalled();
-      expect(UserStorageService.saveUserToken).toHaveBeenCalledWith('mocktoken.1234567890');
+      expect(UserStorageService.saveUserToken).toHaveBeenCalledWith('reference-token');
     });
 
     it('should reject invalid email', async () => {
@@ -196,7 +210,7 @@ describe('AuthService', () => {
 
       expect(result.success).toBe(true);
       expect(result.user).toBeDefined();
-      expect(result.token).toBe('mocktoken.1234567890');
+      expect(result.token).toBe('reference-token');
 
       expect(CryptoService.verifyPassword).toHaveBeenCalledWith(
         'Test123!@#',
@@ -205,7 +219,7 @@ describe('AuthService', () => {
       );
       expect(UserStorageService.updateUser).toHaveBeenCalled();
       expect(UserStorageService.setCurrentUser).toHaveBeenCalled();
-      expect(UserStorageService.saveUserToken).toHaveBeenCalledWith('mocktoken.1234567890');
+      expect(UserStorageService.saveUserToken).toHaveBeenCalledWith('reference-token');
     });
 
     it('should reject missing credentials', async () => {
@@ -251,11 +265,33 @@ describe('AuthService', () => {
     it('should verify valid session', async () => {
       const mockUser = {
         id: 'user_123',
-        sessionToken: 'mocktoken.1234567890',
+        sessionToken: null, // No longer stored in user
       };
 
-      UserStorageService.getUserToken.mockResolvedValue('mocktoken.1234567890');
+      UserStorageService.getUserToken.mockResolvedValue('reference-token');
       UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+
+      // Mock secure token retrieval
+      const mockSecureToken = {
+        encryptedToken: 'encrypted',
+        deviceId: 'device-id',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60),
+        lastUsedAt: new Date(Date.now() - 1000 * 60 * 10),
+        fingerprint: 'fingerprint',
+      };
+
+      SecureStore.getItemAsync.mockImplementation((key) => {
+        if (key === `auth_token_${mockUser.id}`) {
+          return Promise.resolve(JSON.stringify(mockSecureToken));
+        }
+        if (key === 'device_unique_id') {
+          return Promise.resolve('device-id');
+        }
+        if (key === 'device_encryption_key') {
+          return Promise.resolve('device-key');
+        }
+        return Promise.resolve(null);
+      });
 
       const result = await AuthService.verifySession();
 
@@ -274,27 +310,72 @@ describe('AuthService', () => {
     });
 
     it('should reject expired token', async () => {
-      UserStorageService.getUserToken.mockResolvedValue('expiredtoken');
-      CryptoService.isTokenExpired.mockReturnValue(true);
-
-      const result = await AuthService.verifySession();
-
-      expect(result.isValid).toBe(false);
-      expect(result.reason).toBe('Session expired');
-      expect(UserStorageService.logout).toHaveBeenCalled();
-    });
-
-    it('should reject mismatched token', async () => {
-      UserStorageService.getUserToken.mockResolvedValue('token1');
-      UserStorageService.getCurrentUser.mockResolvedValue({
+      const mockUser = {
         id: 'user_123',
-        sessionToken: 'token2',
+        sessionToken: null,
+      };
+
+      UserStorageService.getUserToken.mockResolvedValue('reference-token');
+      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+
+      // Mock expired secure token
+      const expiredToken = {
+        encryptedToken: 'encrypted',
+        deviceId: 'device-id',
+        createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000), // 31 days old
+        lastUsedAt: new Date(),
+        fingerprint: 'fingerprint',
+      };
+
+      SecureStore.getItemAsync.mockImplementation((key) => {
+        if (key === `auth_token_${mockUser.id}`) {
+          return Promise.resolve(JSON.stringify(expiredToken));
+        }
+        if (key === 'device_unique_id') {
+          return Promise.resolve('device-id');
+        }
+        return Promise.resolve(null);
       });
 
       const result = await AuthService.verifySession();
 
       expect(result.isValid).toBe(false);
-      expect(result.reason).toBe('Invalid session');
+      expect(result.reason).toBe('Invalid or expired token');
+      expect(UserStorageService.logout).toHaveBeenCalled();
+    });
+
+    it('should reject mismatched token', async () => {
+      const mockUser = {
+        id: 'user_123',
+        sessionToken: null,
+      };
+
+      UserStorageService.getUserToken.mockResolvedValue('reference-token');
+      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+
+      // Mock secure token with different device
+      const mismatchedToken = {
+        encryptedToken: 'encrypted',
+        deviceId: 'different-device-id', // Different device
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+        fingerprint: 'fingerprint',
+      };
+
+      SecureStore.getItemAsync.mockImplementation((key) => {
+        if (key === `auth_token_${mockUser.id}`) {
+          return Promise.resolve(JSON.stringify(mismatchedToken));
+        }
+        if (key === 'device_unique_id') {
+          return Promise.resolve('current-device-id'); // Current device is different
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await AuthService.verifySession();
+
+      expect(result.isValid).toBe(false);
+      expect(result.reason).toBe('Token used from different device');
       expect(UserStorageService.logout).toHaveBeenCalled();
     });
   });

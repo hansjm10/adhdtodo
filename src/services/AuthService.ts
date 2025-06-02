@@ -7,7 +7,8 @@ import SecureLogger from './SecureLogger';
 import RateLimiter, { IRateLimiter } from './RateLimiter';
 import ValidationService from './ValidationService';
 import { createUser, validateUser, updateUser } from '../utils/UserModel';
-import { User, UserRole } from '../types/user.types';
+import { User, UserRole, SecureToken } from '../types/user.types';
+import * as SecureStore from 'expo-secure-store';
 
 interface PasswordValidationResult {
   isValid: boolean;
@@ -42,6 +43,17 @@ export interface IAuthService {
   changePassword(currentPassword: string, newPassword: string): Promise<AuthResult>;
   resetPassword(email: string, newPassword: string): Promise<PasswordResetResult>;
   sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
+  // Secure token methods
+  createSecureToken(userId: string): Promise<SecureToken>;
+  validateSecureToken(secureToken: SecureToken, providedToken: string): Promise<boolean>;
+  storeSecureToken(userId: string, secureToken: SecureToken): Promise<void>;
+  getSecureToken(userId: string): Promise<SecureToken | null>;
+  rotateToken(userId: string): Promise<string>;
+  getOrCreateDeviceKey(): Promise<string>;
+  getDeviceId(): Promise<string>;
+  getInstallationId(): Promise<string>;
+  invalidateOtherSessions(userId: string): Promise<void>;
+  detectAnomalousUsage(secureToken: SecureToken): boolean;
 }
 
 class AuthService implements IAuthService {
@@ -127,17 +139,14 @@ class AuthService implements IAuthService {
       const salt = await this.cryptoService.generateSalt();
       const passwordHash = await this.cryptoService.hashPassword(password, salt);
 
-      // Generate session token
-      const sessionToken = await this.cryptoService.generateSessionToken();
-
-      // Create new user
+      // Create new user without session token
       const newUser = createUser({
         email: email.toLowerCase(),
         name,
         role,
         passwordHash,
         passwordSalt: salt,
-        sessionToken,
+        sessionToken: null, // Don't store plain token in user
         lastLoginAt: new Date(),
       });
 
@@ -147,15 +156,22 @@ class AuthService implements IAuthService {
         throw new Error(validation.errors.join('. '));
       }
 
-      // Save user and token
+      // Save user first
       await this.userStorageService.saveUser(newUser);
       await this.userStorageService.setCurrentUser(newUser);
-      await this.userStorageService.saveUserToken(sessionToken);
+
+      // Create secure token for the new user
+      const secureToken = await this.createSecureToken(newUser.id);
+      await this.storeSecureToken(newUser.id, secureToken);
+
+      // Generate reference token for API
+      const referenceToken = await this.cryptoService.generateToken(32);
+      await this.userStorageService.saveUserToken(referenceToken);
 
       return {
         success: true,
         user: this.sanitizeUser(newUser),
-        token: sessionToken,
+        token: referenceToken, // Return reference token for API
       };
     } catch (error) {
       return {
@@ -205,12 +221,15 @@ class AuthService implements IAuthService {
         throw new Error('Invalid email or password');
       }
 
-      // Generate new session token
-      const sessionToken = await this.cryptoService.generateSessionToken();
+      // Create secure token instead of plain token
+      const secureToken = await this.createSecureToken(user.id);
 
-      // Update user with new session
+      // Store secure token separately
+      await this.storeSecureToken(user.id, secureToken);
+
+      // Update user with timestamp only (no plain token)
       const updatedUser = updateUser(user, {
-        sessionToken,
+        sessionToken: null, // Don't store plain token in user object
         lastLoginAt: new Date(),
         lastActiveAt: new Date(),
       });
@@ -218,7 +237,10 @@ class AuthService implements IAuthService {
       // Save updated user and set as current
       await this.userStorageService.updateUser(updatedUser);
       await this.userStorageService.setCurrentUser(updatedUser);
-      await this.userStorageService.saveUserToken(sessionToken);
+
+      // Store a reference token for backward compatibility
+      const referenceToken = await this.cryptoService.generateToken(32);
+      await this.userStorageService.saveUserToken(referenceToken);
 
       // Record successful login
       this.rateLimiter.recordLoginAttempt(email, true);
@@ -226,7 +248,7 @@ class AuthService implements IAuthService {
       return {
         success: true,
         user: this.sanitizeUser(updatedUser),
-        token: sessionToken,
+        token: referenceToken, // Return reference token for API calls
       };
     } catch (error) {
       return {
@@ -239,15 +261,9 @@ class AuthService implements IAuthService {
   // Verify current session
   async verifySession(): Promise<SessionVerificationResult> {
     try {
-      const token = await this.userStorageService.getUserToken();
-      if (!token) {
+      const referenceToken = await this.userStorageService.getUserToken();
+      if (!referenceToken) {
         return { isValid: false, reason: 'No session token' };
-      }
-
-      // Check if token is expired
-      if (this.cryptoService.isTokenExpired(token)) {
-        await this.logout();
-        return { isValid: false, reason: 'Session expired' };
       }
 
       const currentUser = await this.userStorageService.getCurrentUser();
@@ -255,10 +271,30 @@ class AuthService implements IAuthService {
         return { isValid: false, reason: 'No user session' };
       }
 
-      // Verify token matches user's session token
-      if (currentUser.sessionToken !== token) {
+      // Get secure token
+      const secureToken = await this.getSecureToken(currentUser.id);
+      if (!secureToken) {
         await this.logout();
-        return { isValid: false, reason: 'Invalid session' };
+        return { isValid: false, reason: 'No secure token found' };
+      }
+
+      // Validate secure token with device binding
+      const isValid = await this.validateSecureToken(secureToken, referenceToken);
+
+      if (!isValid) {
+        await this.logout();
+        const currentDeviceId = await this.getDeviceId();
+        if (secureToken.deviceId !== currentDeviceId) {
+          return { isValid: false, reason: 'Token used from different device' };
+        }
+        return { isValid: false, reason: 'Invalid or expired token' };
+      }
+
+      // Check for anomalous usage
+      if (this.detectAnomalousUsage(secureToken)) {
+        SecureLogger.warn('Anomalous token usage detected', {
+          code: 'AUTH_ANOMALY_002',
+        });
       }
 
       // Update last active time
@@ -266,6 +302,10 @@ class AuthService implements IAuthService {
         lastActiveAt: new Date(),
       });
       await this.userStorageService.updateUser(updatedUser);
+
+      // Update token last used time
+      secureToken.lastUsedAt = new Date();
+      await this.storeSecureToken(currentUser.id, secureToken);
 
       return {
         isValid: true,
@@ -406,6 +446,261 @@ class AuthService implements IAuthService {
       ...sanitized
     } = user;
     return sanitized;
+  }
+
+  // Secure Token Methods
+
+  // Create a secure token with device binding and encryption
+  async createSecureToken(_userId: string): Promise<SecureToken> {
+    // Generate cryptographically secure token
+    const rawToken = await this.cryptoService.generateSecureBytes(32);
+    // Convert Uint8Array to base64 manually
+    const tokenString = this.uint8ArrayToBase64(rawToken);
+
+    // Get device-specific information
+    const deviceId = await this.getDeviceId();
+    const installationId = await this.getInstallationId();
+
+    // Create token fingerprint (hash of token + device info)
+    const fingerprint = await this.cryptoService.hash(
+      `${tokenString}:${deviceId}:${installationId}`,
+    );
+
+    // Encrypt token with device-specific key
+    const deviceKey = await this.getOrCreateDeviceKey();
+    const encryptedToken = await this.cryptoService.encrypt(tokenString, deviceKey);
+
+    return {
+      encryptedToken,
+      deviceId,
+      createdAt: new Date(),
+      lastUsedAt: new Date(),
+      fingerprint,
+    };
+  }
+
+  // Validate a secure token with device binding checks
+  async validateSecureToken(secureToken: SecureToken, providedToken: string): Promise<boolean> {
+    try {
+      // Check device binding
+      const currentDeviceId = await this.getDeviceId();
+      if (secureToken.deviceId !== currentDeviceId) {
+        SecureLogger.warn('Token used from different device', {
+          code: 'AUTH_TOKEN_001',
+        });
+        return false;
+      }
+
+      // Check token age
+      const tokenAge = Date.now() - secureToken.createdAt.getTime();
+      const MAX_TOKEN_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+      if (tokenAge > MAX_TOKEN_AGE) {
+        return false;
+      }
+
+      // Check token inactivity
+      const inactiveTime = Date.now() - secureToken.lastUsedAt.getTime();
+      const MAX_INACTIVE_TIME = 7 * 24 * 60 * 60 * 1000; // 7 days
+      if (inactiveTime > MAX_INACTIVE_TIME) {
+        return false;
+      }
+
+      // Decrypt and verify token
+      const deviceKey = await this.getOrCreateDeviceKey();
+      const decryptedToken = await this.cryptoService.decrypt(
+        secureToken.encryptedToken,
+        deviceKey,
+      );
+
+      return decryptedToken === providedToken;
+    } catch (error) {
+      SecureLogger.error('Token validation failed', { code: 'AUTH_TOKEN_002' });
+      return false;
+    }
+  }
+
+  // Store token separately from user data
+  async storeSecureToken(userId: string, secureToken: SecureToken): Promise<void> {
+    const tokenKey = `auth_token_${userId}`;
+
+    // Use SecureStore directly for token storage with authentication
+    await SecureStore.setItemAsync(tokenKey, JSON.stringify(secureToken), {
+      requireAuthentication: true,
+      authenticationPrompt: 'Authenticate to save session',
+    });
+  }
+
+  // Retrieve secure token
+  async getSecureToken(userId: string): Promise<SecureToken | null> {
+    try {
+      const tokenKey = `auth_token_${userId}`;
+      const tokenData = await SecureStore.getItemAsync(tokenKey, {
+        requireAuthentication: true,
+        authenticationPrompt: 'Authenticate to access session',
+      });
+
+      if (!tokenData) {
+        return null;
+      }
+
+      const token = JSON.parse(tokenData) as SecureToken;
+
+      // Convert date strings back to Date objects
+      token.createdAt = new Date(token.createdAt);
+      token.lastUsedAt = new Date(token.lastUsedAt);
+
+      return token;
+    } catch (error) {
+      SecureLogger.error('Failed to retrieve secure token', { code: 'AUTH_TOKEN_003' });
+      return null;
+    }
+  }
+
+  // Rotate token and invalidate old sessions
+  async rotateToken(userId: string): Promise<string> {
+    const newToken = await this.createSecureToken(userId);
+    await this.storeSecureToken(userId, newToken);
+
+    // Notify other sessions of rotation
+    await this.invalidateOtherSessions(userId);
+
+    return newToken.encryptedToken;
+  }
+
+  // Get or create device-specific encryption key
+  async getOrCreateDeviceKey(): Promise<string> {
+    const deviceKeyName = 'device_encryption_key';
+
+    try {
+      // Try to get existing device key
+      const existingKey = await SecureStore.getItemAsync(deviceKeyName, {
+        requireAuthentication: true,
+        authenticationPrompt: 'Authenticate to access secure storage',
+      });
+
+      if (existingKey) {
+        return existingKey;
+      }
+
+      // Generate new device key
+      const keyBytes = await this.cryptoService.generateSecureBytes(32);
+      const deviceKey = this.uint8ArrayToBase64(keyBytes);
+
+      // Store device key
+      await SecureStore.setItemAsync(deviceKeyName, deviceKey, {
+        requireAuthentication: true,
+        authenticationPrompt: 'Authenticate to access secure storage',
+      });
+
+      return deviceKey;
+    } catch (error) {
+      SecureLogger.error('Failed to manage device key', { code: 'AUTH_DEVICE_KEY_001' });
+      throw new Error('Failed to manage device encryption key');
+    }
+  }
+
+  // Get unique device identifier
+  async getDeviceId(): Promise<string> {
+    // In a real implementation, this would use expo-device or similar
+    // For now, we'll use a hash of crypto-generated data stored securely
+    const deviceIdKey = 'device_unique_id';
+
+    try {
+      let deviceId = await SecureStore.getItemAsync(deviceIdKey);
+
+      if (!deviceId) {
+        // Generate new device ID
+        const randomBytes = await this.cryptoService.generateSecureBytes(16);
+        deviceId = this.uint8ArrayToHex(randomBytes);
+        await SecureStore.setItemAsync(deviceIdKey, deviceId);
+      }
+
+      return deviceId || 'unknown-device';
+    } catch (error) {
+      SecureLogger.error('Failed to get device ID', { code: 'AUTH_DEVICE_ID_001' });
+      return 'unknown-device';
+    }
+  }
+
+  // Get installation ID
+  async getInstallationId(): Promise<string> {
+    // Similar to device ID but specific to this app installation
+    const installIdKey = 'app_installation_id';
+
+    try {
+      let installationId = await SecureStore.getItemAsync(installIdKey);
+
+      if (!installationId) {
+        const randomBytes = await this.cryptoService.generateSecureBytes(16);
+        installationId = this.uint8ArrayToHex(randomBytes);
+        await SecureStore.setItemAsync(installIdKey, installationId);
+      }
+
+      return installationId || 'unknown-installation';
+    } catch (error) {
+      SecureLogger.error('Failed to get installation ID', { code: 'AUTH_INSTALL_ID_001' });
+      return 'unknown-installation';
+    }
+  }
+
+  // Invalidate other sessions (placeholder for future implementation)
+  async invalidateOtherSessions(_userId: string): Promise<void> {
+    // In a real implementation, this would notify a backend service
+    // to invalidate tokens from other devices
+    SecureLogger.info('Token rotation initiated', {
+      code: 'AUTH_TOKEN_ROTATE_001',
+    });
+  }
+
+  // Detect anomalous token usage patterns
+  detectAnomalousUsage(secureToken: SecureToken): boolean {
+    const now = Date.now();
+    const timeSinceLastUse = now - secureToken.lastUsedAt.getTime();
+
+    // Flag as anomalous if token is being used too rapidly (less than 1 second)
+    if (timeSinceLastUse < 1000) {
+      SecureLogger.warn('Suspicious rapid token usage detected', {
+        code: 'AUTH_ANOMALY_001',
+      });
+      return true;
+    }
+
+    // Additional anomaly detection logic can be added here
+    // - Geographic location changes
+    // - Usage pattern analysis
+    // - Time-based patterns
+
+    return false;
+  }
+
+  // Helper method to convert Uint8Array to base64
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let result = '';
+    let i = 0;
+
+    // Process 3 bytes at a time
+    while (i < bytes.length) {
+      const a = bytes[i++];
+      const b = i < bytes.length ? bytes[i++] : 0;
+      const c = i < bytes.length ? bytes[i++] : 0;
+
+      const bitmap = (a << 16) | (b << 8) | c;
+
+      result += chars.charAt((bitmap >> 18) & 63);
+      result += chars.charAt((bitmap >> 12) & 63);
+      result += i - 2 < bytes.length ? chars.charAt((bitmap >> 6) & 63) : '=';
+      result += i - 1 < bytes.length ? chars.charAt(bitmap & 63) : '=';
+    }
+
+    return result;
+  }
+
+  // Helper method to convert Uint8Array to hex string
+  private uint8ArrayToHex(bytes: Uint8Array): string {
+    return Array.from(bytes)
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
   }
 }
 
