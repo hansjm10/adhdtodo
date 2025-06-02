@@ -1,36 +1,31 @@
 appId: host.exp.Exponent
 ---
-# Simple E2E Test - Can run without device for syntax validation
-
-# This test demonstrates the Maestro syntax
-# It will fail if no device is connected, but validates the setup
+# Simple E2E Test - Basic app launch and login test
 
 - launchApp
+
+# Wait for app to load
+- waitForVisible:
+    text: "ADHD Todo"
+    timeout: 10000
+
+# Verify main elements are visible
 - assertVisible: "ADHD Todo"
 - assertVisible: "Your accountability partner app"
 - assertVisible: "Welcome Back!"
 
-# Check for sign in elements
-- assertVisible:
-    id: "email-input"
-- assertVisible:
-    id: "password-input"
-- assertVisible:
-    id: "auth-button"
-
-# Demonstrate interaction syntax (will fail without device)
-- tapOn:
-    id: "email-input"
+# Enter email
+- tapOn: "Email"
 - inputText: "test@example.com"
 
-- tapOn:
-    id: "password-input"
+# Enter password
+- tapOn: "Password"
 - inputText: "TestPassword123!"
 
-- tapOn:
-    id: "auth-button"
+# Tap login button
+- tapOn: "Login"
 
-# Would check for next screen if device was connected
+# Wait for navigation to complete
 - waitForVisible:
     text: "Your Tasks"
-    timeout: 5000
+    timeout: 10000

@@ -1,6 +1,8 @@
-# E2E Testing with Maestro
+# E2E Testing with Maestro (Local Development Only)
 
-This directory contains end-to-end tests for the ADHD Todo app using Maestro.
+This directory contains end-to-end tests for the ADHD Todo app using Maestro. These tests are designed to run locally on developer machines with connected devices or simulators.
+
+**Note**: E2E tests are not configured to run in CI/GitHub Actions due to the complexity of setting up mobile simulators in cloud environments.
 
 ## Installation
 
@@ -89,4 +91,8 @@ maestro studio
 
 ## CI/CD Integration
 
-Tests can be run in CI using Maestro Cloud or self-hosted runners. See `.github/workflows/e2e.yml` for configuration.
+E2E tests are currently configured for local development only. For CI/CD integration, consider:
+
+- Maestro Cloud (paid service)
+- Self-hosted runners with pre-configured devices
+- Alternative frameworks like Detox with better CI support
