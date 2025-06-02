@@ -129,6 +129,11 @@ const ProfileScreen = () => {
             onPress={() => Alert.alert('Coming Soon', 'Email preferences coming soon!')}
           />
           <MenuItem
+            icon="settings-outline"
+            label="App Settings"
+            onPress={() => router.push('/settings')}
+          />
+          <MenuItem
             icon="notifications-outline"
             label="Notification Settings"
             onPress={() => Alert.alert('Coming Soon', 'Notification settings coming soon!')}

@@ -1,8 +1,16 @@
 // ABOUTME: Reusable TaskItem component for displaying individual tasks
 // Provides checkbox for completion and visual feedback for task states
 
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  Animated,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TASK_CATEGORIES, TASK_PRIORITY } from '../constants/TaskConstants';
 import { completeTask, updateTask, startTask, markPartnerNotified } from '../utils/TaskModel';
@@ -12,6 +20,8 @@ import NotificationService from '../services/NotificationService';
 import PartnershipService from '../services/PartnershipService';
 import { Task, TaskStatus } from '../types/task.types';
 import { User } from '../types/user.types';
+import { animationHelpers, duration, easing } from '../styles/animations';
+import RewardAnimation from './RewardAnimation';
 
 interface Partner {
   id: string;
@@ -33,6 +43,22 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
     console.log('TaskItem render');
   }
 
+  // Animation state
+  const [showReward, setShowReward] = useState(false);
+  const scaleAnim = useRef(animationHelpers.createValue(1)).current;
+  const checkboxScaleAnim = useRef(animationHelpers.createValue(task.completed ? 1 : 0)).current;
+  const opacityAnim = useRef(animationHelpers.createValue(1)).current;
+
+  // Update checkbox animation when task completion changes
+  useEffect(() => {
+    Animated.spring(checkboxScaleAnim, {
+      toValue: task.completed ? 1 : 0,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [task.completed]);
+
   const category = task.category
     ? Object.values(TASK_CATEGORIES).find((cat) => cat.id === task.category)
     : null;
@@ -43,6 +69,27 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours} hour${hours > 1 ? 's' : ''}`;
+  };
+
+  const animateCompletion = () => {
+    // Bounce animation on the entire task item
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.05,
+        duration: duration.fast,
+        easing: easing.decelerate,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Show reward animation
+    setShowReward(true);
   };
 
   const handleToggleComplete = async (): Promise<void> => {
@@ -60,6 +107,9 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
       // Complete the task with calculated XP
       const xp = RewardService.calculateTaskXP(task);
       updatedTask = completeTask(task, xp);
+
+      // Trigger completion animation
+      animateCompletion();
 
       // Update streak
       await RewardService.updateStreak();
@@ -123,108 +173,131 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
   const taskAccessibilityLabel = `${task.title}, ${taskStatus}${category ? `, category: ${category.label}` : ''}${task.priority && task.priority !== TASK_PRIORITY.MEDIUM ? `, priority: ${task.priority}` : ''}${task.dueDate ? `, due: ${new Date(task.dueDate).toLocaleDateString()}` : ''}`;
 
   return (
-    <TouchableOpacity
-      testID={`task-item-${task.id}`}
-      style={[styles.container, task.completed && styles.completedContainer]}
-      onPress={onPress}
-      activeOpacity={0.7}
-      accessible={true}
-      accessibilityLabel={taskAccessibilityLabel}
-      accessibilityHint="Double tap to view task details"
-      accessibilityRole="button"
-    >
-      <TouchableOpacity
-        testID="task-checkbox"
-        style={[styles.checkbox, task.completed && styles.checkboxCompleted]}
-        onPress={handleToggleComplete}
-        accessible={true}
-        accessibilityLabel={task.completed ? 'Mark task as incomplete' : 'Mark task as complete'}
-        accessibilityHint={
-          task.completed ? 'Double tap to uncheck this task' : 'Double tap to complete this task'
-        }
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: task.completed }}
-      >
-        {task.completed && <Text style={styles.checkmark}>✓</Text>}
-      </TouchableOpacity>
-
-      <View style={styles.content} testID="task-content">
-        <View style={styles.header}>
-          <Text style={[styles.title, task.completed && styles.completedText]}>{task.title}</Text>
-          {category && (
-            <View style={[styles.categoryBadge, { backgroundColor: category.color }]}>
-              <Text style={styles.categoryIcon}>{category.icon}</Text>
-            </View>
-          )}
-        </View>
-
-        {task.description ? (
-          <Text
-            style={[styles.description, task.completed && styles.completedText]}
-            numberOfLines={2}
-          >
-            {task.description}
-          </Text>
-        ) : null}
-
-        <View style={styles.meta}>
-          {task.assignedBy && (
-            <View style={styles.assignedBadge}>
-              <Ionicons name="person-circle-outline" size={14} color="#3498DB" />
-              <Text style={styles.assignedText}>
-                {task.assignedBy === currentUser?.id ? 'Assigned' : partner?.name || 'Partner'}
-              </Text>
-            </View>
-          )}
-          {task.priority && task.priority !== TASK_PRIORITY.MEDIUM && (
-            <View style={[styles.priorityBadge, { borderColor: getPriorityColor() }]}>
-              <Ionicons
-                name={task.priority === TASK_PRIORITY.URGENT ? 'warning' : 'flag'}
-                size={12}
-                color={getPriorityColor()}
-              />
-            </View>
-          )}
-          {task.dueDate && (
-            <Text style={[styles.dueDate, new Date(task.dueDate) < new Date() && styles.overdue]}>
-              📅 {new Date(task.dueDate).toLocaleDateString()}
-            </Text>
-          )}
-          {task.timeEstimate && (
-            <Text style={styles.timeEstimate}>⏱️ {formatTimeEstimate(task.timeEstimate)}</Text>
-          )}
-          {task.status === 'in_progress' && (
-            <Text style={styles.inProgressBadge}>▶️ In Progress</Text>
-          )}
-          {task.completed && task.xpEarned > 0 && (
-            <Text style={styles.xpBadge}>✨ +{task.xpEarned} XP</Text>
-          )}
-        </View>
-      </View>
-
-      {!task.completed && task.assignedBy && (
+    <>
+      <Animated.View style={[{ transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
         <TouchableOpacity
-          style={styles.startButton}
-          onPress={handleStartTask}
-          disabled={task.status === 'in_progress'}
+          testID={`task-item-${task.id}`}
+          style={[styles.container, task.completed && styles.completedContainer]}
+          onPress={onPress}
+          activeOpacity={0.7}
           accessible={true}
-          accessibilityLabel={task.status === 'in_progress' ? 'Task in progress' : 'Start task'}
-          accessibilityHint={
-            task.status === 'in_progress'
-              ? 'Task is already in progress'
-              : 'Double tap to start working on this task'
-          }
+          accessibilityLabel={taskAccessibilityLabel}
+          accessibilityHint="Double tap to view task details"
           accessibilityRole="button"
-          accessibilityState={{ disabled: task.status === 'in_progress' }}
         >
-          <Ionicons
-            name={task.status === 'in_progress' ? 'pause-circle' : 'play-circle'}
-            size={32}
-            color={task.status === 'in_progress' ? '#7F8C8D' : '#3498DB'}
-          />
+          <TouchableOpacity
+            testID="task-checkbox"
+            style={[styles.checkbox, task.completed && styles.checkboxCompleted]}
+            onPress={handleToggleComplete}
+            accessible={true}
+            accessibilityLabel={
+              task.completed ? 'Mark task as incomplete' : 'Mark task as complete'
+            }
+            accessibilityHint={
+              task.completed
+                ? 'Double tap to uncheck this task'
+                : 'Double tap to complete this task'
+            }
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: task.completed }}
+          >
+            <Animated.Text
+              style={[
+                styles.checkmark,
+                {
+                  transform: [{ scale: checkboxScaleAnim }],
+                  opacity: checkboxScaleAnim,
+                },
+              ]}
+            >
+              ✓
+            </Animated.Text>
+          </TouchableOpacity>
+
+          <View style={styles.content} testID="task-content">
+            <View style={styles.header}>
+              <Text style={[styles.title, task.completed && styles.completedText]}>
+                {task.title}
+              </Text>
+              {category && (
+                <View style={[styles.categoryBadge, { backgroundColor: category.color }]}>
+                  <Text style={styles.categoryIcon}>{category.icon}</Text>
+                </View>
+              )}
+            </View>
+
+            {task.description ? (
+              <Text
+                style={[styles.description, task.completed && styles.completedText]}
+                numberOfLines={2}
+              >
+                {task.description}
+              </Text>
+            ) : null}
+
+            <View style={styles.meta}>
+              {task.assignedBy && (
+                <View style={styles.assignedBadge}>
+                  <Ionicons name="person-circle-outline" size={14} color="#3498DB" />
+                  <Text style={styles.assignedText}>
+                    {task.assignedBy === currentUser?.id ? 'Assigned' : partner?.name || 'Partner'}
+                  </Text>
+                </View>
+              )}
+              {task.priority && task.priority !== TASK_PRIORITY.MEDIUM && (
+                <View style={[styles.priorityBadge, { borderColor: getPriorityColor() }]}>
+                  <Ionicons
+                    name={task.priority === TASK_PRIORITY.URGENT ? 'warning' : 'flag'}
+                    size={12}
+                    color={getPriorityColor()}
+                  />
+                </View>
+              )}
+              {task.dueDate && (
+                <Text
+                  style={[styles.dueDate, new Date(task.dueDate) < new Date() && styles.overdue]}
+                >
+                  📅 {new Date(task.dueDate).toLocaleDateString()}
+                </Text>
+              )}
+              {task.timeEstimate && (
+                <Text style={styles.timeEstimate}>⏱️ {formatTimeEstimate(task.timeEstimate)}</Text>
+              )}
+              {task.status === 'in_progress' && (
+                <Text style={styles.inProgressBadge}>▶️ In Progress</Text>
+              )}
+              {task.completed && task.xpEarned > 0 && (
+                <Text style={styles.xpBadge}>✨ +{task.xpEarned} XP</Text>
+              )}
+            </View>
+          </View>
+
+          {!task.completed && task.assignedBy && (
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={handleStartTask}
+              disabled={task.status === 'in_progress'}
+              accessible={true}
+              accessibilityLabel={task.status === 'in_progress' ? 'Task in progress' : 'Start task'}
+              accessibilityHint={
+                task.status === 'in_progress'
+                  ? 'Task is already in progress'
+                  : 'Double tap to start working on this task'
+              }
+              accessibilityRole="button"
+              accessibilityState={{ disabled: task.status === 'in_progress' }}
+            >
+              <Ionicons
+                name={task.status === 'in_progress' ? 'pause-circle' : 'play-circle'}
+                size={32}
+                color={task.status === 'in_progress' ? '#7F8C8D' : '#3498DB'}
+              />
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+      </Animated.View>
+      <RewardAnimation visible={showReward} type="emoji" onComplete={() => setShowReward(false)} />
+    </>
   );
 };
 

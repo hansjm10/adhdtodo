@@ -6,20 +6,45 @@ import { Alert, Vibration, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTasks } from '../contexts';
 import HyperfocusView from './HyperfocusView';
+import SettingsService from '../services/SettingsService';
 
-const WORK_DURATION = 25 * 60; // 25 minutes in seconds
-const BREAK_DURATION = 5 * 60; // 5 minutes in seconds
+const DEFAULT_WORK_DURATION = 25 * 60; // 25 minutes in seconds
+const DEFAULT_BREAK_DURATION = 5 * 60; // 5 minutes in seconds
 
 export const HyperfocusContainer: React.FC = () => {
   const router = useRouter();
   const { taskId } = useLocalSearchParams<{ taskId?: string }>();
   const { tasks, updateTask } = useTasks();
 
-  const [timeLeft, setTimeLeft] = useState<number>(WORK_DURATION);
+  const [workDuration, setWorkDuration] = useState<number>(DEFAULT_WORK_DURATION);
+  const [breakDuration, setBreakDuration] = useState<number>(DEFAULT_BREAK_DURATION);
+  const [longBreakDuration, setLongBreakDuration] = useState<number>(15 * 60);
+  const [longBreakAfter, setLongBreakAfter] = useState<number>(4);
+  const [timeLeft, setTimeLeft] = useState<number>(DEFAULT_WORK_DURATION);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isBreak, setIsBreak] = useState<boolean>(false);
   const [sessionCount, setSessionCount] = useState<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await SettingsService.loadSettings();
+      const pomodoroSettings = settings.pomodoro;
+
+      const workSec = pomodoroSettings.workDuration * 60;
+      const breakSec = pomodoroSettings.breakDuration * 60;
+      const longBreakSec = pomodoroSettings.longBreakDuration * 60;
+
+      setWorkDuration(workSec);
+      setBreakDuration(breakSec);
+      setLongBreakDuration(longBreakSec);
+      setLongBreakAfter(pomodoroSettings.longBreakAfter);
+      setTimeLeft(workSec);
+    };
+
+    loadSettings();
+  }, []);
 
   // Find the task from context
   const task = useMemo(() => {
@@ -31,12 +56,12 @@ export const HyperfocusContainer: React.FC = () => {
 
     try {
       await updateTask(task.id, {
-        timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
+        timeSpent: (task.timeSpent || 0) + Math.round(workDuration / 60),
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to update task progress.');
     }
-  }, [task, updateTask]);
+  }, [task, updateTask, workDuration]);
 
   const handleTimerComplete = useCallback((): void => {
     // Platform-specific vibration handling
@@ -55,7 +80,7 @@ export const HyperfocusContainer: React.FC = () => {
           text: 'Start Working',
           onPress: () => {
             setIsBreak(false);
-            setTimeLeft(WORK_DURATION);
+            setTimeLeft(workDuration);
             setIsRunning(true);
           },
         },
@@ -69,15 +94,29 @@ export const HyperfocusContainer: React.FC = () => {
           text: 'Take Break',
           onPress: () => {
             setIsBreak(true);
-            setTimeLeft(BREAK_DURATION);
+            // Use long break if it's time
+            const nextBreakDuration =
+              sessionCount > 0 && sessionCount % longBreakAfter === 0
+                ? longBreakDuration
+                : breakDuration;
+            setTimeLeft(nextBreakDuration);
             setIsRunning(true);
           },
         },
-        { text: 'Skip Break', onPress: () => setTimeLeft(WORK_DURATION) },
+        { text: 'Skip Break', onPress: () => setTimeLeft(workDuration) },
         { text: 'Exit', onPress: () => router.back() },
       ]);
     }
-  }, [isBreak, router, updateTaskTimeSpent]);
+  }, [
+    isBreak,
+    router,
+    updateTaskTimeSpent,
+    workDuration,
+    breakDuration,
+    longBreakDuration,
+    longBreakAfter,
+    sessionCount,
+  ]);
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
@@ -114,7 +153,7 @@ export const HyperfocusContainer: React.FC = () => {
 
   const handleReset = () => {
     setIsRunning(false);
-    setTimeLeft(isBreak ? BREAK_DURATION : WORK_DURATION);
+    setTimeLeft(isBreak ? breakDuration : workDuration);
   };
 
   const handleExit = () => {
