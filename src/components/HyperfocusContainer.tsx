@@ -30,14 +30,13 @@ export const HyperfocusContainer: React.FC = () => {
     if (!task) return;
 
     try {
-      const legacyTask = tasks.find((t) => t.id === taskId);
       await updateTask(task.id, {
-        timeSpent: (legacyTask?.timeSpent || 0) + Math.round(WORK_DURATION / 60),
+        timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to update task progress.');
     }
-  }, [task, tasks, taskId, updateTask]);
+  }, [task, updateTask]);
 
   const handleTimerComplete = useCallback((): void => {
     // Platform-specific vibration handling

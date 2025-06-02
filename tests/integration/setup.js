@@ -83,8 +83,8 @@ export const createTestTask = (overrides = {}) => ({
   timeEstimate: 30,
   completed: false,
   userId: 'test-user-id',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  createdAt: new Date(),
+  updatedAt: new Date(),
   ...overrides,
 });
 

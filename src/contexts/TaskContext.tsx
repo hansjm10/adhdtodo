@@ -14,57 +14,6 @@ import React, {
 import TaskStorageService from '../services/TaskStorageService';
 import { Task, TaskStatus, TaskPriority } from '../types/task.types';
 
-// Data migration helper to convert legacy data format if found
-const migrateTaskData = (taskData: unknown): Task => {
-  // Type guard to ensure taskData is an object
-  if (!taskData || typeof taskData !== 'object') {
-    throw new Error('Invalid task data');
-  }
-
-  const data = taskData as Record<string, unknown>;
-
-  // If the task already has the correct format, return as-is
-  if (data.completed !== undefined && data.createdAt instanceof Date) {
-    return data as unknown as Task;
-  }
-
-  // Convert from legacy format
-  return {
-    ...data,
-    // Convert isComplete to completed if needed
-    completed: data.completed !== undefined ? data.completed : data.isComplete || false,
-    // Convert string dates to Date objects
-    createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt as string),
-    updatedAt: data.updatedAt
-      ? data.updatedAt instanceof Date
-        ? data.updatedAt
-        : new Date(data.updatedAt as string)
-      : data.createdAt instanceof Date
-        ? data.createdAt
-        : new Date(data.createdAt as string),
-    completedAt: data.completedAt
-      ? data.completedAt instanceof Date
-        ? data.completedAt
-        : new Date(data.completedAt as string)
-      : null,
-    dueDate: data.dueDate
-      ? data.dueDate instanceof Date
-        ? data.dueDate
-        : new Date(data.dueDate as string)
-      : null,
-    preferredStartTime: data.preferredStartTime
-      ? data.preferredStartTime instanceof Date
-        ? data.preferredStartTime
-        : new Date(data.preferredStartTime as string)
-      : null,
-    startedAt: data.startedAt
-      ? data.startedAt instanceof Date
-        ? data.startedAt
-        : new Date(data.startedAt as string)
-      : null,
-  } as Task;
-};
-
 // Define the context value interface
 interface TaskContextValue {
   tasks: Task[];
@@ -117,9 +66,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setLoading(true);
         setError(null);
 
-        const rawTasks = await TaskStorageService.getAllTasks();
-        // Migrate any legacy format tasks
-        const loadedTasks = rawTasks.map((task) => migrateTaskData(task));
+        const loadedTasks = await TaskStorageService.getAllTasks();
 
         if (isMountedRef.current) {
           setTasks(loadedTasks);

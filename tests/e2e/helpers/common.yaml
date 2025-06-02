@@ -1,0 +1,49 @@
+# Common helpers for E2E tests
+
+# Sign in helper
+signIn:
+  - tapOn: "Sign In"
+  - inputText: ${TEST_USER_EMAIL}
+  - tapOn:
+      id: "password-input"
+  - inputText: ${TEST_USER_PASSWORD}
+  - tapOn: "Continue"
+  - waitForVisible: "Your Tasks"
+
+# Sign out helper
+signOut:
+  - tapOn:
+      id: "profile-tab"
+  - tapOn: "Sign Out"
+  - tapOn: "Confirm"
+  - waitForVisible: "Welcome to ADHD Todo"
+
+# Create task helper
+createTask:
+  - tapOn: "Create Task"
+  - inputText: ${taskTitle}
+  - tapOn:
+      id: "task-description"
+  - inputText: ${taskDescription}
+  - tapOn: "Save Task"
+  - waitForVisible: ${taskTitle}
+
+# Navigate to tab helper
+navigateToTab:
+  - tapOn:
+      id: "${tabName}-tab"
+  - waitForVisible:
+      id: "${tabName}-screen"
+
+# Dismiss modal helper
+dismissModal:
+  - tapOn:
+      id: "modal-close"
+  - waitForNotVisible:
+      id: "modal-overlay"
+
+# Wait for loading helper
+waitForLoading:
+  - waitForNotVisible:
+      id: "loading-spinner"
+      timeout: 5000

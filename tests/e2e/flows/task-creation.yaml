@@ -1,0 +1,83 @@
+appId: host.exp.Exponent
+---
+# Task Creation Flow E2E Test
+
+# Setup: Sign in first
+- launchApp
+- runFlow: ../helpers/common.yaml#signIn
+
+# Test 1: Create a simple task
+- tapOn: "Create Task"
+- assertVisible: "New Task"
+- tapOn:
+    id: "task-title-input"
+- inputText: "Buy groceries"
+- tapOn:
+    id: "task-description-input"
+- inputText: "Milk, eggs, bread, and coffee"
+- tapOn: "Save"
+- waitForVisible: "Buy groceries"
+- assertVisible: "Milk, eggs, bread, and coffee"
+
+# Test 2: Create task with priority
+- tapOn: "Create Task"
+- tapOn:
+    id: "task-title-input"
+- inputText: "Urgent: Call doctor"
+- tapOn:
+    id: "priority-high"
+- assertVisible:
+    id: "priority-high-selected"
+- tapOn: "Save"
+- waitForVisible: "Urgent: Call doctor"
+- assertVisible:
+    id: "high-priority-indicator"
+
+# Test 3: Create task with due date
+- tapOn: "Create Task"
+- tapOn:
+    id: "task-title-input"
+- inputText: "Submit report"
+- tapOn:
+    id: "due-date-picker"
+- tapOn: "Tomorrow"
+- tapOn: "Save"
+- waitForVisible: "Submit report"
+- assertVisible: "Due tomorrow"
+
+# Test 4: Create task with estimated time
+- tapOn: "Create Task"
+- tapOn:
+    id: "task-title-input"
+- inputText: "Clean room"
+- tapOn:
+    id: "estimated-time"
+- inputText: "30"
+- tapOn: "Save"
+- waitForVisible: "Clean room"
+- assertVisible: "~30 min"
+
+# Test 5: Cancel task creation
+- tapOn: "Create Task"
+- tapOn:
+    id: "task-title-input"
+- inputText: "This task will be cancelled"
+- tapOn: "Cancel"
+- assertNotVisible: "This task will be cancelled"
+
+# Test 6: Validation - empty title
+- tapOn: "Create Task"
+- tapOn: "Save"
+- assertVisible: "Task title is required"
+
+# Test 7: Create subtask
+- tapOn: "Buy groceries"
+- tapOn: "Add Subtask"
+- inputText: "Check for discounts"
+- tapOn: "Add"
+- assertVisible: "Check for discounts"
+- tapOn:
+    id: "back-button"
+
+# Cleanup
+- runFlow: ../helpers/common.yaml#signOut
