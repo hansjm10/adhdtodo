@@ -35,8 +35,8 @@ interface Styles {
   scrollView: ViewStyle;
   formContainer: ViewStyle;
   label: TextStyle;
-  input: ViewStyle;
-  textArea: ViewStyle;
+  input: TextStyle;
+  textArea: TextStyle;
   categoryContainer: ViewStyle;
   categoryGrid: ViewStyle;
   categoryButton: ViewStyle;
@@ -51,7 +51,7 @@ interface Styles {
   timeText: TextStyle;
   timeTextSelected: TextStyle;
   customTimeContainer: ViewStyle;
-  customTimeInput: ViewStyle;
+  customTimeInput: TextStyle;
   customTimeLabel: TextStyle;
   actions: ViewStyle;
   actionButton: ViewStyle;
@@ -150,23 +150,23 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
             <View style={styles.timeGrid}>
               {TIME_PRESETS.map((preset: TimePreset) => (
                 <TouchableOpacity
-                  key={preset.value || 'custom'}
-                  testID={`time-preset-${preset.value || 'custom'}`}
+                  key={preset.minutes || 'custom'}
+                  testID={`time-preset-${preset.minutes || 'custom'}`}
                   style={[
                     styles.timeButton,
-                    selectedTimePreset === preset.value && styles.timeButtonSelected,
+                    selectedTimePreset === preset.minutes && styles.timeButtonSelected,
                   ]}
-                  onPress={() => onTimePresetSelect(preset.value)}
+                  onPress={() => onTimePresetSelect(preset.minutes)}
                   accessible={true}
                   accessibilityLabel={`${preset.label} time estimate`}
                   accessibilityHint={`Set time estimate to ${preset.label}`}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: selectedTimePreset === preset.value }}
+                  accessibilityState={{ selected: selectedTimePreset === preset.minutes }}
                 >
                   <Text
                     style={[
                       styles.timeText,
-                      selectedTimePreset === preset.value && styles.timeTextSelected,
+                      selectedTimePreset === preset.minutes && styles.timeTextSelected,
                     ]}
                   >
                     {preset.label}
