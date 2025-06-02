@@ -12,39 +12,70 @@ import React, {
   ReactNode,
 } from 'react';
 import TaskStorageService from '../services/TaskStorageService';
-import { Task } from '../types/task.types';
+import { Task, TaskStatus, TaskPriority } from '../types/task.types';
 
-// Define the shape of the task data used in the context
-// This extends Task but uses the legacy field names for backward compatibility
-interface LegacyTask extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' | 'completedAt'> {
-  isComplete: boolean;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string;
-}
+// Data migration helper to convert legacy data format if found
+const migrateTaskData = (taskData: unknown): Task => {
+  // Type guard to ensure taskData is an object
+  if (!taskData || typeof taskData !== 'object') {
+    throw new Error('Invalid task data');
+  }
 
-// Convert LegacyTask to Task for storage service
-const legacyToTask = (legacy: LegacyTask): Task => {
+  const data = taskData as Record<string, unknown>;
+
+  // If the task already has the correct format, return as-is
+  if (data.completed !== undefined && data.createdAt instanceof Date) {
+    return data as Task;
+  }
+
+  // Convert from legacy format
   return {
-    ...legacy,
-    completed: legacy.isComplete,
-    createdAt: new Date(legacy.createdAt),
-    updatedAt: legacy.updatedAt ? new Date(legacy.updatedAt) : new Date(legacy.createdAt),
-    completedAt: legacy.completedAt ? new Date(legacy.completedAt) : null,
-  };
+    ...data,
+    // Convert isComplete to completed if needed
+    completed: data.completed !== undefined ? data.completed : data.isComplete || false,
+    // Convert string dates to Date objects
+    createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt as string),
+    updatedAt: data.updatedAt
+      ? data.updatedAt instanceof Date
+        ? data.updatedAt
+        : new Date(data.updatedAt as string)
+      : data.createdAt instanceof Date
+        ? data.createdAt
+        : new Date(data.createdAt as string),
+    completedAt: data.completedAt
+      ? data.completedAt instanceof Date
+        ? data.completedAt
+        : new Date(data.completedAt as string)
+      : null,
+    dueDate: data.dueDate
+      ? data.dueDate instanceof Date
+        ? data.dueDate
+        : new Date(data.dueDate as string)
+      : null,
+    preferredStartTime: data.preferredStartTime
+      ? data.preferredStartTime instanceof Date
+        ? data.preferredStartTime
+        : new Date(data.preferredStartTime as string)
+      : null,
+    startedAt: data.startedAt
+      ? data.startedAt instanceof Date
+        ? data.startedAt
+        : new Date(data.startedAt as string)
+      : null,
+  } as Task;
 };
 
 // Define the context value interface
 interface TaskContextValue {
-  tasks: LegacyTask[];
+  tasks: Task[];
   loading: boolean;
   error: string | null;
-  getTasksByUser: (userId: string) => LegacyTask[];
-  getTasksByCategory: (category: string) => LegacyTask[];
-  getPendingTasks: () => LegacyTask[];
-  getTasksAssignedByUser: (userId: string) => LegacyTask[];
-  addTask: (taskData: Partial<LegacyTask>) => Promise<void>;
-  updateTask: (taskId: string, updates: Partial<LegacyTask>) => Promise<void>;
+  getTasksByUser: (userId: string) => Task[];
+  getTasksByCategory: (category: string) => Task[];
+  getPendingTasks: () => Task[];
+  getTasksAssignedByUser: (userId: string) => Task[];
+  addTask: (taskData: Partial<Task>) => Promise<void>;
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   refreshTasks: () => Promise<void>;
   clearCache: () => void;
@@ -60,10 +91,10 @@ interface TaskProviderProps {
 }
 
 export const TaskProvider = ({ children }: TaskProviderProps) => {
-  const [tasks, setTasks] = useState<LegacyTask[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [taskCache, setTaskCache] = useState<LegacyTask[] | null>(null);
+  const [taskCache, setTaskCache] = useState<Task[] | null>(null);
   const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
   const isMountedRef = useRef<boolean>(true);
 
@@ -86,7 +117,9 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setLoading(true);
         setError(null);
 
-        const loadedTasks = (await TaskStorageService.getAllTasks()) as unknown as LegacyTask[];
+        const rawTasks = await TaskStorageService.getAllTasks();
+        // Migrate any legacy format tasks
+        const loadedTasks = rawTasks.map((task) => migrateTaskData(task));
 
         if (isMountedRef.current) {
           setTasks(loadedTasks);
@@ -118,7 +151,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Filter tasks by user
   const getTasksByUser = useCallback(
-    (userId: string): LegacyTask[] => {
+    (userId: string): Task[] => {
       return tasks.filter((task) => task.userId === userId);
     },
     [tasks],
@@ -126,20 +159,20 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Filter tasks by category
   const getTasksByCategory = useCallback(
-    (category: string): LegacyTask[] => {
+    (category: string): Task[] => {
       return tasks.filter((task) => task.category === category);
     },
     [tasks],
   );
 
   // Get pending (incomplete) tasks
-  const getPendingTasks = useCallback((): LegacyTask[] => {
-    return tasks.filter((task) => !task.isComplete);
+  const getPendingTasks = useCallback((): Task[] => {
+    return tasks.filter((task) => !task.completed);
   }, [tasks]);
 
   // Get tasks assigned by a specific user
   const getTasksAssignedByUser = useCallback(
-    (userId: string): LegacyTask[] => {
+    (userId: string): Task[] => {
       return tasks.filter((task) => task.assignedBy === userId);
     },
     [tasks],
@@ -147,19 +180,42 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Add a new task
   const addTask = useCallback(
-    async (taskData: Partial<LegacyTask>): Promise<void> => {
+    async (taskData: Partial<Task>): Promise<void> => {
       try {
         setError(null);
 
         // Generate ID if not provided
-        const newTask: LegacyTask = {
+        const now = new Date();
+        const newTask: Task = {
           id: taskData.id || Date.now().toString(),
-          ...taskData,
-          createdAt: taskData.createdAt || new Date().toISOString(),
-          isComplete: taskData.isComplete || false,
-        } as LegacyTask;
+          title: taskData.title || '',
+          description: taskData.description || '',
+          category: taskData.category || null,
+          status: taskData.status || TaskStatus.PENDING,
+          priority: taskData.priority || TaskPriority.MEDIUM,
+          timeEstimate: taskData.timeEstimate || null,
+          timeSpent: taskData.timeSpent || 0,
+          completed: taskData.completed || false,
+          completedAt: taskData.completedAt || null,
+          createdAt: taskData.createdAt || now,
+          updatedAt: taskData.updatedAt || now,
+          xpEarned: taskData.xpEarned || 0,
+          streakContribution: taskData.streakContribution || false,
+          assignedBy: taskData.assignedBy || null,
+          assignedTo: taskData.assignedTo || null,
+          dueDate: taskData.dueDate || null,
+          preferredStartTime: taskData.preferredStartTime || null,
+          startedAt: taskData.startedAt || null,
+          partnerNotified: taskData.partnerNotified || {
+            onStart: false,
+            onComplete: false,
+            onOverdue: false,
+          },
+          encouragementReceived: taskData.encouragementReceived || [],
+          userId: taskData.userId || null,
+        };
 
-        await TaskStorageService.saveTask(legacyToTask(newTask));
+        await TaskStorageService.saveTask(newTask);
 
         const updatedTasks = [...tasks, newTask];
         setTasks(updatedTasks);
@@ -176,7 +232,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Update an existing task
   const updateTask = useCallback(
-    async (taskId: string, updates: Partial<LegacyTask>): Promise<void> => {
+    async (taskId: string, updates: Partial<Task>): Promise<void> => {
       try {
         setError(null);
 
@@ -185,8 +241,12 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
           throw new Error('Task not found');
         }
 
-        const updatedTask = { ...taskToUpdate, ...updates };
-        await TaskStorageService.updateTask(legacyToTask(updatedTask));
+        const updatedTask = {
+          ...taskToUpdate,
+          ...updates,
+          updatedAt: new Date(),
+        };
+        await TaskStorageService.updateTask(updatedTask);
 
         const updatedTasks = tasks.map((task) => (task.id === taskId ? updatedTask : task));
         setTasks(updatedTasks);

@@ -7,23 +7,6 @@ import { useRouter } from 'expo-router';
 import { useTasks } from '../contexts';
 import ScatteredModeView from './ScatteredModeView';
 import RewardService from '../services/RewardService';
-import { Task } from '../types/task.types';
-
-// Convert context's LegacyTask to Task
-interface LegacyTask extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' | 'completedAt'> {
-  isComplete: boolean;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string;
-}
-
-const legacyToTask = (legacy: LegacyTask): Task => ({
-  ...legacy,
-  completed: legacy.isComplete,
-  createdAt: new Date(legacy.createdAt),
-  updatedAt: legacy.updatedAt ? new Date(legacy.updatedAt) : new Date(legacy.createdAt),
-  completedAt: legacy.completedAt ? new Date(legacy.completedAt) : null,
-});
 
 export const ScatteredModeContainer: React.FC = () => {
   const router = useRouter();
@@ -32,12 +15,12 @@ export const ScatteredModeContainer: React.FC = () => {
   const [completedCount, setCompletedCount] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
 
-  // Get quick tasks from context and convert to Task format
+  // Get quick tasks from context
   const quickTasks = useMemo(() => {
     const pendingTasks = getPendingTasks();
-    return pendingTasks
-      .filter((task) => task.timeEstimate && task.timeEstimate <= 15 && !task.isComplete)
-      .map(legacyToTask);
+    return pendingTasks.filter(
+      (task) => task.timeEstimate && task.timeEstimate <= 15 && !task.completed,
+    );
   }, [getPendingTasks]);
 
   useEffect(() => {
@@ -58,8 +41,8 @@ export const ScatteredModeContainer: React.FC = () => {
 
     try {
       await updateTask(task.id, {
-        isComplete: true,
-        completedAt: new Date().toISOString(),
+        completed: true,
+        completedAt: new Date(),
         xpEarned: xp,
       });
       await RewardService.updateStreak();
