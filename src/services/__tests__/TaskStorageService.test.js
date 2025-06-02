@@ -3,10 +3,12 @@
 
 import TaskStorageService from '../TaskStorageService';
 import SecureStorageService from '../SecureStorageService';
+import UserStorageService from '../UserStorageService';
 import { createTask } from '../../utils/TaskModel';
 
 // Mock SecureStorageService
 jest.mock('../SecureStorageService');
+jest.mock('../UserStorageService');
 
 describe('TaskStorageService', () => {
   beforeEach(() => {
@@ -147,6 +149,127 @@ describe('TaskStorageService', () => {
       )[1];
       expect(savedData).toHaveLength(1);
       expect(savedData[0].title).toBe('Task 2');
+    });
+  });
+
+  describe('getPartnerTasks', () => {
+    const mockUser = {
+      id: 'user_123',
+      name: 'Test User',
+      partnerId: 'partner_456',
+    };
+
+    const partnerAssignedTask = createTask({
+      id: 'task_1',
+      title: 'Partner Assigned Task',
+      assignedBy: 'partner_456',
+      assignedTo: 'user_123',
+    });
+
+    const userAssignedTask = createTask({
+      id: 'task_2',
+      title: 'User Assigned Task',
+      assignedBy: 'user_123',
+      assignedTo: 'partner_456',
+    });
+
+    const unrelatedTask = createTask({
+      id: 'task_3',
+      title: 'Unrelated Task',
+      assignedBy: 'other_user',
+      assignedTo: 'another_user',
+    });
+
+    beforeEach(() => {
+      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      SecureStorageService.getItem.mockImplementation((key) => {
+        if (key === 'tasks_index') {
+          return Promise.resolve({
+            task_1: 'work',
+            task_2: 'work',
+            task_3: 'work',
+          });
+        }
+        if (key === 'tasks_work') {
+          return Promise.resolve([partnerAssignedTask, userAssignedTask, unrelatedTask]);
+        }
+        return Promise.resolve(null);
+      });
+    });
+
+    it('should return tasks between user and partner', async () => {
+      const tasks = await TaskStorageService.getPartnerTasks('user_123');
+
+      expect(tasks).toHaveLength(2);
+      expect(tasks).toContainEqual(expect.objectContaining({ title: 'Partner Assigned Task' }));
+      expect(tasks).toContainEqual(expect.objectContaining({ title: 'User Assigned Task' }));
+    });
+
+    it('should return empty array when currentUser is null', async () => {
+      UserStorageService.getCurrentUser.mockResolvedValue(null);
+
+      const tasks = await TaskStorageService.getPartnerTasks('user_123');
+
+      expect(tasks).toEqual([]);
+    });
+
+    it('should return empty array when currentUser.partnerId is null', async () => {
+      UserStorageService.getCurrentUser.mockResolvedValue({
+        ...mockUser,
+        partnerId: null,
+      });
+
+      const tasks = await TaskStorageService.getPartnerTasks('user_123');
+
+      expect(tasks).toEqual([]);
+    });
+
+    it('should handle tasks with null assignedBy or assignedTo fields', async () => {
+      const taskWithNullAssignedBy = createTask({
+        id: 'task_4',
+        title: 'Task with null assignedBy',
+        assignedBy: null,
+        assignedTo: 'partner_456',
+      });
+
+      const taskWithNullAssignedTo = createTask({
+        id: 'task_5',
+        title: 'Task with null assignedTo',
+        assignedBy: 'user_123',
+        assignedTo: null,
+      });
+
+      SecureStorageService.getItem.mockImplementation((key) => {
+        if (key === 'tasks_index') {
+          return Promise.resolve({
+            task_1: 'work',
+            task_4: 'work',
+            task_5: 'work',
+          });
+        }
+        if (key === 'tasks_work') {
+          return Promise.resolve([
+            partnerAssignedTask,
+            taskWithNullAssignedBy,
+            taskWithNullAssignedTo,
+          ]);
+        }
+        return Promise.resolve(null);
+      });
+
+      const tasks = await TaskStorageService.getPartnerTasks('user_123');
+
+      // Should only return the valid partner task
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe('Partner Assigned Task');
+    });
+
+    it('should handle getCurrentUser errors gracefully', async () => {
+      UserStorageService.getCurrentUser.mockRejectedValue(new Error('User service error'));
+
+      const tasks = await TaskStorageService.getPartnerTasks('user_123');
+
+      expect(tasks).toEqual([]);
     });
   });
 });

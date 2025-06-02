@@ -340,6 +340,21 @@ describe('NotificationService', () => {
         expect(result).toBe(false);
         expect(NotificationService.pendingNotifications.length).toBe(0);
       });
+
+      it('should return false if startedByUser is null', async () => {
+        const result = await NotificationService.notifyTaskStarted(mockTask, null);
+
+        expect(result).toBe(false);
+        expect(NotificationService.pendingNotifications.length).toBe(0);
+      });
+
+      it('should return false if startedByUser has no name', async () => {
+        const userWithoutName = { ...mockUser, name: undefined };
+        const result = await NotificationService.notifyTaskStarted(mockTask, userWithoutName);
+
+        expect(result).toBe(false);
+        expect(NotificationService.pendingNotifications.length).toBe(0);
+      });
     });
 
     describe('notifyTaskCompleted', () => {
@@ -366,6 +381,21 @@ describe('NotificationService', () => {
         const result = await NotificationService.notifyTaskCompleted(taskWithoutAssigner, mockUser);
 
         expect(result).toBe(false);
+      });
+
+      it('should return false if completedByUser is null', async () => {
+        const result = await NotificationService.notifyTaskCompleted(mockTask, null);
+
+        expect(result).toBe(false);
+        expect(NotificationService.pendingNotifications.length).toBe(0);
+      });
+
+      it('should return false if completedByUser has no name', async () => {
+        const userWithoutName = { ...mockUser, name: undefined };
+        const result = await NotificationService.notifyTaskCompleted(mockTask, userWithoutName);
+
+        expect(result).toBe(false);
+        expect(NotificationService.pendingNotifications.length).toBe(0);
       });
     });
 

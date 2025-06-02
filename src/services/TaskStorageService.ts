@@ -472,8 +472,12 @@ class TaskStorageService implements ITaskStorageService {
       // Get tasks where current user assigned to partner OR partner assigned to current user
       return this.getFilteredTasks(
         (task) =>
-          (task.assignedBy === userId && task.assignedTo === currentUser.partnerId) ||
-          (task.assignedBy === currentUser.partnerId && task.assignedTo === userId),
+          task.assignedBy !== null &&
+          task.assignedBy !== undefined &&
+          task.assignedTo !== null &&
+          task.assignedTo !== undefined &&
+          ((task.assignedBy === userId && task.assignedTo === currentUser.partnerId) ||
+            (task.assignedBy === currentUser.partnerId && task.assignedTo === userId)),
       );
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'load');

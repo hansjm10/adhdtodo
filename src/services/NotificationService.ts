@@ -158,27 +158,37 @@ class NotificationService implements INotificationService {
     });
   }
 
-  async notifyTaskStarted(task: Task, startedByUser: User): Promise<boolean> {
-    if (!task.assignedBy) return false;
+  async notifyTaskStarted(task: Task, startedByUser: User | null): Promise<boolean> {
+    if (!task.assignedBy || !startedByUser?.name) {
+      SecureLogger.warn('Cannot notify task started - missing data', {
+        context: `Task: ${task.id}, HasAssignedBy: ${!!task.assignedBy}, HasStartedByUser: ${!!startedByUser}`,
+      });
+      return false;
+    }
 
     return await this.sendNotification(task.assignedBy, NOTIFICATION_TYPES.TASK_STARTED, {
       taskId: task.id,
       taskTitle: task.title,
       startedBy: startedByUser.name,
-      startedAt: task.startedAt,
+      startedAt: task.startedAt || new Date().toISOString(),
     });
   }
 
-  async notifyTaskCompleted(task: Task, completedByUser: User): Promise<boolean> {
-    if (!task.assignedBy) return false;
+  async notifyTaskCompleted(task: Task, completedByUser: User | null): Promise<boolean> {
+    if (!task.assignedBy || !completedByUser?.name) {
+      SecureLogger.warn('Cannot notify task completed - missing data', {
+        context: `Task: ${task.id}, HasAssignedBy: ${!!task.assignedBy}, HasCompletedByUser: ${!!completedByUser}`,
+      });
+      return false;
+    }
 
     return await this.sendNotification(task.assignedBy, NOTIFICATION_TYPES.TASK_COMPLETED, {
       taskId: task.id,
       taskTitle: task.title,
       completedBy: completedByUser.name,
-      completedAt: task.completedAt,
-      timeSpent: task.timeSpent,
-      xpEarned: task.xpEarned,
+      completedAt: task.completedAt || new Date().toISOString(),
+      timeSpent: task.timeSpent || 0,
+      xpEarned: task.xpEarned || 0,
     });
   }
 
