@@ -188,7 +188,10 @@ describe('UserStorageService', () => {
 
       const result = await UserStorageService.saveUser(mockUser);
 
-      expect(consoleError).toHaveBeenCalledWith('Error saving user:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to save user data',
+        'Code: USER_SAVE_001',
+      );
       expect(result).toBe(false);
 
       consoleError.mockRestore();
@@ -252,7 +255,10 @@ describe('UserStorageService', () => {
 
       const result = await UserStorageService.updateUser(mockUser);
 
-      expect(consoleError).toHaveBeenCalledWith('Error updating user:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to update user data',
+        'Code: USER_UPDATE_001',
+      );
       expect(result).toBe(false);
 
       consoleError.mockRestore();
@@ -348,7 +354,10 @@ describe('UserStorageService', () => {
 
       const result = await UserStorageService.logout();
 
-      expect(consoleError).toHaveBeenCalledWith('Error during logout:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to complete logout operation',
+        'Code: USER_LOGOUT_001',
+      );
       expect(result).toBe(false);
 
       consoleError.mockRestore();
@@ -370,7 +379,10 @@ describe('UserStorageService', () => {
 
       const result = await UserStorageService.saveUserToken('token');
 
-      expect(consoleError).toHaveBeenCalledWith('Error saving user token:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to save user token',
+        'Code: USER_TOKEN_SAVE_001',
+      );
       expect(result).toBe(false);
 
       consoleError.mockRestore();
@@ -402,7 +414,10 @@ describe('UserStorageService', () => {
 
       const result = await UserStorageService.getUserToken();
 
-      expect(consoleError).toHaveBeenCalledWith('Error getting user token:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to retrieve user token',
+        'Code: USER_TOKEN_GET_001',
+      );
       expect(result).toBeNull();
 
       consoleError.mockRestore();
@@ -426,7 +441,10 @@ describe('UserStorageService', () => {
 
       const result = await UserStorageService.clearAllUsers();
 
-      expect(consoleError).toHaveBeenCalledWith('Error clearing users:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to clear user data',
+        'Code: USER_CLEAR_001',
+      );
       expect(result).toBe(false);
 
       consoleError.mockRestore();
