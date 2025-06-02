@@ -7,10 +7,12 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { AuthProvider, useAuth } from '../AuthContext';
 import { BiometricAuthService } from '../../services/BiometricAuthService';
 import { PINAuthService } from '../../services/PINAuthService';
+import SecureLogger from '../../services/SecureLogger';
 
 // Mock services
 jest.mock('../../services/BiometricAuthService');
 jest.mock('../../services/PINAuthService');
+jest.mock('../../services/SecureLogger');
 
 // Mock Alert from react-native
 Alert.alert = jest.fn();
@@ -64,7 +66,7 @@ describe('AuthContext', () => {
       });
     });
 
-    it('should handle failed authentication on launch', async () => {
+    it('should handle failed authentication on launch with alternative options', async () => {
       const mockSettings = {
         requireAuthOnLaunch: true,
         sensitiveDataAuth: false,
@@ -81,10 +83,41 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(result.current.isAuthenticated).toBe(false);
+        expect(SecureLogger.warn).toHaveBeenCalledWith('Initial authentication failed', {
+          code: 'AUTH_BIOMETRIC_001',
+          context: 'user_cancel',
+        });
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Authentication Required',
-          'Please authenticate to access your data',
-          expect.any(Array),
+          'Authentication Failed',
+          'Biometric authentication failed. Would you like to try PIN authentication instead?',
+          expect.arrayContaining([
+            expect.objectContaining({ text: 'Use PIN' }),
+            expect.objectContaining({ text: 'Skip (Limited Access)' }),
+            expect.objectContaining({ text: 'Try Again' }),
+          ]),
+        );
+      });
+    });
+
+    it('should handle critical errors during authentication check', async () => {
+      const mockError = new Error('Database connection failed');
+      BiometricAuthService.getSecuritySettings.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper });
+
+      await waitFor(() => {
+        expect(result.current.isAuthenticated).toBe(false);
+        expect(SecureLogger.error).toHaveBeenCalledWith(
+          'Critical error checking auth requirement',
+          {
+            code: 'AUTH_CRITICAL_001',
+            context: 'Database connection failed',
+          },
+        );
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'Authentication Error',
+          'There was an error accessing the authentication system. You can continue with limited access.',
+          expect.arrayContaining([expect.objectContaining({ text: 'Continue' })]),
         );
       });
     });
@@ -394,6 +427,47 @@ describe('AuthContext', () => {
       });
 
       expect(BiometricAuthService.authenticate).toHaveBeenCalled();
+      expect(SecureLogger.warn).toHaveBeenCalledWith('Unlock authentication failed', {
+        code: 'AUTH_UNLOCK_001',
+        context: 'user_cancel',
+      });
+      expect(result.current.isLocked).toBe(true);
+    });
+
+    it('should handle errors during unlock', async () => {
+      const mockSettings = {
+        requireAuthOnLaunch: false,
+        sensitiveDataAuth: false,
+        autoLockTimeout: 600000,
+        maxFailedAttempts: 5,
+      };
+      BiometricAuthService.getSecuritySettings.mockResolvedValue(mockSettings);
+      const mockError = new Error('Biometric service unavailable');
+      BiometricAuthService.authenticate.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper });
+
+      await waitFor(() => {
+        expect(result.current.isAuthenticated).toBe(true);
+      });
+
+      // Manually lock
+      await act(async () => {
+        result.current.lock();
+      });
+
+      expect(result.current.isLocked).toBe(true);
+
+      // Try to unlock with error
+      await act(async () => {
+        await result.current.unlock();
+      });
+
+      expect(BiometricAuthService.authenticate).toHaveBeenCalled();
+      expect(SecureLogger.error).toHaveBeenCalledWith('Error during unlock attempt', {
+        code: 'AUTH_UNLOCK_ERROR_001',
+        context: 'Biometric service unavailable',
+      });
       expect(result.current.isLocked).toBe(true);
     });
   });

@@ -31,7 +31,9 @@ export default function TabLayout() {
         setUnreadCount(unread);
       }
     } catch (error) {
-      // Error loading notification count
+      // Log error but don't disrupt UI - notification count is non-critical
+      console.warn('Failed to load notification count:', error);
+      setUnreadCount(0); // Default to 0 on error
     }
   }, []);
 

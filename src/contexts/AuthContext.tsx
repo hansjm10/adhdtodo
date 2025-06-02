@@ -17,6 +17,7 @@ import {
   SecuritySettings,
 } from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
+import SecureLogger from '../services/SecureLogger';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -80,16 +81,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(result.success);
 
         if (!result.success) {
-          Alert.alert('Authentication Required', 'Please authenticate to access your data', [
-            { text: 'Try Again', onPress: checkAuthRequirement },
-          ]);
+          SecureLogger.warn('Initial authentication failed', {
+            code: 'AUTH_BIOMETRIC_001',
+            context: result.error || 'Unknown reason',
+          });
+
+          // Offer alternative authentication methods
+          Alert.alert(
+            'Authentication Failed',
+            'Biometric authentication failed. Would you like to try PIN authentication instead?',
+            [
+              {
+                text: 'Use PIN',
+                onPress: async () => {
+                  // Navigate to PIN authentication
+                  // This would be implemented based on your navigation setup
+                  setIsAuthenticated(false);
+                },
+              },
+              {
+                text: 'Skip (Limited Access)',
+                onPress: () => {
+                  // Allow limited access without authentication
+                  setIsAuthenticated(false);
+                  SecureLogger.info('User chose limited access mode', {
+                    code: 'AUTH_LIMITED_001',
+                  });
+                },
+                style: 'cancel',
+              },
+              { text: 'Try Again', onPress: checkAuthRequirement },
+            ],
+          );
         }
       } else {
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Error checking auth requirement:', error);
-      setIsAuthenticated(true); // Fail open for now
+      SecureLogger.error('Critical error checking auth requirement', {
+        code: 'AUTH_CRITICAL_001',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // Graceful degradation - allow limited access but log the issue
+      setIsAuthenticated(false);
+      Alert.alert(
+        'Authentication Error',
+        'There was an error accessing the authentication system. You can continue with limited access.',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              SecureLogger.info('User continuing with limited access after auth error', {
+                code: 'AUTH_DEGRADED_001',
+              });
+            },
+          },
+        ],
+      );
     }
   };
 
@@ -178,11 +227,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const unlock = useCallback(async () => {
-    const result = await BiometricAuthService.authenticate('Unlock to access your ADHD Todo data');
-    if (result.success) {
-      setIsLocked(false);
-      recordActivity();
-      setupAutoLockTimer();
+    try {
+      const result = await BiometricAuthService.authenticate(
+        'Unlock to access your ADHD Todo data',
+      );
+      if (result.success) {
+        setIsLocked(false);
+        recordActivity();
+        setupAutoLockTimer();
+      } else {
+        SecureLogger.warn('Unlock authentication failed', {
+          code: 'AUTH_UNLOCK_001',
+          context: result.error || 'Unknown reason',
+        });
+      }
+    } catch (error) {
+      SecureLogger.error('Error during unlock attempt', {
+        code: 'AUTH_UNLOCK_ERROR_001',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }, [authSettings]);
 
