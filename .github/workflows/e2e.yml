@@ -61,9 +61,9 @@ jobs:
       - name: Run E2E tests
         run: |
           # Run basic test first
-          npm run test:e2e:basic || true
+          npm run test:e2e:basic
           # Run full test suite with retry logic
-          npm run test:e2e:ios || npm run test:e2e:ios || true
+          npm run test:e2e:ios || npm run test:e2e:ios
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: 120000
           MAESTRO_FLOW_TIMEOUT: 300000
@@ -129,9 +129,9 @@ jobs:
             # Create screenshots directory
             mkdir -p tests/e2e/screenshots
             # Run basic test first
-            npm run test:e2e:basic || true
+            npm run test:e2e:basic
             # Run E2E tests with retry logic
-            npm run test:e2e:android || npm run test:e2e:android || true
+            npm run test:e2e:android || npm run test:e2e:android
 
       - name: Upload screenshots
         if: failure()
