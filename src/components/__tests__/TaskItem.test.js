@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Animated } from 'react-native';
 import TaskItem from '../TaskItem';
 import TaskStorageService from '../../services/TaskStorageService';
 import { createTask, completeTask } from '../../utils/TaskModel';
@@ -10,6 +11,7 @@ import { TASK_CATEGORIES } from '../../constants/TaskConstants';
 
 // Mock dependencies
 jest.mock('../../services/TaskStorageService');
+jest.mock('../RewardAnimation', () => 'RewardAnimation');
 
 describe('TaskItem', () => {
   const mockTask = createTask({
@@ -97,5 +99,70 @@ describe('TaskItem', () => {
 
     fireEvent.press(getByTestId('task-content'));
     expect(mockOnPress).toHaveBeenCalled();
+  });
+
+  it('should animate checkbox when task is completed', async () => {
+    const { rerender } = render(<TaskItem task={mockTask} onUpdate={mockOnUpdate} />);
+
+    // Spy on Animated.spring
+    const springMock = jest.spyOn(Animated, 'spring');
+
+    // Complete the task
+    const completedTask = { ...mockTask, completed: true };
+    rerender(<TaskItem task={completedTask} onUpdate={mockOnUpdate} />);
+
+    // Check that checkbox animation was called
+    expect(springMock).toHaveBeenCalled();
+    expect(springMock).toHaveBeenCalledWith(
+      expect.any(Animated.Value),
+      expect.objectContaining({
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+      }),
+    );
+
+    springMock.mockRestore();
+  });
+
+  it('should trigger celebration animation on task completion', async () => {
+    const { getByTestId, UNSAFE_queryByType } = render(
+      <TaskItem task={mockTask} onUpdate={mockOnUpdate} />,
+    );
+
+    const checkbox = getByTestId('task-checkbox');
+
+    // Press checkbox to complete task
+    fireEvent.press(checkbox);
+
+    await waitFor(() => {
+      // Check that RewardAnimation component is rendered
+      expect(UNSAFE_queryByType('RewardAnimation')).toBeTruthy();
+    });
+  });
+
+  it('should show task scale animation on completion', async () => {
+    const { getByTestId } = render(<TaskItem task={mockTask} onUpdate={mockOnUpdate} />);
+
+    // Spy on animation methods
+    const sequenceMock = jest.spyOn(Animated, 'sequence');
+    const timingMock = jest.spyOn(Animated, 'timing');
+
+    const checkbox = getByTestId('task-checkbox');
+    fireEvent.press(checkbox);
+
+    await waitFor(() => {
+      // Check that scale animation was triggered
+      expect(sequenceMock).toHaveBeenCalled();
+      expect(timingMock).toHaveBeenCalledWith(
+        expect.any(Animated.Value),
+        expect.objectContaining({
+          toValue: 1.05,
+        }),
+      );
+    });
+
+    sequenceMock.mockRestore();
+    timingMock.mockRestore();
   });
 });
