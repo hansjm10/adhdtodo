@@ -6,8 +6,8 @@ import { Text, View, ActivityIndicator } from 'react-native';
 import { renderWithProviders, waitForLoadingToFinish, getByTestIdSafe } from '../testUtils';
 import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../../../src/contexts/UserContext';
-import { useTask } from '../../../src/contexts/TaskContext';
-import { useNotification } from '../../../src/contexts/NotificationContext';
+import { useTasks } from '../../../src/contexts/TaskContext';
+import { useNotifications } from '../../../src/contexts/NotificationContext';
 
 // Test components
 const TestComponent = ({ testID = 'test-component' }) => (
@@ -31,8 +31,8 @@ const NavigationTestComponent = () => {
 
 const ContextTestComponent = () => {
   const { user } = useUser();
-  const { tasks } = useTask();
-  const { notifications } = useNotification();
+  const { tasks } = useTasks();
+  const { notifications } = useNotifications();
 
   return (
     <View>
@@ -76,15 +76,15 @@ describe('Test Utils', () => {
         index: 0,
       };
 
-      const { container } = renderWithProviders(<TestComponent />, { navigationState });
+      const { root } = renderWithProviders(<TestComponent />, { navigationState });
 
-      expect(container).toBeTruthy();
+      expect(root).toBeTruthy();
     });
 
     it('should accept render options', () => {
-      const { baseElement } = renderWithProviders(<TestComponent />, { createNodeMock: () => {} });
+      const { root } = renderWithProviders(<TestComponent />, { createNodeMock: () => {} });
 
-      expect(baseElement).toBeTruthy();
+      expect(root).toBeTruthy();
     });
   });
 

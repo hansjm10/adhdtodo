@@ -22,7 +22,7 @@ export interface TaskCategory {
 }
 
 export interface TimePreset {
-  minutes: number;
+  minutes: number | null;
   label: string;
 }
 
@@ -92,6 +92,7 @@ export const TIME_PRESETS: TimePreset[] = [
   { minutes: 15, label: '15 min' },
   { minutes: 30, label: '30 min' },
   { minutes: 60, label: '1 hour' },
+  { minutes: null, label: 'Custom' },
 ];
 
 // Reward points constants

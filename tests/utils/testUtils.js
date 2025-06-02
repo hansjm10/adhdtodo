@@ -2,7 +2,7 @@
 // Provides custom render functions and re-exports testing library utilities
 
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { AppProvider } from '../../src/contexts/AppProvider';
 
@@ -46,7 +46,7 @@ export const renderWithProviders = (
  * @returns {Promise<void>}
  */
 export const waitForLoadingToFinish = async (screen) => {
-  const { waitFor, queryByTestId, queryByText } = screen;
+  const { queryByTestId, queryByText } = screen;
 
   await waitFor(() => {
     // Check for common loading indicators

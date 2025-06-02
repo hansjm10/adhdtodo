@@ -12,7 +12,7 @@ describe('FocusModeView', () => {
     createMockTask({ id: '2', title: 'Medium Task', timeEstimate: 30, userId: 'user1' }),
     createMockTask({ id: '3', title: 'Quick Task 1', timeEstimate: 5, userId: 'user1' }),
     createMockTask({ id: '4', title: 'Quick Task 2', timeEstimate: 15, userId: 'user1' }),
-    createMockTask({ id: '5', title: 'No Estimate Task', userId: 'user1' }),
+    createMockTask({ id: '5', title: 'No Estimate Task', timeEstimate: null, userId: 'user1' }),
   ];
 
   const defaultProps = {
@@ -70,7 +70,7 @@ describe('FocusModeView', () => {
   });
 
   it('should show task list when hyperfocus mode is selected', () => {
-    const { getByText, getAllByText } = render(
+    const { getByText, getByTestId } = render(
       <FocusModeView {...defaultProps} selectedMode="hyperfocus" />,
     );
 
@@ -78,11 +78,15 @@ describe('FocusModeView', () => {
     expect(getByText('Long Task')).toBeTruthy();
     expect(getByText('Medium Task')).toBeTruthy();
     // All tasks should be shown
-    expect(getAllByText(/Task/)).toHaveLength(5);
+    expect(getByTestId('task-1')).toBeTruthy();
+    expect(getByTestId('task-2')).toBeTruthy();
+    expect(getByTestId('task-3')).toBeTruthy();
+    expect(getByTestId('task-4')).toBeTruthy();
+    expect(getByTestId('task-5')).toBeTruthy();
   });
 
   it('should show only quick tasks when scattered mode is selected', () => {
-    const { getByText, getAllByText } = render(
+    const { getByText, getByTestId, queryByTestId } = render(
       <FocusModeView {...defaultProps} selectedMode="scattered" />,
     );
 
@@ -90,7 +94,12 @@ describe('FocusModeView', () => {
     expect(getByText('Quick Task 1')).toBeTruthy();
     expect(getByText('Quick Task 2')).toBeTruthy();
     // Only quick tasks (≤15 min) should be shown
-    expect(getAllByText(/Quick Task/)).toHaveLength(2);
+    expect(getByTestId('task-3')).toBeTruthy(); // Quick Task 1 (5 min)
+    expect(getByTestId('task-4')).toBeTruthy(); // Quick Task 2 (15 min)
+    // Long tasks should not be shown
+    expect(queryByTestId('task-1')).toBeFalsy(); // Long Task (60 min)
+    expect(queryByTestId('task-2')).toBeFalsy(); // Medium Task (30 min)
+    expect(queryByTestId('task-5')).toBeFalsy(); // No Estimate Task
   });
 
   it('should call onTaskSelect when a task is pressed', () => {
