@@ -77,7 +77,28 @@ const PartnershipScreen = () => {
               : activePartnership.adhdUserId;
           if (partnerId) {
             const partnerUser = await UserStorageService.getUserById(partnerId);
-            setPartner(partnerUser);
+            if (partnerUser) {
+              setPartner(partnerUser);
+            } else {
+              // Handle deleted partner
+              Alert.alert(
+                'Partner Not Found',
+                'Your partner account appears to have been deleted.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: async () => {
+                      if (activePartnership) {
+                        const updatedPartnership = terminatePartnership(activePartnership);
+                        await PartnershipService.updatePartnership(updatedPartnership);
+                        setPartnership(null);
+                        setPartner(null);
+                      }
+                    },
+                  },
+                ],
+              );
+            }
           }
         }
       }

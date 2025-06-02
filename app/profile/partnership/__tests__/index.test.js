@@ -2,7 +2,7 @@
 // Verifies partnership UI functionality including the Settings button
 
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import PartnershipScreen from '../index';
@@ -32,6 +32,13 @@ jest.mock('../../../../src/services/PartnershipService', () => ({
 
 jest.mock('../../../../src/utils/PartnershipModel', () => ({
   terminatePartnership: jest.fn(),
+}));
+
+jest.mock('../../../../src/services/NotificationService', () => ({
+  __esModule: true,
+  default: {
+    loadNotifications: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 // Mock Alert
@@ -76,6 +83,62 @@ describe('PartnershipScreen', () => {
     UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
     UserStorageService.getUserById.mockResolvedValue(mockPartner);
     PartnershipService.getActivePartnership.mockResolvedValue(mockPartnership);
+  });
+
+  describe('Partner null checks', () => {
+    it('should handle when partner user is deleted and getUserById returns null', async () => {
+      // Setup mocks for this specific test
+      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      UserStorageService.getUserById.mockResolvedValue(null);
+      PartnershipService.getActivePartnership.mockResolvedValue(mockPartnership);
+
+      // Render the component
+      render(<PartnershipScreen />);
+
+      // Simply wait for the Alert to be called
+      await waitFor(
+        () => {
+          expect(Alert.alert).toHaveBeenCalled();
+          const alertCall = Alert.alert.mock.calls.find((call) => call[0] === 'Partner Not Found');
+          expect(alertCall).toBeTruthy();
+          expect(alertCall[1]).toBe('Your partner account appears to have been deleted.');
+        },
+        { timeout: 10000 },
+      );
+    }, 15000);
+
+    it('should end partnership when OK is pressed on partner not found alert', async () => {
+      // Setup mock to return null for deleted partner
+      UserStorageService.getUserById.mockResolvedValue(null);
+      const { terminatePartnership } = require('../../../../src/utils/PartnershipModel');
+      PartnershipService.updatePartnership.mockResolvedValue(true);
+
+      // Capture the onPress callback
+      let onPressCallback;
+      Alert.alert.mockImplementation((title, message, buttons) => {
+        if (title === 'Partner Not Found') {
+          onPressCallback = buttons[0].onPress;
+        }
+      });
+
+      // Render component
+      render(<PartnershipScreen />);
+
+      // Wait for Alert to be called
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+      });
+
+      // Simulate pressing OK on the alert
+      if (onPressCallback) {
+        await act(async () => {
+          await onPressCallback();
+        });
+      }
+
+      // Verify partnership termination was initiated
+      expect(terminatePartnership).toHaveBeenCalledWith(mockPartnership);
+    }, 10000);
   });
 
   describe('Settings button', () => {
