@@ -25,7 +25,7 @@ const migrateTaskData = (taskData: unknown): Task => {
 
   // If the task already has the correct format, return as-is
   if (data.completed !== undefined && data.createdAt instanceof Date) {
-    return data as Task;
+    return data as unknown as Task;
   }
 
   // Convert from legacy format
