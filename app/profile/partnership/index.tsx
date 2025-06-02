@@ -255,7 +255,12 @@ const PartnershipScreen = () => {
           <Text style={styles.actionButtonText}>View Progress</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() =>
+            Alert.alert('Coming Soon', 'Partnership settings will be available in the next update.')
+          }
+        >
           <Ionicons name="settings-outline" size={24} color="#3498DB" />
           <Text style={styles.actionButtonText}>Settings</Text>
         </TouchableOpacity>
