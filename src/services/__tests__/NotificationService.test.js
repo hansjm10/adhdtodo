@@ -74,7 +74,10 @@ describe('NotificationService', () => {
 
       await NotificationService.loadNotifications();
 
-      expect(consoleError).toHaveBeenCalledWith('Error loading notifications:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to load notifications from storage',
+        'Code: NOTIF_LOAD_001',
+      );
       expect(NotificationService.pendingNotifications).toEqual([]);
 
       consoleError.mockRestore();
@@ -122,7 +125,10 @@ describe('NotificationService', () => {
       NotificationService.pendingNotifications = [{ id: 'notif_1' }];
       await NotificationService.saveNotifications();
 
-      expect(consoleError).toHaveBeenCalledWith('Error saving notifications:', expect.any(Error));
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ERROR] Failed to save notifications to storage',
+        'Code: NOTIF_SAVE_001',
+      );
 
       consoleError.mockRestore();
     });
@@ -477,11 +483,40 @@ describe('NotificationService', () => {
 
   describe('Notification retrieval and management', () => {
     beforeEach(() => {
+      const now = new Date();
       NotificationService.pendingNotifications = [
-        { id: 'notif_1', toUserId: 'user_123', type: 'task_assigned', read: false },
-        { id: 'notif_2', toUserId: 'user_123', type: 'task_completed', read: true },
-        { id: 'notif_3', toUserId: 'partner_456', type: 'encouragement', read: false },
-        { id: 'notif_4', toUserId: 'user_123', type: 'check_in', read: false },
+        {
+          id: 'notif_1',
+          toUserId: 'user_123',
+          type: 'task_assigned',
+          read: false,
+          timestamp: now,
+          data: {},
+        },
+        {
+          id: 'notif_2',
+          toUserId: 'user_123',
+          type: 'task_completed',
+          read: true,
+          timestamp: new Date(now.getTime() - 60000),
+          data: {},
+        },
+        {
+          id: 'notif_3',
+          toUserId: 'partner_456',
+          type: 'encouragement',
+          read: false,
+          timestamp: new Date(now.getTime() - 120000),
+          data: {},
+        },
+        {
+          id: 'notif_4',
+          toUserId: 'user_123',
+          type: 'check_in',
+          read: false,
+          timestamp: new Date(now.getTime() - 180000),
+          data: {},
+        },
       ];
     });
 

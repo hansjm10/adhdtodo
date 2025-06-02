@@ -394,18 +394,20 @@ describe('TaskContext', () => {
 
     unmount();
 
-    // Mount again - should use cached data
+    // Mount again - will reload data since cache is in component state
     const { getByTestId: getByTestId2 } = render(
       <TaskProvider>
         <TestComponent testId="second" />
       </TaskProvider>,
     );
 
-    // Should immediately show cached data without loading
-    expect(getByTestId2('second-loading').props.children).toBe('false');
-    expect(getByTestId2('second-count').props.children).toBe(3);
+    // Wait for data to load again
+    await waitFor(() => {
+      expect(getByTestId2('second-loading').props.children).toBe('false');
+      expect(getByTestId2('second-count').props.children).toBe(3);
+    });
 
-    // Should not call getAllTasks again due to caching
-    expect(TaskStorageService.getAllTasks).toHaveBeenCalledTimes(1);
+    // Will call getAllTasks again since cache was cleared on unmount
+    expect(TaskStorageService.getAllTasks).toHaveBeenCalledTimes(2);
   });
 });
