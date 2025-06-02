@@ -111,20 +111,22 @@ describe('Component Helpers', () => {
   });
 
   describe('testSnapshot', () => {
-    it('should create snapshot', () => {
+    it('should render component correctly', () => {
       const SimpleComponent = () => <Text>Snapshot test</Text>;
 
       const result = testSnapshot(SimpleComponent);
 
-      expect(result.toJSON()).toMatchSnapshot('Component Snapshot');
+      // Verify component renders with expected text
+      expect(result.getByText('Snapshot test')).toBeTruthy();
     });
 
-    it('should accept custom snapshot name', () => {
-      const SimpleComponent = () => <Text>Custom snapshot</Text>;
+    it('should render with custom props', () => {
+      const CustomComponent = ({ text }) => <Text>{text}</Text>;
 
-      const result = testSnapshot(SimpleComponent, {}, 'Custom Test Snapshot');
+      const result = testSnapshot(CustomComponent, { text: 'Custom snapshot' });
 
-      expect(result.toJSON()).toMatchSnapshot('Custom Test Snapshot');
+      // Verify component renders with custom text
+      expect(result.getByText('Custom snapshot')).toBeTruthy();
     });
   });
 

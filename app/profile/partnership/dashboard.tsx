@@ -10,14 +10,13 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  FlatList,
-  ListRenderItem,
   Alert,
   ViewStyle,
   TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import UserStorageService from '../../../src/services/UserStorageService';
 import TaskStorageService from '../../../src/services/TaskStorageService';
 import PartnershipService from '../../../src/services/PartnershipService';
@@ -405,12 +404,13 @@ const PartnerDashboardScreen = () => {
         <TabButton tab="overdue" label="Overdue" count={stats.overdue} />
       </View>
 
-      <FlatList
+      <FlashList
         data={assignedTasks}
         renderItem={renderTaskItem}
         keyExtractor={(item) => item.id}
         scrollEnabled={false}
         contentContainerStyle={styles.taskList}
+        estimatedItemSize={120}
         ListEmptyComponent={
           <View style={styles.emptyTaskContainer}>
             <Text style={styles.emptyTaskText}>

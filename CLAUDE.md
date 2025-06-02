@@ -26,10 +26,10 @@ This is an AI-first Expo React Native application for a todo app designed for AD
 - React 19.0.0
 - TypeScript ^5.8.3
 - Jest ^29.7.0 with jest-expo
-- React Navigation v7
+- Expo Router v5 (NOT React Navigation)
 - Async Storage for data persistence
 - Expo Secure Store for sensitive data
-- FlashList for performant lists
+- FlashList for performant lists (NOT FlatList)
 
 ## Core Philosophy
 
@@ -53,6 +53,32 @@ This is an AI-first Expo React Native application for a todo app designed for AD
 - **NEVER implement mock modes** - always use real data and APIs
 - **NEVER name things** as 'improved', 'new', 'enhanced' - use evergreen names
 - When fixing bugs, **NEVER rewrite without explicit permission**
+
+## Modern Code Requirements (CRITICAL)
+
+**We are in active development** - there is NO excuse for using legacy patterns:
+
+- **ALWAYS use modern APIs and patterns** - no deprecated or legacy code
+- **NEVER use FlatList** - always use FlashList for lists
+- **NEVER use React Navigation** - always use Expo Router
+- **NEVER use old React patterns** - use hooks, functional components, and modern React
+- **NEVER use deprecated React Native APIs** - check documentation for current APIs
+- **Refactor legacy code on sight** - if you encounter old patterns, update them immediately
+
+## Context7 Usage (MANDATORY)
+
+**ALWAYS use Context7** when working with frameworks, libraries, or APIs:
+
+- **Before using ANY library**: Check its documentation with Context7
+- **Before implementing ANY API**: Get the latest patterns with Context7
+- **When unsure about syntax**: Use Context7 to verify current best practices
+- **Add "use context7"** to prompts when asking about:
+  - React Native APIs
+  - Expo SDK features
+  - TypeScript patterns
+  - Third-party libraries
+  - Testing approaches
+  - Performance optimizations
 
 ## Test-Driven Development (MANDATORY)
 
@@ -80,7 +106,10 @@ We practice STRICT TDD. **NO EXCEPTIONS**.
 
 The following MCP servers are configured for this project:
 
-- **Context7**: Real-time documentation access (append "use context7" to prompts)
+- **Context7**: Real-time documentation access (**MANDATORY** for all framework/library work)
+  - Always append "use context7" when working with ANY external library
+  - Use for React Native, Expo, TypeScript, and all third-party libraries
+  - Provides up-to-date documentation and best practices
 - **GitHub**: Repository management and API integration
 - **Filesystem**: Direct file system access within project directory
 - **Memory**: Persistent memory between sessions
@@ -350,10 +379,12 @@ See the [Testing Guide](docs/testing/TESTING_GUIDE.md) for detailed usage instru
 
 ### Performance Considerations
 
-- Optimize list rendering with FlatList
+- Optimize list rendering with FlashList (NEVER use FlatList)
 - Use React.memo for expensive components
 - Implement proper image optimization
 - Monitor bundle size with `expo build:web --analyze`
+- Always set `estimatedItemSize` prop on FlashList
+- Use `getItemType` for heterogeneous lists
 
 ### Accessibility
 

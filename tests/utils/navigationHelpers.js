@@ -1,105 +1,69 @@
-// ABOUTME: Navigation testing helpers for mocking React Navigation
-// Provides utilities to create navigation and route mocks for testing
+// ABOUTME: Navigation testing helpers for mocking Expo Router
+// Provides utilities to create router and search params mocks for testing
 
 /**
- * Create a mock navigation object with all common navigation methods
+ * Create a mock router object with all common router methods
  * @param {Object} overrides - Methods to override
- * @returns {Object} Mock navigation object
+ * @returns {Object} Mock router object
  */
-export const createNavigationMock = (overrides = {}) => {
-  const navigate = jest.fn();
-  const goBack = jest.fn();
-  const setOptions = jest.fn();
-  const setParams = jest.fn();
-  const dispatch = jest.fn();
-  const reset = jest.fn();
-  const replace = jest.fn();
+export const createRouterMock = (overrides = {}) => {
   const push = jest.fn();
-  const pop = jest.fn();
-  const popToTop = jest.fn();
+  const replace = jest.fn();
+  const back = jest.fn();
   const canGoBack = jest.fn(() => true);
-  const isFocused = jest.fn(() => true);
-  const addListener = jest.fn(() => ({ remove: jest.fn() }));
-  const removeListener = jest.fn();
+  const setParams = jest.fn();
+  const navigate = jest.fn();
+  const dismiss = jest.fn();
+  const dismissAll = jest.fn();
 
   return {
-    navigate,
-    goBack,
-    setOptions,
-    setParams,
-    dispatch,
-    reset,
-    replace,
     push,
-    pop,
-    popToTop,
+    replace,
+    back,
     canGoBack,
-    isFocused,
-    addListener,
-    removeListener,
-    // State management
-    getState: jest.fn(() => ({
-      routeNames: ['TasksList', 'CreateTask', 'EditTask'],
-      index: 0,
-      routes: [{ name: 'TasksList', key: 'TasksList-1' }],
-    })),
-    getParent: jest.fn(() => null),
+    setParams,
+    navigate,
+    dismiss,
+    dismissAll,
     // Override with custom implementations if needed
     ...overrides,
   };
 };
 
 /**
- * Create a mock route object with params
- * @param {Object} params - Route parameters
- * @param {Object} overrides - Additional route properties
- * @returns {Object} Mock route object
+ * Create a mock search params object
+ * @param {Object} params - Search parameters
+ * @returns {Object} Mock search params object
  */
-export const createRouteMock = (params = {}, overrides = {}) => {
-  return {
-    params,
-    key: `test-route-${Date.now()}`,
-    name: 'TestScreen',
-    path: '/test',
-    ...overrides,
-  };
+export const createSearchParamsMock = (params = {}) => {
+  return { ...params };
 };
 
 /**
- * Create a navigation state object
- * @param {Array} routes - Array of route objects
- * @param {number} index - Current route index
- * @returns {Object} Navigation state
- */
-export const createNavigationState = (routes = [], index = 0) => {
-  const defaultRoutes = [{ name: 'TasksList', key: 'TasksList-1' }];
-
-  return {
-    type: 'stack',
-    key: 'stack-1',
-    routeNames: routes.length > 0 ? routes.map((r) => r.name) : ['TasksList'],
-    routes: routes.length > 0 ? routes : defaultRoutes,
-    index: index,
-    stale: false,
-  };
-};
-
-/**
- * Create a mock for useNavigation hook
- * @param {Object} navigationMock - Navigation mock to return
+ * Create a mock for useRouter hook
+ * @param {Object} routerMock - Router mock to return
  * @returns {Function} Mock hook
  */
-export const createUseNavigationMock = (navigationMock = null) => {
-  return () => navigationMock || createNavigationMock();
+export const createUseRouterMock = (routerMock = null) => {
+  return () => routerMock || createRouterMock();
 };
 
 /**
- * Create a mock for useRoute hook
- * @param {Object} routeMock - Route mock to return
+ * Create a mock for useLocalSearchParams hook
+ * @param {Object} paramsMock - Params mock to return
  * @returns {Function} Mock hook
  */
-export const createUseRouteMock = (routeMock = null) => {
-  return () => routeMock || createRouteMock();
+export const createUseLocalSearchParamsMock = (paramsMock = null) => {
+  return () => paramsMock || createSearchParamsMock();
+};
+
+/**
+ * Create a mock for useSearchParams hook
+ * @param {Object} paramsMock - Params mock to return
+ * @returns {Function} Mock hook
+ */
+export const createUseSearchParamsMock = (paramsMock = null) => {
+  return () => paramsMock || createSearchParamsMock();
 };
 
 /**
@@ -114,72 +78,85 @@ export const createUseFocusEffectMock = () => {
 };
 
 /**
- * Create a mock for useIsFocused hook
- * @param {boolean} isFocused - Whether screen is focused
+ * Create a mock for usePathname hook
+ * @param {string} pathname - Current pathname
  * @returns {Function} Mock hook
  */
-export const createUseIsFocusedMock = (isFocused = true) => {
-  return () => isFocused;
+export const createUsePathnameMock = (pathname = '/') => {
+  return () => pathname;
 };
 
 /**
- * Assert navigation was called with expected arguments
- * @param {Object} navigation - Navigation mock object
- * @param {string} screenName - Expected screen name
+ * Create a mock for useSegments hook
+ * @param {Array} segments - Current segments
+ * @returns {Function} Mock hook
+ */
+export const createUseSegmentsMock = (segments = []) => {
+  return () => segments;
+};
+
+/**
+ * Assert router push was called with expected arguments
+ * @param {Object} router - Router mock object
+ * @param {string} href - Expected href
  * @param {Object} params - Expected params
  */
-export const expectNavigationCalledWith = (navigation, screenName, params = undefined) => {
+export const expectRouterPushCalledWith = (router, href, params = undefined) => {
   if (params !== undefined) {
-    expect(navigation.navigate).toHaveBeenCalledWith(screenName, params);
+    expect(router.push).toHaveBeenCalledWith({ pathname: href, params });
   } else {
-    expect(navigation.navigate).toHaveBeenCalledWith(screenName);
+    expect(router.push).toHaveBeenCalledWith(href);
   }
 };
 
 /**
- * Assert navigation was called N times
- * @param {Object} navigation - Navigation mock object
- * @param {number} times - Expected number of calls
+ * Assert router replace was called with expected arguments
+ * @param {Object} router - Router mock object
+ * @param {string} href - Expected href
+ * @param {Object} params - Expected params
  */
-export const expectNavigationCalledTimes = (navigation, times) => {
-  expect(navigation.navigate).toHaveBeenCalledTimes(times);
+export const expectRouterReplaceCalledWith = (router, href, params = undefined) => {
+  if (params !== undefined) {
+    expect(router.replace).toHaveBeenCalledWith({ pathname: href, params });
+  } else {
+    expect(router.replace).toHaveBeenCalledWith(href);
+  }
 };
 
 /**
- * Reset all navigation mocks
- * @param {Object} navigation - Navigation mock object
+ * Assert router was called N times
+ * @param {Object} router - Router mock object
+ * @param {string} method - Method name (push, replace, etc)
+ * @param {number} times - Expected number of calls
  */
-export const resetNavigationMocks = (navigation) => {
-  Object.keys(navigation).forEach((key) => {
-    if (typeof navigation[key] === 'function' && navigation[key].mockClear) {
-      navigation[key].mockClear();
+export const expectRouterCalledTimes = (router, method, times) => {
+  expect(router[method]).toHaveBeenCalledTimes(times);
+};
+
+/**
+ * Reset all router mocks
+ * @param {Object} router - Router mock object
+ */
+export const resetRouterMocks = (router) => {
+  Object.keys(router).forEach((key) => {
+    if (typeof router[key] === 'function' && router[key].mockClear) {
+      router[key].mockClear();
     }
   });
 };
 
 /**
- * Create a mock navigation container for testing
- * @param {React.Component} children - Components to wrap
- * @param {Object} initialState - Initial navigation state
- * @returns {React.Component} Wrapped component
+ * Helper to simulate focus effect
+ * @param {Function} useFocusEffect - Mock useFocusEffect hook
+ * @param {Function} callback - Callback to execute
  */
-export const MockNavigationContainer = ({ children, initialState }) => {
-  const React = require('react');
-  const { NavigationContainer } = require('@react-navigation/native');
-
-  return React.createElement(NavigationContainer, { initialState }, children);
+export const simulateFocusEffect = (useFocusEffect, callback) => {
+  useFocusEffect(callback);
 };
 
-/**
- * Helper to simulate navigation events
- * @param {Object} navigation - Navigation mock
- * @param {string} eventName - Event name (focus, blur, etc)
- * @param {Object} data - Event data
- */
-export const simulateNavigationEvent = (navigation, eventName, data = {}) => {
-  const listeners = navigation.addListener.mock.calls
-    .filter((call) => call[0] === eventName)
-    .map((call) => call[1]);
-
-  listeners.forEach((listener) => listener(data));
-};
+// Backwards compatibility aliases for easier migration
+export const createNavigationMock = createRouterMock;
+export const expectNavigationCalledWith = expectRouterPushCalledWith;
+export const expectNavigationCalledTimes = (navigation, times) =>
+  expectRouterCalledTimes(navigation, 'push', times);
+export const resetNavigationMocks = resetRouterMocks;

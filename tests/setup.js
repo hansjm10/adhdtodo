@@ -37,10 +37,6 @@ jest.mock('react-native-gesture-handler', () => {
     Slider: View,
     Switch: View,
     TextInput: View,
-    ToolbarAndroid: View,
-    ViewPagerAndroid: View,
-    DrawerLayoutAndroid: View,
-    WebView: View,
     NativeViewGestureHandler: View,
     TapGestureHandler: View,
     FlingGestureHandler: View,
@@ -85,54 +81,35 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(),
 }));
 
-// Mock React Navigation
-jest.mock('@react-navigation/native', () => {
-  const actualNav = jest.requireActual('@react-navigation/native');
-  return {
-    ...actualNav,
-    useNavigation: () => ({
-      navigate: jest.fn(),
-      dispatch: jest.fn(),
-      goBack: jest.fn(),
-      setOptions: jest.fn(),
-    }),
-    useRoute: () => ({
-      params: {},
-    }),
-    useFocusEffect: jest.fn(),
-    useIsFocused: () => true,
-  };
-});
-
-// Mock stack navigator
-jest.mock('@react-navigation/stack', () => {
-  const React = require('react');
-  return {
-    createStackNavigator: () => ({
-      Navigator: ({ children }) => React.createElement('View', null, children),
-      Screen: ({ children, component: Component }) =>
-        Component ? React.createElement(Component) : children,
-    }),
-    CardStyleInterpolators: {
-      forHorizontalIOS: jest.fn(),
-    },
-    TransitionPresets: {
-      SlideFromRightIOS: {},
-    },
-  };
-});
-
-// Mock bottom tabs navigator
-jest.mock('@react-navigation/bottom-tabs', () => {
-  const React = require('react');
-  return {
-    createBottomTabNavigator: () => ({
-      Navigator: ({ children }) => React.createElement('View', null, children),
-      Screen: ({ children, component: Component }) =>
-        Component ? React.createElement(Component) : children,
-    }),
-  };
-});
+// Mock Expo Router
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    setParams: jest.fn(),
+  }),
+  useLocalSearchParams: () => ({}),
+  useSearchParams: () => ({}),
+  useSegments: () => [],
+  usePathname: () => '/',
+  useFocusEffect: jest.fn(),
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    setParams: jest.fn(),
+  },
+  Link: ({ children }) => children,
+  Stack: {
+    Screen: ({ children }) => children,
+  },
+  Tabs: {
+    Screen: ({ children }) => children,
+  },
+}));
 
 // Mock FlashList
 jest.mock('@shopify/flash-list', () => {
