@@ -7,22 +7,6 @@ import { useUser, useTasks } from '../contexts';
 import TaskListView from './TaskListView';
 import { Task } from '../types/task.types';
 
-// Convert context's LegacyTask to Task
-interface LegacyTask extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' | 'completedAt'> {
-  isComplete: boolean;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string;
-}
-
-const legacyToTask = (legacy: LegacyTask): Task => ({
-  ...legacy,
-  completed: legacy.isComplete,
-  createdAt: new Date(legacy.createdAt),
-  updatedAt: legacy.updatedAt ? new Date(legacy.updatedAt) : new Date(legacy.createdAt),
-  completedAt: legacy.completedAt ? new Date(legacy.completedAt) : null,
-});
-
 export const TaskListContainer: React.FC = () => {
   const router = useRouter();
   const { user: currentUser, partner } = useUser();
@@ -31,7 +15,7 @@ export const TaskListContainer: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAssignedOnly, setShowAssignedOnly] = useState(false);
 
-  // Convert and filter tasks
+  // Filter and sort tasks
   const tasks = useMemo<Task[]>(() => {
     if (!currentUser) return [];
 
@@ -46,8 +30,8 @@ export const TaskListContainer: React.FC = () => {
       }
     }
 
-    // Convert to Task format and sort
-    return filtered.map(legacyToTask).sort((a, b) => {
+    // Sort tasks
+    return filtered.sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       if (a.dueDate && b.dueDate) {
         return a.dueDate.getTime() - b.dueDate.getTime();

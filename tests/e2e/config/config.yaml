@@ -1,0 +1,35 @@
+# Maestro E2E Test Configuration
+
+# Default app configuration
+appId: host.exp.Exponent  # Expo Go app ID
+# For standalone builds, use: com.yourcompany.adhdtodo
+
+# Test execution settings
+testTimeout: 90000  # 90 seconds per test
+elementTimeout: 10000  # 10 seconds to find elements
+
+# Platform-specific settings
+ios:
+  deviceName: "iPhone 15"
+  osVersion: "17.0"
+
+android:
+  deviceName: "Pixel 6"
+  apiLevel: 33
+
+# Environment variables for tests
+env:
+  TEST_USER_EMAIL: "test@example.com"
+  TEST_USER_PASSWORD: "TestPassword123!"
+  API_BASE_URL: "http://localhost:3000"
+
+# Retry configuration
+retry:
+  maxRetries: 2
+  delayMs: 1000
+
+# Screenshot settings
+screenshots:
+  enabled: true
+  onError: true
+  outputDir: "./tests/e2e/screenshots"

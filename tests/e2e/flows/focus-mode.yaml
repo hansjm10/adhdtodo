@@ -1,0 +1,81 @@
+appId: host.exp.Exponent
+---
+# Focus Mode Flow E2E Test
+
+# Setup: Sign in and create tasks
+- launchApp
+- runFlow: ../helpers/common.yaml#signIn
+
+# Create test tasks
+- runFlow:
+    file: ../helpers/common.yaml#createTask
+    env:
+      taskTitle: "Important: Review documents"
+      taskDescription: "Review Q4 financial documents"
+- runFlow:
+    file: ../helpers/common.yaml#createTask
+    env:
+      taskTitle: "Reply to emails"
+      taskDescription: "Check and respond to morning emails"
+
+# Test 1: Enter Focus Mode
+- tapOn:
+    id: "focus-tab"
+- assertVisible: "Focus Mode"
+- assertVisible: "Select a task to focus on"
+- assertVisible: "Important: Review documents"
+- assertVisible: "Reply to emails"
+
+# Test 2: Select task to focus on
+- tapOn: "Important: Review documents"
+- assertVisible: "Focusing on:"
+- assertVisible: "Important: Review documents"
+- assertVisible:
+    id: "focus-timer"
+- assertVisible: "Start Focus"
+
+# Test 3: Start focus session
+- tapOn: "Start Focus"
+- assertVisible:
+    id: "timer-running"
+- assertVisible: "End Focus"
+- wait: 2000  # Let timer run for 2 seconds
+
+# Test 4: Pause focus session
+- tapOn: "Pause"
+- assertVisible: "Resume"
+- assertNotVisible:
+    id: "timer-running"
+- tapOn: "Resume"
+- assertVisible:
+    id: "timer-running"
+
+# Test 5: Complete focused task
+- tapOn: "End Focus"
+- assertVisible: "How did it go?"
+- tapOn: "Task Completed"
+- assertVisible: "Great job! 🎉"
+- tapOn: "Continue"
+- assertVisible:
+    id: "task-completed-badge"
+
+# Test 6: Break reminder
+- tapOn: "Reply to emails"
+- tapOn: "Start Focus"
+- wait: 3000
+- tapOn: "End Focus"
+- tapOn: "Task Completed"
+- assertVisible: "Time for a break?"
+- tapOn: "Take 5 min break"
+- assertVisible:
+    id: "break-timer"
+
+# Test 7: Focus statistics
+- tapOn:
+    id: "focus-stats"
+- assertVisible: "Today's Focus Time"
+- assertVisible: "2 tasks completed"
+- assertVisible: "Focus streak: 2"
+
+# Cleanup
+- runFlow: ../helpers/common.yaml#signOut

@@ -105,12 +105,7 @@ const PartnerDashboardScreen = () => {
   const [selectedTab, setSelectedTab] = useState('all'); // all, active, completed, overdue
 
   const isOverdue = useCallback((task: Task): boolean => {
-    return !!(
-      task.dueDate &&
-      new Date(task.dueDate) < new Date() &&
-      !(task as any).completed &&
-      !(task as any).isComplete
-    );
+    return !!(task.dueDate && new Date(task.dueDate) < new Date() && !task.completed);
   }, []);
 
   const loadInitialData = useCallback(async () => {
@@ -147,24 +142,20 @@ const PartnerDashboardScreen = () => {
       let filteredTasks = tasks;
       switch (selectedTab) {
         case 'active':
-          filteredTasks = tasks.filter(
-            (t) => !(t as any).completed && !(t as any).isComplete && !isOverdue(t),
-          );
+          filteredTasks = tasks.filter((t) => !t.completed && !isOverdue(t));
           break;
         case 'completed':
-          filteredTasks = tasks.filter((t) => (t as any).completed || (t as any).isComplete);
+          filteredTasks = tasks.filter((t) => t.completed);
           break;
         case 'overdue':
-          filteredTasks = tasks.filter(
-            (t) => !(t as any).completed && !(t as any).isComplete && isOverdue(t),
-          );
+          filteredTasks = tasks.filter((t) => !t.completed && isOverdue(t));
           break;
       }
 
       // Sort tasks by priority and due date
       filteredTasks.sort((a, b) => {
-        const aCompleted = (a as any).completed || (a as any).isComplete;
-        const bCompleted = (b as any).completed || (b as any).isComplete;
+        const aCompleted = a.completed;
+        const bCompleted = b.completed;
         if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
         if (isOverdue(a) && !isOverdue(b)) return -1;
         if (!isOverdue(a) && isOverdue(b)) return 1;
@@ -199,12 +190,8 @@ const PartnerDashboardScreen = () => {
 
   const getTaskStats = (): TaskStats => {
     const total = assignedTasks.length;
-    const completed = assignedTasks.filter(
-      (t) => (t as any).completed || (t as any).isComplete,
-    ).length;
-    const active = assignedTasks.filter(
-      (t) => !(t as any).completed && !(t as any).isComplete && !isOverdue(t),
-    ).length;
+    const completed = assignedTasks.filter((t) => t.completed).length;
+    const active = assignedTasks.filter((t) => !t.completed && !isOverdue(t)).length;
     const overdue = assignedTasks.filter((t) => isOverdue(t)).length;
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -251,7 +238,7 @@ const PartnerDashboardScreen = () => {
   };
 
   const getStatusIcon = (task: Task): StatusIcon => {
-    if ((task as any).completed || (task as any).isComplete) {
+    if (task.completed) {
       return { name: 'checkmark-circle', color: '#27AE60' };
     } else if (task.status === TASK_STATUS.IN_PROGRESS) {
       return { name: 'play-circle', color: '#3498DB' };
@@ -306,7 +293,7 @@ const PartnerDashboardScreen = () => {
                 <Text style={[styles.dueText, isOverdue(task) && styles.overdueText]}>
                   {isOverdue(task)
                     ? `Overdue by ${Math.abs(daysUntilDue!)} days`
-                    : (task as any).completed || (task as any).isComplete
+                    : task.completed
                       ? `Completed ${task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'recently'}`
                       : `Due in ${daysUntilDue} days`}
                 </Text>
@@ -318,14 +305,14 @@ const PartnerDashboardScreen = () => {
           </View>
         </View>
 
-        {!((task as any).completed || (task as any).isComplete) && (
+        {!task.completed && (
           <TouchableOpacity style={styles.encourageButton} onPress={() => sendEncouragement(task)}>
             <Ionicons name="heart-outline" size={20} color="#E74C3C" />
             <Text style={styles.encourageButtonText}>Encourage</Text>
           </TouchableOpacity>
         )}
 
-        {((task as any).completed || (task as any).isComplete) && task.timeSpent > 0 && (
+        {task.completed && task.timeSpent > 0 && (
           <Text style={styles.timeSpentText}>
             Time spent: {Math.round(task.timeSpent / 60)} min
           </Text>

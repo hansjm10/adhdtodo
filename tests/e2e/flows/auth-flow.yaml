@@ -1,0 +1,74 @@
+appId: host.exp.Exponent
+---
+# Authentication Flow E2E Test
+
+# Test 1: Successful Sign In
+- launchApp
+- assertVisible: "Welcome to ADHD Todo"
+- assertVisible: "Sign In"
+
+# Navigate to sign in
+- tapOn: "Sign In"
+- assertVisible: "Sign in to your account"
+- assertVisible:
+    id: "email-input"
+- assertVisible:
+    id: "password-input"
+
+# Enter credentials
+- tapOn:
+    id: "email-input"
+- inputText: "test@example.com"
+- tapOn:
+    id: "password-input"
+- inputText: "TestPassword123!"
+
+# Submit and verify
+- tapOn: "Sign In"
+- waitForVisible: "Your Tasks"
+- assertVisible:
+    id: "task-list"
+
+# Test 2: Invalid credentials
+- tapOn:
+    id: "profile-tab"
+- tapOn: "Sign Out"
+- tapOn: "Confirm"
+- waitForVisible: "Welcome to ADHD Todo"
+
+- tapOn: "Sign In"
+- tapOn:
+    id: "email-input"
+- inputText: "invalid@example.com"
+- tapOn:
+    id: "password-input"
+- inputText: "WrongPassword"
+- tapOn: "Sign In"
+- assertVisible: "Invalid email or password"
+
+# Test 3: Empty fields validation
+- clearKeychain
+- tapOn:
+    id: "email-input"
+- clearText
+- tapOn:
+    id: "password-input"
+- clearText
+- tapOn: "Sign In"
+- assertVisible: "Email is required"
+
+# Test 4: Invalid email format
+- tapOn:
+    id: "email-input"
+- inputText: "notanemail"
+- tapOn:
+    id: "password-input"
+- inputText: "TestPassword123!"
+- tapOn: "Sign In"
+- assertVisible: "Invalid email format"
+
+# Test 5: Sign up navigation
+- tapOn: "Don't have an account? Sign Up"
+- assertVisible: "Create your account"
+- back
+- assertVisible: "Sign in to your account"

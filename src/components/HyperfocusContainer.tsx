@@ -6,29 +6,9 @@ import { Alert, Vibration, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTasks } from '../contexts';
 import HyperfocusView from './HyperfocusView';
-import { Task } from '../types/task.types';
 
 const WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const BREAK_DURATION = 5 * 60; // 5 minutes in seconds
-
-// Convert context's LegacyTask to Task
-interface LegacyTask
-  extends Omit<Task, 'completed' | 'createdAt' | 'updatedAt' | 'completedAt' | 'timeSpent'> {
-  isComplete: boolean;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string;
-  timeSpent?: number;
-}
-
-const legacyToTask = (legacy: LegacyTask): Task => ({
-  ...legacy,
-  completed: legacy.isComplete,
-  createdAt: new Date(legacy.createdAt),
-  updatedAt: legacy.updatedAt ? new Date(legacy.updatedAt) : new Date(legacy.createdAt),
-  completedAt: legacy.completedAt ? new Date(legacy.completedAt) : null,
-  timeSpent: legacy.timeSpent || 0,
-});
 
 export const HyperfocusContainer: React.FC = () => {
   const router = useRouter();
@@ -41,24 +21,22 @@ export const HyperfocusContainer: React.FC = () => {
   const [sessionCount, setSessionCount] = useState<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Find the task from context and convert to Task format
+  // Find the task from context
   const task = useMemo(() => {
-    const legacyTask = tasks.find((t) => t.id === taskId);
-    return legacyTask ? legacyToTask(legacyTask) : null;
+    return tasks.find((t) => t.id === taskId) || null;
   }, [tasks, taskId]);
 
   const updateTaskTimeSpent = useCallback(async (): Promise<void> => {
     if (!task) return;
 
     try {
-      const legacyTask = tasks.find((t) => t.id === taskId);
       await updateTask(task.id, {
-        timeSpent: (legacyTask?.timeSpent || 0) + Math.round(WORK_DURATION / 60),
+        timeSpent: (task.timeSpent || 0) + Math.round(WORK_DURATION / 60),
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to update task progress.');
     }
-  }, [task, tasks, taskId, updateTask]);
+  }, [task, updateTask]);
 
   const handleTimerComplete = useCallback((): void => {
     // Platform-specific vibration handling

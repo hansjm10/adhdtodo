@@ -1,0 +1,83 @@
+appId: host.exp.Exponent
+---
+# Partnership Flow E2E Test
+
+# Setup: Sign in as primary user
+- launchApp
+- runFlow: ../helpers/common.yaml#signIn
+
+# Test 1: Navigate to partnership setup
+- tapOn:
+    id: "profile-tab"
+- tapOn: "Partnership"
+- assertVisible: "ADHD Partnership"
+- assertVisible: "No partner connected"
+- assertVisible: "Invite Partner"
+
+# Test 2: Generate invite code
+- tapOn: "Invite Partner"
+- assertVisible: "Share this code with your partner"
+- assertVisible:
+    id: "invite-code"
+- copyText:
+    id: "invite-code"
+- tapOn: "Copy Code"
+- assertVisible: "Code copied!"
+
+# Test 3: Cancel invite
+- tapOn: "Cancel Invite"
+- tapOn: "Yes, Cancel"
+- assertVisible: "No partner connected"
+
+# Test 4: Simulate partner connection (mock)
+- tapOn: "Invite Partner"
+- waitForVisible:
+    id: "invite-code"
+- wait: 2000  # Simulate partner joining
+- assertVisible: "Partner Connected!"
+- tapOn: "Continue"
+
+# Test 5: View partner dashboard
+- assertVisible: "Partner: TestPartner"
+- assertVisible: "Shared Tasks"
+- assertVisible: "Partner can view"
+- assertVisible:
+    id: "permission-toggle"
+
+# Test 6: Assign task to partner
+- tapOn:
+    id: "home-tab"
+- tapOn: "Create Task"
+- tapOn:
+    id: "task-title-input"
+- inputText: "Shared: Pick up prescription"
+- tapOn:
+    id: "assign-partner"
+- assertVisible: "Assigned to partner"
+- tapOn: "Save"
+
+# Test 7: View partner's progress
+- tapOn:
+    id: "profile-tab"
+- tapOn: "Partnership"
+- tapOn: "Partner Progress"
+- assertVisible: "Partner's Tasks"
+- assertVisible: "Shared: Pick up prescription"
+- assertVisible: "Assigned"
+
+# Test 8: Send encouragement
+- tapOn: "Send Encouragement"
+- tapOn: "You're doing great! 🌟"
+- assertVisible: "Sent!"
+- wait: 1000
+
+# Test 9: Remove partner
+- tapOn: "Partnership Settings"
+- tapOn: "Remove Partner"
+- assertVisible: "Are you sure?"
+- tapOn: "Remove"
+- assertVisible: "Partner removed"
+- assertVisible: "No partner connected"
+
+# Cleanup
+- runFlow: ../helpers/common.yaml#signOut

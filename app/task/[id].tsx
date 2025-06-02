@@ -42,16 +42,7 @@ const EditTaskScreen = () => {
     // First try to find task in context
     const foundTask = tasks.find((t) => t.id === id);
     if (foundTask) {
-      // Convert LegacyTask to Task format
-      return {
-        ...foundTask,
-        completed: foundTask.isComplete,
-        createdAt: new Date(foundTask.createdAt),
-        updatedAt: foundTask.updatedAt
-          ? new Date(foundTask.updatedAt)
-          : new Date(foundTask.createdAt),
-        completedAt: foundTask.completedAt ? new Date(foundTask.completedAt) : null,
-      } as Task;
+      return foundTask;
     }
 
     // Otherwise try to parse from params
@@ -63,6 +54,11 @@ const EditTaskScreen = () => {
           createdAt: new Date(parsed.createdAt),
           updatedAt: new Date(parsed.updatedAt),
           completedAt: parsed.completedAt ? new Date(parsed.completedAt) : null,
+          dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
+          preferredStartTime: parsed.preferredStartTime
+            ? new Date(parsed.preferredStartTime)
+            : null,
+          startedAt: parsed.startedAt ? new Date(parsed.startedAt) : null,
         } as Task;
       } catch (e) {
         console.error('Failed to parse task from params:', e);

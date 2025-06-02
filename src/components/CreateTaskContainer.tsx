@@ -40,15 +40,7 @@ export const CreateTaskContainer: React.FC = () => {
 
     try {
       const newTask = createTask(taskData);
-      // Convert Task to LegacyTask format for context compatibility
-      const legacyTask = {
-        ...newTask,
-        isComplete: newTask.completed,
-        createdAt: newTask.createdAt.toISOString(),
-        updatedAt: newTask.updatedAt.toISOString(),
-        completedAt: newTask.completedAt ? newTask.completedAt.toISOString() : undefined,
-      };
-      await addTask(legacyTask);
+      await addTask(newTask);
       router.back();
     } catch (error) {
       Alert.alert('Error', 'Failed to save task. Please try again.');
