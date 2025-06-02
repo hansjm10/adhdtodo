@@ -100,6 +100,14 @@ export interface Partnership {
   terminatedAt: Date | null;
 }
 
+export interface SecureToken {
+  encryptedToken: string;
+  deviceId: string;
+  createdAt: Date;
+  lastUsedAt: Date;
+  fingerprint: string;
+}
+
 // Type guards
 export function isUser(obj: unknown): obj is User {
   if (!obj || typeof obj !== 'object' || obj === null) {

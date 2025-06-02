@@ -3,6 +3,7 @@
 import AuthService from '../AuthService';
 import UserStorageService from '../UserStorageService';
 import CryptoService from '../CryptoService';
+import * as SecureStore from 'expo-secure-store';
 import RateLimiter from '../RateLimiter';
 import SecureLogger from '../SecureLogger';
 import { UserRole } from '../../types/user.types';
@@ -11,6 +12,24 @@ import { UserRole } from '../../types/user.types';
 jest.mock('../UserStorageService');
 jest.mock('../CryptoService');
 jest.mock('../SecureLogger');
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(),
+  setItemAsync: jest.fn(),
+}));
+jest.mock('../../utils/UserModel', () => ({
+  ...jest.requireActual('../../utils/UserModel'),
+  createUser: jest.fn((data) => ({
+    id: 'user_123',
+    ...data,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  })),
+  updateUser: jest.fn((user, updates) => ({
+    ...user,
+    ...updates,
+    updatedAt: new Date(),
+  })),
+}));
 
 // Mock console methods to verify no sensitive data is logged
 const originalConsoleError = console.error;
@@ -41,6 +60,15 @@ describe('AuthService Security Tests', () => {
     CryptoService.verifyPassword.mockResolvedValue(false);
     CryptoService.generateSessionToken.mockResolvedValue('mocktoken.123456789');
     CryptoService.isTokenExpired.mockReturnValue(false);
+    CryptoService.generateToken.mockResolvedValue('reference-token');
+    CryptoService.generateSecureBytes.mockResolvedValue(new Uint8Array(32));
+    CryptoService.encrypt.mockResolvedValue('encrypted-token');
+    CryptoService.decrypt.mockResolvedValue('reference-token');
+    CryptoService.hash.mockResolvedValue('token-fingerprint');
+
+    // SecureStore mocks
+    SecureStore.getItemAsync.mockResolvedValue(null);
+    SecureStore.setItemAsync.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
