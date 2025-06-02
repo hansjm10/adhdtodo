@@ -1,7 +1,7 @@
 // ABOUTME: Pure presentation component for displaying tasks
 // Receives tasks as props, making it easily testable
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import TaskItem from './TaskItem';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
 import { Task, TaskCategory } from '../types/task.types';
 import { User } from '../types/user.types';
+import settingsService from '../services/SettingsService';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -47,6 +48,10 @@ interface Styles {
   categoryChipText: TextStyle;
   categoryChipTextActive: TextStyle;
   categoryIcon: TextStyle;
+  showMoreContainer: ViewStyle;
+  showMoreButton: ViewStyle;
+  showMoreText: TextStyle;
+  taskCountText: TextStyle;
 }
 
 export const TaskListView: React.FC<TaskListViewProps> = ({
@@ -62,6 +67,22 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
   onCategorySelect,
   onToggleAssigned,
 }) => {
+  const [taskLimit, setTaskLimit] = useState(5);
+  const [showAll, setShowAll] = useState(false);
+
+  // Load task limit from settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await settingsService.loadSettings();
+      setTaskLimit(settings.taskLimit);
+    };
+    loadSettings();
+  }, []);
+
+  // Calculate visible tasks based on limit
+  const visibleTasks = showAll ? tasks : tasks.slice(0, taskLimit);
+  const hasMoreTasks = tasks.length > taskLimit;
+
   const renderTask = ({ item }: { item: Task }) => (
     <TaskItem
       task={item}
@@ -160,6 +181,32 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
     </ScrollView>
   );
 
+  const ShowMoreButton = () => {
+    if (!hasMoreTasks) return null;
+
+    return (
+      <View style={styles.showMoreContainer}>
+        <Text style={styles.taskCountText}>
+          Showing {visibleTasks.length} of {tasks.length} tasks
+        </Text>
+        <TouchableOpacity
+          style={styles.showMoreButton}
+          onPress={() => setShowAll(!showAll)}
+          accessible={true}
+          accessibilityLabel={showAll ? 'Show fewer tasks' : `Show all ${tasks.length} tasks`}
+          accessibilityHint={
+            showAll ? 'Double tap to limit visible tasks' : 'Double tap to show all tasks'
+          }
+          accessibilityRole="button"
+        >
+          <Text style={styles.showMoreText}>
+            {showAll ? 'Show Less' : `Show All (${tasks.length - visibleTasks.length} more)`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <CategoryFilter />
@@ -173,15 +220,18 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
           <EmptyState />
         </ScrollView>
       ) : (
-        <FlashList<Task>
-          testID="task-list"
-          data={tasks}
-          renderItem={renderTask}
-          keyExtractor={(item: Task) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          estimatedItemSize={100}
-          drawDistance={200}
-        />
+        <>
+          <FlashList<Task>
+            testID="task-list"
+            data={visibleTasks}
+            renderItem={renderTask}
+            keyExtractor={(item: Task) => item.id}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            estimatedItemSize={100}
+            drawDistance={200}
+            ListFooterComponent={ShowMoreButton}
+          />
+        </>
       )}
 
       <TouchableOpacity
@@ -282,6 +332,30 @@ const styles = StyleSheet.create<Styles>({
   categoryIcon: {
     fontSize: 16,
     marginRight: 4,
+  },
+  showMoreContainer: {
+    padding: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    marginBottom: 80, // Space for FAB
+  },
+  showMoreButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 24,
+    marginTop: 8,
+  },
+  showMoreText: {
+    fontSize: 16,
+    color: '#4A90E2',
+    fontWeight: '600',
+  },
+  taskCountText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
   },
 });
 
