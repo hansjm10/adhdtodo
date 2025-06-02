@@ -5,6 +5,7 @@ import React, { ReactNode } from 'react';
 import { UserProvider } from './UserContext';
 import { TaskProvider } from './TaskContext';
 import { NotificationProvider } from './NotificationContext';
+import { AuthProvider } from './AuthContext';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -13,9 +14,11 @@ interface AppProviderProps {
 export const AppProvider = ({ children }: AppProviderProps) => {
   return (
     <UserProvider>
-      <TaskProvider>
-        <NotificationProvider>{children}</NotificationProvider>
-      </TaskProvider>
+      <AuthProvider>
+        <TaskProvider>
+          <NotificationProvider>{children}</NotificationProvider>
+        </TaskProvider>
+      </AuthProvider>
     </UserProvider>
   );
 };

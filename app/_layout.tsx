@@ -6,7 +6,9 @@ import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AppProvider } from '../src/contexts/AppProvider';
 import { useUser } from '../src/contexts/UserContext';
+import { useAuth } from '../src/contexts/AuthContext';
 import NotificationContainer from '../src/components/NotificationContainer';
+import BiometricAuthScreen from '../src/components/BiometricAuthScreen';
 
 // Loading Screen Component
 const LoadingScreen = () => (
@@ -19,13 +21,14 @@ const LoadingScreen = () => (
 
 // Auth-aware layout component
 function RootLayoutNav() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const { isAuthenticated, isLocked, unlock } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   // Protect routes based on authentication
   useEffect(() => {
-    if (loading) return;
+    if (userLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -36,10 +39,24 @@ function RootLayoutNav() {
       // Redirect to main app if authenticated
       router.replace('/(tabs)');
     }
-  }, [user, segments, loading]);
+  }, [user, segments, userLoading]);
 
-  if (loading) {
+  if (userLoading) {
     return <LoadingScreen />;
+  }
+
+  // Show biometric authentication screen if user is locked out
+  if (user && (!isAuthenticated || isLocked)) {
+    return (
+      <BiometricAuthScreen
+        onSuccess={async () => {
+          if (isLocked) {
+            await unlock();
+          }
+        }}
+        reason="Unlock to access your ADHD Todo data"
+      />
+    );
   }
 
   return (

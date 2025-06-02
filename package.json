@@ -47,7 +47,8 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
-    "expo-router": "~5.0.7"
+    "expo-router": "~5.0.7",
+    "expo-local-authentication": "~16.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

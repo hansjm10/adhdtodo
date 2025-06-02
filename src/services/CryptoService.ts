@@ -19,6 +19,8 @@ export interface ICryptoService {
   isTokenExpired(token: string, maxAgeMs?: number): boolean;
   hashData(data: string): Promise<string>;
   safeCompare(a: string, b: string): boolean;
+  hashPIN(pin: string): Promise<string>;
+  verifyPIN(pin: string, hash: string): Promise<boolean>;
 }
 
 class CryptoService implements ICryptoService {
@@ -177,6 +179,61 @@ class CryptoService implements ICryptoService {
 
     return result === 0;
   }
+
+  // Hash a PIN with a simpler approach than passwords
+  async hashPIN(pin: string): Promise<string> {
+    if (!pin || typeof pin !== 'string') {
+      throw new Error('PIN must be a non-empty string');
+    }
+
+    // Generate a salt specific to this PIN
+    const salt = await this.generateSalt();
+
+    // Use 50,000 iterations for PINs (less than passwords since PINs are simpler)
+    const iterations = 50000;
+    let hash = pin + salt;
+
+    for (let i = 0; i < iterations; i++) {
+      hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        hash + salt + i.toString(),
+        { encoding: Crypto.CryptoEncoding.HEX },
+      );
+    }
+
+    // Return hash with salt embedded
+    return `${salt}:${hash}`;
+  }
+
+  // Verify a PIN against a stored hash
+  async verifyPIN(pin: string, storedHash: string): Promise<boolean> {
+    if (!pin || !storedHash) {
+      return false;
+    }
+
+    const parts = storedHash.split(':');
+    if (parts.length !== 2) {
+      return false;
+    }
+
+    const [salt, hash] = parts;
+
+    // Recompute hash with same salt
+    const iterations = 50000;
+    let computedHash = pin + salt;
+
+    for (let i = 0; i < iterations; i++) {
+      computedHash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        computedHash + salt + i.toString(),
+        { encoding: Crypto.CryptoEncoding.HEX },
+      );
+    }
+
+    return this.safeCompare(computedHash, hash);
+  }
 }
 
-export default new CryptoService();
+const cryptoService = new CryptoService();
+export { cryptoService as CryptoService };
+export default cryptoService;
