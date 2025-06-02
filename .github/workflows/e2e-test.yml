@@ -30,10 +30,15 @@ jobs:
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+      - name: Verify Maestro Installation
+        run: |
+          export PATH="$HOME/.maestro/bin:$PATH"
           maestro --version
 
       - name: Test Maestro Installation
         run: |
+          export PATH="$HOME/.maestro/bin:$PATH"
           # Create a simple test file
           cat > test-maestro.yaml << EOF
           appId: com.apple.mobilesafari
@@ -53,6 +58,7 @@ jobs:
 
       - name: Run Basic E2E Test (Dry Run)
         run: |
+          export PATH="$HOME/.maestro/bin:$PATH"
           # This will fail because no device is connected, but it validates syntax
           maestro test tests/e2e/flows/basic-launch.yaml --no-ansi || echo "Expected failure - no device connected"
         continue-on-error: true
