@@ -1,0 +1,13 @@
+appId: host.exp.Exponent
+---
+# Basic Launch Test - Minimal test to verify e2e setup
+
+- launchApp
+
+# Just verify the app launches
+- waitForVisible:
+    text: "ADHD Todo"
+    timeout: 30000
+
+# Take a screenshot for verification
+- takeScreenshot: "app-launched"

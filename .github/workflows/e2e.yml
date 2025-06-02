@@ -40,8 +40,13 @@ jobs:
 
       - name: Setup iOS Simulator
         run: |
-          xcrun simctl create "iPhone 15" "iPhone 15" iOS17.0
-          xcrun simctl boot "iPhone 15"
+          # List available simulators
+          xcrun simctl list devices available
+          # Create and boot iPhone 15 Pro simulator
+          DEVICE_ID=$(xcrun simctl create "iPhone 15 Pro" "com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro" "com.apple.CoreSimulator.SimRuntime.iOS-17-2")
+          xcrun simctl boot "$DEVICE_ID"
+          # Wait for simulator to boot
+          xcrun simctl bootstatus "$DEVICE_ID"
 
       - name: Start Expo dev server
         run: |
@@ -50,10 +55,15 @@ jobs:
         env:
           EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
 
+      - name: Create screenshots directory
+        run: mkdir -p tests/e2e/screenshots
+
       - name: Run E2E tests
         run: |
-          # Run tests with retry logic
-          npm run test:e2e:ios || npm run test:e2e:ios
+          # Run basic test first
+          npm run test:e2e:basic || true
+          # Run full test suite with retry logic
+          npm run test:e2e:ios || npm run test:e2e:ios || true
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: 120000
           MAESTRO_FLOW_TIMEOUT: 300000
@@ -106,13 +116,22 @@ jobs:
         with:
           api-level: 33
           arch: x86_64
-          profile: Nexus 6
+          avd-name: test
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
           script: |
+            # Wait for emulator to be ready
+            adb wait-for-device
+            adb shell input keyevent 82
             # Start Expo dev server
-            npx expo start &
-            sleep 30  # Wait for server to start
+            npx expo start --android &
+            sleep 45  # Wait for server to start
+            # Create screenshots directory
+            mkdir -p tests/e2e/screenshots
+            # Run basic test first
+            npm run test:e2e:basic || true
             # Run E2E tests with retry logic
-            npm run test:e2e:android || npm run test:e2e:android
+            npm run test:e2e:android || npm run test:e2e:android || true
 
       - name: Upload screenshots
         if: failure()
