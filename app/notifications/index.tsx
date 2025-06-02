@@ -5,17 +5,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
   Alert,
-  ListRenderItem,
   ViewStyle,
   TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import NotificationService from '../../src/services/NotificationService';
 import UserStorageService from '../../src/services/UserStorageService';
 import { NOTIFICATION_TYPES } from '../../src/constants/UserConstants';
@@ -211,11 +210,12 @@ const NotificationListScreen = () => {
           </TouchableOpacity>
         )}
       </View>
-      <FlatList
+      <FlashList
         data={notifications}
         renderItem={renderNotification}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        estimatedItemSize={100}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3498DB']} />
         }

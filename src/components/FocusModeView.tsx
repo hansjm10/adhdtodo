@@ -7,13 +7,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   ScrollView,
   ViewStyle,
   TextStyle,
-  ListRenderItemInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
 import { Task } from '../types/task.types';
 
 interface FocusModeViewProps {
@@ -136,14 +135,15 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
             <Text style={styles.sectionTitle}>
               {selectedMode === 'hyperfocus' ? 'Select a Task' : 'Quick Tasks'}
             </Text>
-            <FlatList
+            <FlashList
               testID="task-list"
               data={selectedMode === 'scattered' ? quickTasks : tasks}
               renderItem={renderTask}
               keyExtractor={(item) => item.id}
               ListEmptyComponent={EmptyTaskList}
-              style={styles.taskList}
+              contentContainerStyle={styles.taskList}
               scrollEnabled={false}
+              estimatedItemSize={60}
             />
           </View>
         )}

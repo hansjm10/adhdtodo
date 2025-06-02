@@ -1,152 +1,97 @@
 // ABOUTME: Tests for navigation testing helpers
-// Verifies that navigation mocks work correctly for React Navigation
+// Verifies that router mocks work correctly for Expo Router
 
 import {
-  createNavigationMock,
-  createRouteMock,
-  createNavigationState,
-  createUseNavigationMock,
-  createUseRouteMock,
+  createRouterMock,
+  createSearchParamsMock,
+  createUseRouterMock,
+  createUseLocalSearchParamsMock,
+  createUseSearchParamsMock,
   createUseFocusEffectMock,
-  createUseIsFocusedMock,
+  createUsePathnameMock,
+  createUseSegmentsMock,
+  expectRouterPushCalledWith,
+  expectRouterReplaceCalledWith,
+  expectRouterCalledTimes,
+  resetRouterMocks,
+  simulateFocusEffect,
+  // Backwards compatibility aliases
+  createNavigationMock,
   expectNavigationCalledWith,
   expectNavigationCalledTimes,
   resetNavigationMocks,
-  simulateNavigationEvent,
 } from '../navigationHelpers';
 
 describe('Navigation Helpers', () => {
-  describe('createNavigationMock', () => {
-    it('should create a navigation mock with all methods', () => {
-      const navigation = createNavigationMock();
+  describe('createRouterMock', () => {
+    it('should create a router mock with all methods', () => {
+      const router = createRouterMock();
 
-      // Check all navigation methods exist and are mocks
-      expect(navigation.navigate).toBeDefined();
-      expect(navigation.navigate).toHaveBeenCalledTimes(0);
-      expect(navigation.goBack).toBeDefined();
-      expect(navigation.setOptions).toBeDefined();
-      expect(navigation.setParams).toBeDefined();
-      expect(navigation.dispatch).toBeDefined();
-      expect(navigation.reset).toBeDefined();
-      expect(navigation.replace).toBeDefined();
-      expect(navigation.push).toBeDefined();
-      expect(navigation.pop).toBeDefined();
-      expect(navigation.popToTop).toBeDefined();
-      expect(navigation.canGoBack).toBeDefined();
-      expect(navigation.isFocused).toBeDefined();
-      expect(navigation.addListener).toBeDefined();
-      expect(navigation.removeListener).toBeDefined();
-      expect(navigation.getState).toBeDefined();
-      expect(navigation.getParent).toBeDefined();
+      // Check all router methods exist and are mocks
+      expect(router.push).toBeDefined();
+      expect(router.push).toHaveBeenCalledTimes(0);
+      expect(router.replace).toBeDefined();
+      expect(router.back).toBeDefined();
+      expect(router.canGoBack).toBeDefined();
+      expect(router.setParams).toBeDefined();
+      expect(router.navigate).toBeDefined();
+      expect(router.dismiss).toBeDefined();
+      expect(router.dismissAll).toBeDefined();
     });
 
     it('should return expected values from methods', () => {
-      const navigation = createNavigationMock();
+      const router = createRouterMock();
 
-      expect(navigation.canGoBack()).toBe(true);
-      expect(navigation.isFocused()).toBe(true);
-      expect(navigation.getParent()).toBe(null);
-
-      const state = navigation.getState();
-      expect(state).toHaveProperty('routeNames');
-      expect(state).toHaveProperty('index');
-      expect(state).toHaveProperty('routes');
+      expect(router.canGoBack()).toBe(true);
     });
 
     it('should allow overriding methods', () => {
-      const customNavigate = jest.fn();
-      const navigation = createNavigationMock({
-        navigate: customNavigate,
+      const customPush = jest.fn();
+      const router = createRouterMock({
+        push: customPush,
         canGoBack: jest.fn(() => false),
       });
 
-      expect(navigation.navigate).toBe(customNavigate);
-      expect(navigation.canGoBack()).toBe(false);
-    });
-
-    it('should handle event listeners', () => {
-      const navigation = createNavigationMock();
-      const listener = jest.fn();
-
-      const unsubscribe = navigation.addListener('focus', listener);
-      expect(navigation.addListener).toHaveBeenCalledWith('focus', listener);
-      expect(unsubscribe.remove).toBeDefined();
+      expect(router.push).toBe(customPush);
+      expect(router.canGoBack()).toBe(false);
     });
   });
 
-  describe('createRouteMock', () => {
-    it('should create a route with default values', () => {
-      const route = createRouteMock();
+  describe('createSearchParamsMock', () => {
+    it('should create search params with default values', () => {
+      const params = createSearchParamsMock();
 
-      expect(route).toHaveProperty('params', {});
-      expect(route).toHaveProperty('key');
-      expect(route).toHaveProperty('name', 'TestScreen');
-      expect(route).toHaveProperty('path', '/test');
-      expect(route.key).toMatch(/^test-route-\d+$/);
+      expect(params).toEqual({});
     });
 
     it('should accept params', () => {
-      const params = { id: '123', title: 'Test' };
-      const route = createRouteMock(params);
+      const searchParams = { id: '123', title: 'Test' };
+      const params = createSearchParamsMock(searchParams);
 
-      expect(route.params).toEqual(params);
-    });
-
-    it('should allow overriding properties', () => {
-      const route = createRouteMock(
-        {},
-        {
-          name: 'CustomScreen',
-          path: '/custom',
-        },
-      );
-
-      expect(route.name).toBe('CustomScreen');
-      expect(route.path).toBe('/custom');
-    });
-  });
-
-  describe('createNavigationState', () => {
-    it('should create default navigation state', () => {
-      const state = createNavigationState();
-
-      expect(state).toEqual({
-        type: 'stack',
-        key: 'stack-1',
-        routeNames: ['TasksList'],
-        routes: [{ name: 'TasksList', key: 'TasksList-1' }],
-        index: 0,
-        stale: false,
-      });
-    });
-
-    it('should accept custom routes', () => {
-      const routes = [
-        { name: 'Home', key: 'Home-1' },
-        { name: 'Profile', key: 'Profile-1' },
-      ];
-
-      const state = createNavigationState(routes, 1);
-
-      expect(state.routes).toEqual(routes);
-      expect(state.routeNames).toEqual(['Home', 'Profile']);
-      expect(state.index).toBe(1);
+      expect(params).toEqual(searchParams);
     });
   });
 
   describe('Hook mocks', () => {
-    it('should create useNavigation mock', () => {
-      const navigation = createNavigationMock();
-      const useNavigation = createUseNavigationMock(navigation);
+    it('should create useRouter mock', () => {
+      const router = createRouterMock();
+      const useRouter = createUseRouterMock(router);
 
-      expect(useNavigation()).toBe(navigation);
+      expect(useRouter()).toBe(router);
     });
 
-    it('should create useRoute mock', () => {
-      const route = createRouteMock({ id: '123' });
-      const useRoute = createUseRouteMock(route);
+    it('should create useLocalSearchParams mock', () => {
+      const params = createSearchParamsMock({ id: '123' });
+      const useLocalSearchParams = createUseLocalSearchParamsMock(params);
 
-      expect(useRoute()).toBe(route);
+      expect(useLocalSearchParams()).toBe(params);
+    });
+
+    it('should create useSearchParams mock', () => {
+      const params = createSearchParamsMock({ id: '123' });
+      const useSearchParams = createUseSearchParamsMock(params);
+
+      expect(useSearchParams()).toBe(params);
     });
 
     it('should create useFocusEffect mock', () => {
@@ -158,73 +103,124 @@ describe('Navigation Helpers', () => {
       expect(callback).toHaveBeenCalled();
     });
 
-    it('should create useIsFocused mock', () => {
-      const useIsFocused = createUseIsFocusedMock(false);
+    it('should create usePathname mock', () => {
+      const usePathname = createUsePathnameMock('/test');
 
-      expect(useIsFocused()).toBe(false);
+      expect(usePathname()).toBe('/test');
+    });
+
+    it('should create useSegments mock', () => {
+      const useSegments = createUseSegmentsMock(['profile', 'settings']);
+
+      expect(useSegments()).toEqual(['profile', 'settings']);
     });
   });
 
   describe('Assertion helpers', () => {
-    it('should assert navigation was called correctly', () => {
-      const navigation = createNavigationMock();
+    it('should assert router push was called correctly', () => {
+      const router = createRouterMock();
 
-      navigation.navigate('TestScreen', { id: '123' });
+      router.push({ pathname: '/test', params: { id: '123' } });
 
-      expectNavigationCalledWith(navigation, 'TestScreen', { id: '123' });
+      expectRouterPushCalledWith(router, '/test', { id: '123' });
 
-      navigation.navigate('OtherScreen');
+      router.push('/other');
 
-      expectNavigationCalledWith(navigation, 'OtherScreen');
+      expectRouterPushCalledWith(router, '/other');
     });
 
-    it('should assert navigation call count', () => {
+    it('should assert router replace was called correctly', () => {
+      const router = createRouterMock();
+
+      router.replace({ pathname: '/test', params: { id: '123' } });
+
+      expectRouterReplaceCalledWith(router, '/test', { id: '123' });
+
+      router.replace('/other');
+
+      expectRouterReplaceCalledWith(router, '/other');
+    });
+
+    it('should assert router call count', () => {
+      const router = createRouterMock();
+
+      router.push('/screen1');
+      router.push('/screen2');
+
+      expectRouterCalledTimes(router, 'push', 2);
+
+      router.replace('/screen3');
+
+      expectRouterCalledTimes(router, 'replace', 1);
+    });
+  });
+
+  describe('resetRouterMocks', () => {
+    it('should reset all router mocks', () => {
+      const router = createRouterMock();
+
+      router.push('/test');
+      router.back();
+      router.setParams({});
+
+      expect(router.push).toHaveBeenCalledTimes(1);
+      expect(router.back).toHaveBeenCalledTimes(1);
+      expect(router.setParams).toHaveBeenCalledTimes(1);
+
+      resetRouterMocks(router);
+
+      expect(router.push).toHaveBeenCalledTimes(0);
+      expect(router.back).toHaveBeenCalledTimes(0);
+      expect(router.setParams).toHaveBeenCalledTimes(0);
+    });
+  });
+
+  describe('simulateFocusEffect', () => {
+    it('should simulate focus effect', () => {
+      const useFocusEffect = createUseFocusEffectMock();
+      const callback = jest.fn();
+
+      simulateFocusEffect(useFocusEffect, callback);
+
+      expect(callback).toHaveBeenCalled();
+    });
+  });
+
+  describe('Backwards compatibility', () => {
+    it('should support legacy navigation mock creation', () => {
       const navigation = createNavigationMock();
 
-      navigation.navigate('Screen1');
-      navigation.navigate('Screen2');
+      expect(navigation.push).toBeDefined();
+      expect(navigation.replace).toBeDefined();
+      expect(navigation.back).toBeDefined();
+    });
+
+    it('should support legacy expectNavigationCalledWith', () => {
+      const navigation = createNavigationMock();
+
+      navigation.push('/test');
+
+      expectNavigationCalledWith(navigation, '/test');
+    });
+
+    it('should support legacy expectNavigationCalledTimes', () => {
+      const navigation = createNavigationMock();
+
+      navigation.push('/test1');
+      navigation.push('/test2');
 
       expectNavigationCalledTimes(navigation, 2);
     });
-  });
 
-  describe('resetNavigationMocks', () => {
-    it('should reset all navigation mocks', () => {
+    it('should support legacy resetNavigationMocks', () => {
       const navigation = createNavigationMock();
 
-      navigation.navigate('Test');
-      navigation.goBack();
-      navigation.setOptions({});
-
-      expect(navigation.navigate).toHaveBeenCalledTimes(1);
-      expect(navigation.goBack).toHaveBeenCalledTimes(1);
-      expect(navigation.setOptions).toHaveBeenCalledTimes(1);
+      navigation.push('/test');
+      expect(navigation.push).toHaveBeenCalledTimes(1);
 
       resetNavigationMocks(navigation);
 
-      expect(navigation.navigate).toHaveBeenCalledTimes(0);
-      expect(navigation.goBack).toHaveBeenCalledTimes(0);
-      expect(navigation.setOptions).toHaveBeenCalledTimes(0);
-    });
-  });
-
-  describe('simulateNavigationEvent', () => {
-    it('should simulate navigation events', () => {
-      const navigation = createNavigationMock();
-      const focusListener = jest.fn();
-      const blurListener = jest.fn();
-
-      navigation.addListener('focus', focusListener);
-      navigation.addListener('blur', blurListener);
-
-      simulateNavigationEvent(navigation, 'focus', { data: 'test' });
-
-      expect(focusListener).toHaveBeenCalledWith({ data: 'test' });
-      expect(blurListener).not.toHaveBeenCalled();
-
-      simulateNavigationEvent(navigation, 'blur');
-
-      expect(blurListener).toHaveBeenCalled();
+      expect(navigation.push).toHaveBeenCalledTimes(0);
     });
   });
 });
