@@ -48,7 +48,64 @@ interface ITaskStorageService {
   getUpcomingTasks(userId: string, hoursAhead?: number): Promise<Task[]>;
 }
 
+// Storage batch for atomic operations
+interface StorageBatch {
+  operations: Array<() => Promise<void>>;
+  commit(): Promise<void>;
+  removeItem(key: string): void;
+  moveItem(oldKey: string, newKey: string): void;
+}
+
+class StorageBatchImpl implements StorageBatch {
+  operations: Array<() => Promise<void>> = [];
+
+  removeItem(key: string): void {
+    this.operations.push(() => SecureStorageService.removeItem(key));
+  }
+
+  moveItem(oldKey: string, newKey: string): void {
+    this.operations.push(async () => {
+      const value = await SecureStorageService.getItem(oldKey);
+      if (value !== null) {
+        await SecureStorageService.setItem(newKey, value);
+        await SecureStorageService.removeItem(oldKey);
+      }
+    });
+  }
+
+  async commit(): Promise<void> {
+    // Execute all operations sequentially for consistency
+    for (const operation of this.operations) {
+      await operation();
+    }
+  }
+}
+
 class TaskStorageService implements ITaskStorageService {
+  private readonly writeLocks = new Map<string, Promise<void>>();
+
+  private async withWriteLock<T>(category: string, operation: () => Promise<T>): Promise<T> {
+    // Wait for any existing write to complete
+    const existingLock = this.writeLocks.get(category);
+    if (existingLock) {
+      await existingLock;
+    }
+
+    // Create new lock
+    let releaseLock: () => void = () => {};
+    const newLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    this.writeLocks.set(category, newLock);
+
+    try {
+      return await operation();
+    } finally {
+      releaseLock();
+      this.writeLocks.delete(category);
+    }
+  }
+
   // Check if we need to migrate from old format
   async checkAndMigrate(): Promise<boolean> {
     try {
@@ -102,40 +159,60 @@ class TaskStorageService implements ITaskStorageService {
     await SecureStorageService.setItem(TASK_INDEX_KEY, index);
   }
 
-  private async saveCategoryTasks(category: string, tasks: Task[]): Promise<void> {
+  private async saveCategoryTasksAtomic(category: string, tasks: Task[]): Promise<void> {
     const chunks = this.chunkTasksBySize(tasks);
 
     if (chunks.length === 0) {
       // If no tasks, save empty array to main key
       await SecureStorageService.setItem(`tasks_${category}`, []);
+      // Clean up any existing chunks
+      for (let i = 1; i < 10; i++) {
+        const key = `tasks_${category}_${i}`;
+        const exists = await SecureStorageService.getItem(key);
+        if (exists !== null) {
+          await SecureStorageService.removeItem(key);
+        }
+      }
       return;
     }
 
-    // Save first chunk to main key
-    await SecureStorageService.setItem(`tasks_${category}`, chunks[0]);
+    // Prepare all chunks with temporary keys
+    const tempKeys: string[] = [];
+    const operations: Array<() => Promise<void>> = [];
+    const timestamp = Date.now();
 
-    // Save additional chunks with numeric suffix
-    for (let i = 1; i < chunks.length; i++) {
-      await SecureStorageService.setItem(`tasks_${category}_${i}`, chunks[i]);
+    for (let i = 0; i < chunks.length; i++) {
+      const tempKey = `tasks_${category}_temp_${timestamp}_${i}`;
+      tempKeys.push(tempKey);
+      operations.push(() => SecureStorageService.setItem(tempKey, chunks[i]));
     }
 
-    // Clean up any old chunks that might exist beyond current chunks
-    let cleanupIndex = chunks.length;
-    let hasMoreToClean = true;
-    while (hasMoreToClean) {
-      try {
-        const key = `tasks_${category}_${cleanupIndex}`;
-        const exists = await SecureStorageService.getItem(key);
-        if (exists === null) {
-          hasMoreToClean = false;
-        } else {
-          await SecureStorageService.removeItem(key);
-          cleanupIndex++;
-        }
-      } catch {
-        hasMoreToClean = false;
-      }
+    // Save all chunks to temp locations
+    await Promise.all(operations.map((op) => op()));
+
+    // Atomic swap: delete old and rename temp in transaction
+    const batch = new StorageBatchImpl();
+
+    // Delete all old keys
+    batch.removeItem(`tasks_${category}`);
+    for (let i = 1; i < 10; i++) {
+      // Reasonable max
+      batch.removeItem(`tasks_${category}_${i}`);
     }
+
+    // Rename temp keys to final keys
+    for (let i = 0; i < tempKeys.length; i++) {
+      const finalKey = i === 0 ? `tasks_${category}` : `tasks_${category}_${i}`;
+      batch.moveItem(tempKeys[i], finalKey);
+    }
+
+    await batch.commit();
+  }
+
+  private async saveCategoryTasks(category: string, tasks: Task[]): Promise<void> {
+    return this.withWriteLock(category, async () => {
+      return this.saveCategoryTasksAtomic(category, tasks);
+    });
   }
 
   private chunkTasksBySize(tasks: Task[]): Task[][] {
@@ -250,18 +327,21 @@ class TaskStorageService implements ITaskStorageService {
       await this.checkAndMigrate();
 
       const category = task.category || 'uncategorized';
-      const categoryTasks = await this.loadCategoryTasks(category);
-      categoryTasks.push(task);
 
-      // Update category storage - this will handle chunking if needed
-      await this.saveCategoryTasks(category, categoryTasks);
+      return this.withWriteLock(category, async () => {
+        const categoryTasks = await this.loadCategoryTasks(category);
+        categoryTasks.push(task);
 
-      // Update index
-      const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
-      index[task.id] = category;
-      await SecureStorageService.setItem(TASK_INDEX_KEY, index);
+        // Update category storage atomically
+        await this.saveCategoryTasksAtomic(category, categoryTasks);
 
-      return true;
+        // Update index atomically with category lock
+        const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
+        index[task.id] = category;
+        await SecureStorageService.setItem(TASK_INDEX_KEY, index);
+
+        return true;
+      });
     } catch (error) {
       // If it's a size error, it means saveCategoryTasks failed to properly chunk
       // This shouldn't happen with proper chunking, but log it
@@ -287,35 +367,53 @@ class TaskStorageService implements ITaskStorageService {
         return false;
       }
 
-      // If category changed, we need to move the task
+      // If category changed, we need to lock both categories
       if (oldCategory !== newCategory) {
-        // Remove from old category
-        const oldCategoryTasks = await this.loadCategoryTasks(oldCategory);
-        const filteredOldTasks = oldCategoryTasks.filter((task) => task.id !== updatedTask.id);
-        await this.saveCategoryTasks(oldCategory, filteredOldTasks);
+        // Sort categories to avoid deadlock (always lock in same order)
+        const [firstCategory, secondCategory] = [oldCategory, newCategory].sort();
 
-        // Add to new category
-        const newCategoryTasks = await this.loadCategoryTasks(newCategory);
-        newCategoryTasks.push(updatedTask);
-        await this.saveCategoryTasks(newCategory, newCategoryTasks);
+        return this.withWriteLock(firstCategory, async () => {
+          return this.withWriteLock(secondCategory, async () => {
+            // Double-check task still exists after acquiring locks
+            const currentIndex =
+              ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
+            if (currentIndex[updatedTask.id] !== oldCategory) {
+              return false; // Task was moved by another operation
+            }
 
-        // Update index
-        index[updatedTask.id] = newCategory;
-        await SecureStorageService.setItem(TASK_INDEX_KEY, index);
+            // Remove from old category
+            const oldCategoryTasks = await this.loadCategoryTasks(oldCategory);
+            const filteredOldTasks = oldCategoryTasks.filter((task) => task.id !== updatedTask.id);
+            await this.saveCategoryTasksAtomic(oldCategory, filteredOldTasks);
+
+            // Add to new category
+            const newCategoryTasks = await this.loadCategoryTasks(newCategory);
+            newCategoryTasks.push(updatedTask);
+            await this.saveCategoryTasksAtomic(newCategory, newCategoryTasks);
+
+            // Update index
+            currentIndex[updatedTask.id] = newCategory;
+            await SecureStorageService.setItem(TASK_INDEX_KEY, currentIndex);
+
+            return true;
+          });
+        });
       } else {
         // Update within same category
-        const categoryTasks = await this.loadCategoryTasks(newCategory);
-        const taskIndex = categoryTasks.findIndex((task) => task.id === updatedTask.id);
+        return this.withWriteLock(newCategory, async () => {
+          const categoryTasks = await this.loadCategoryTasks(newCategory);
+          const taskIndex = categoryTasks.findIndex((task) => task.id === updatedTask.id);
 
-        if (taskIndex === -1) {
-          return false;
-        }
+          if (taskIndex === -1) {
+            return false;
+          }
 
-        categoryTasks[taskIndex] = updatedTask;
-        await this.saveCategoryTasks(newCategory, categoryTasks);
+          categoryTasks[taskIndex] = updatedTask;
+          await this.saveCategoryTasksAtomic(newCategory, categoryTasks);
+
+          return true;
+        });
       }
-
-      return true;
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'update', () => this.updateTask(updatedTask));
       return false;
@@ -334,16 +432,25 @@ class TaskStorageService implements ITaskStorageService {
         return false;
       }
 
-      // Remove from category
-      const categoryTasks = await this.loadCategoryTasks(category);
-      const filteredTasks = categoryTasks.filter((task) => task.id !== taskId);
-      await this.saveCategoryTasks(category, filteredTasks);
+      return this.withWriteLock(category, async () => {
+        // Double-check task still exists after acquiring lock
+        const currentIndex =
+          ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
+        if (currentIndex[taskId] !== category) {
+          return false; // Task was already deleted or moved
+        }
 
-      // Remove from index
-      delete index[taskId];
-      await SecureStorageService.setItem(TASK_INDEX_KEY, index);
+        // Remove from category
+        const categoryTasks = await this.loadCategoryTasks(category);
+        const filteredTasks = categoryTasks.filter((task) => task.id !== taskId);
+        await this.saveCategoryTasksAtomic(category, filteredTasks);
 
-      return true;
+        // Remove from index
+        delete currentIndex[taskId];
+        await SecureStorageService.setItem(TASK_INDEX_KEY, currentIndex);
+
+        return true;
+      });
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'delete', () => this.deleteTask(taskId));
       return false;
