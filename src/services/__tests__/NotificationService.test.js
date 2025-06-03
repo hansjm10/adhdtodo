@@ -47,6 +47,11 @@ describe('NotificationService', () => {
     UserStorageService.getUserById.mockResolvedValue(mockUser);
   });
 
+  afterAll(() => {
+    // Stop the cleanup job to prevent Jest from hanging
+    NotificationService.stopCleanupJob();
+  });
+
   describe('loadNotifications', () => {
     it('should load notifications from AsyncStorage on initialization', async () => {
       const storedNotifications = [
@@ -630,6 +635,326 @@ describe('NotificationService', () => {
 
         expect(result).toBe(true);
         expect(NotificationService.pendingNotifications.length).toBe(4); // Unchanged
+      });
+    });
+  });
+
+  describe('Memory Leak Prevention', () => {
+    describe('cleanupOldNotifications', () => {
+      it('should remove notifications older than TTL_DAYS', async () => {
+        const now = new Date();
+        const oldDate = new Date();
+        oldDate.setDate(oldDate.getDate() - 31); // 31 days old
+        const recentDate = new Date();
+        recentDate.setDate(recentDate.getDate() - 10); // 10 days old
+
+        NotificationService.pendingNotifications = [
+          {
+            id: 'old_1',
+            toUserId: 'user_123',
+            type: 'task_assigned',
+            timestamp: oldDate,
+            read: false,
+            data: {},
+          },
+          {
+            id: 'old_2',
+            toUserId: 'user_123',
+            type: 'task_completed',
+            timestamp: oldDate,
+            read: true,
+            data: {},
+          },
+          {
+            id: 'recent_1',
+            toUserId: 'user_123',
+            type: 'encouragement',
+            timestamp: recentDate,
+            read: false,
+            data: {},
+          },
+          {
+            id: 'current_1',
+            toUserId: 'user_123',
+            type: 'check_in',
+            timestamp: now,
+            read: false,
+            data: {},
+          },
+        ];
+
+        await NotificationService.cleanupOldNotifications();
+
+        expect(NotificationService.pendingNotifications.length).toBe(2);
+        expect(
+          NotificationService.pendingNotifications.find((n) => n.id === 'old_1'),
+        ).toBeUndefined();
+        expect(
+          NotificationService.pendingNotifications.find((n) => n.id === 'old_2'),
+        ).toBeUndefined();
+        expect(
+          NotificationService.pendingNotifications.find((n) => n.id === 'recent_1'),
+        ).toBeDefined();
+        expect(
+          NotificationService.pendingNotifications.find((n) => n.id === 'current_1'),
+        ).toBeDefined();
+      });
+
+      it('should handle empty notification list', async () => {
+        NotificationService.pendingNotifications = [];
+        await NotificationService.cleanupOldNotifications();
+        expect(NotificationService.pendingNotifications).toEqual([]);
+      });
+    });
+
+    describe('Per-user notification limits', () => {
+      it('should enforce MAX_NOTIFICATIONS_PER_USER limit', async () => {
+        // Clear existing notifications
+        NotificationService.pendingNotifications = [];
+
+        // Mock user to always return valid user
+        UserStorageService.getUserById.mockResolvedValue(mockUser);
+
+        // Send MAX_NOTIFICATIONS_PER_USER notifications
+        for (let i = 0; i < NotificationService.MAX_NOTIFICATIONS_PER_USER; i++) {
+          await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+            taskId: `task_${i}`,
+          });
+        }
+
+        expect(NotificationService.pendingNotifications.length).toBe(
+          NotificationService.MAX_NOTIFICATIONS_PER_USER,
+        );
+
+        // Send one more notification - should remove oldest
+        await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+          taskId: 'task_new',
+        });
+
+        expect(NotificationService.pendingNotifications.length).toBe(
+          NotificationService.MAX_NOTIFICATIONS_PER_USER,
+        );
+        expect(NotificationService.pendingNotifications[0].data.taskId).toBe('task_1');
+        expect(
+          NotificationService.pendingNotifications[
+            NotificationService.MAX_NOTIFICATIONS_PER_USER - 1
+          ].data.taskId,
+        ).toBe('task_new');
+      });
+
+      it('should not affect other users notifications when enforcing per-user limit', async () => {
+        NotificationService.pendingNotifications = [];
+
+        // Setup different users
+        UserStorageService.getUserById
+          .mockResolvedValueOnce(mockUser)
+          .mockResolvedValueOnce(mockPartnerUser)
+          .mockResolvedValueOnce(mockUser);
+
+        // Add notifications for user_123
+        await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+          taskId: 'user1_task',
+        });
+
+        // Add notification for partner_456
+        await NotificationService.sendNotification(
+          'partner_456',
+          NOTIFICATION_TYPES.TASK_ASSIGNED,
+          { taskId: 'partner_task' },
+        );
+
+        expect(NotificationService.pendingNotifications.length).toBe(2);
+
+        // Now fill up user_123's limit
+        UserStorageService.getUserById.mockResolvedValue(mockUser);
+        for (let i = 1; i < NotificationService.MAX_NOTIFICATIONS_PER_USER; i++) {
+          await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+            taskId: `user1_task_${i}`,
+          });
+        }
+
+        // Send one more for user_123 - should only remove user_123's oldest
+        await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+          taskId: 'user1_task_newest',
+        });
+
+        // Partner's notification should still exist
+        const partnerNotif = NotificationService.pendingNotifications.find(
+          (n) => n.toUserId === 'partner_456',
+        );
+        expect(partnerNotif).toBeDefined();
+        expect(partnerNotif.data.taskId).toBe('partner_task');
+      });
+    });
+
+    describe('Total notification limits', () => {
+      it('should trigger cleanup when MAX_TOTAL_NOTIFICATIONS is exceeded', async () => {
+        NotificationService.pendingNotifications = [];
+
+        // Create old notifications that should be cleaned up
+        const oldDate = new Date();
+        oldDate.setDate(oldDate.getDate() - 35);
+
+        // Add old notifications
+        for (let i = 0; i < 100; i++) {
+          NotificationService.pendingNotifications.push({
+            id: `old_${i}`,
+            toUserId: 'user_123',
+            type: 'task_assigned',
+            timestamp: oldDate,
+            read: false,
+            data: {},
+          });
+        }
+
+        // Add recent notifications up to MAX_TOTAL_NOTIFICATIONS
+        const now = new Date();
+        for (let i = 0; i < NotificationService.MAX_TOTAL_NOTIFICATIONS; i++) {
+          NotificationService.pendingNotifications.push({
+            id: `recent_${i}`,
+            toUserId: 'user_123',
+            type: 'task_assigned',
+            timestamp: now,
+            read: false,
+            data: {},
+          });
+        }
+
+        UserStorageService.getUserById.mockResolvedValue(mockUser);
+
+        // This should trigger cleanup
+        await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+          taskId: 'trigger_cleanup',
+        });
+
+        // Should have removed old notifications
+        const oldNotifications = NotificationService.pendingNotifications.filter((n) =>
+          n.id.startsWith('old_'),
+        );
+        expect(oldNotifications.length).toBe(0);
+
+        // Recent notifications should remain
+        const recentNotifications = NotificationService.pendingNotifications.filter((n) =>
+          n.id.startsWith('recent_'),
+        );
+        expect(recentNotifications.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Periodic cleanup job', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should run cleanup job periodically', async () => {
+        // Spy on cleanupOldNotifications
+        const cleanupSpy = jest.spyOn(NotificationService, 'cleanupOldNotifications');
+        const saveSpy = jest.spyOn(NotificationService, 'saveNotifications');
+
+        // Start the cleanup job
+        NotificationService.startCleanupJob();
+
+        // Fast-forward time by 1 hour
+        jest.advanceTimersByTime(1000 * 60 * 60);
+
+        expect(cleanupSpy).toHaveBeenCalledTimes(1);
+        expect(saveSpy).toHaveBeenCalledTimes(1);
+
+        // Fast-forward another hour
+        jest.advanceTimersByTime(1000 * 60 * 60);
+
+        expect(cleanupSpy).toHaveBeenCalledTimes(2);
+        expect(saveSpy).toHaveBeenCalledTimes(2);
+
+        // Stop the cleanup job
+        NotificationService.stopCleanupJob();
+
+        cleanupSpy.mockRestore();
+        saveSpy.mockRestore();
+      });
+
+      it('should not run cleanup job if not started', () => {
+        const cleanupSpy = jest.spyOn(NotificationService, 'cleanupOldNotifications');
+
+        // Fast-forward time without starting the job
+        jest.advanceTimersByTime(1000 * 60 * 60 * 2);
+
+        expect(cleanupSpy).not.toHaveBeenCalled();
+
+        cleanupSpy.mockRestore();
+      });
+    });
+
+    describe('Performance with large notification counts', () => {
+      it('should handle large number of notifications efficiently', async () => {
+        NotificationService.pendingNotifications = [];
+
+        // Mock users for the test
+        UserStorageService.getUserById.mockImplementation(async (userId) => {
+          if (userId === 'user_123') return mockUser;
+          if (userId === 'partner_456') return mockPartnerUser;
+          return null;
+        });
+
+        // Create a realistic scenario - add notifications via the proper API
+        // Add old notifications for multiple users
+        const oldDate = new Date();
+        oldDate.setDate(oldDate.getDate() - 35); // Older than TTL
+
+        // First, add some old notifications that should be cleaned up
+        for (let i = 0; i < 100; i++) {
+          NotificationService.pendingNotifications.push({
+            id: `old_${i}`,
+            toUserId: i % 2 === 0 ? 'user_123' : 'partner_456',
+            type: 'task_assigned',
+            timestamp: oldDate,
+            read: false,
+            data: { index: i },
+          });
+        }
+
+        // Add notifications up to the limit to trigger cleanup
+        for (let i = 0; i < NotificationService.MAX_TOTAL_NOTIFICATIONS; i++) {
+          NotificationService.pendingNotifications.push({
+            id: `recent_${i}`,
+            toUserId: 'other_user_' + (i % 10),
+            type: 'task_assigned',
+            timestamp: new Date(),
+            read: false,
+            data: { index: i },
+          });
+        }
+
+        // Now send new notifications through the proper method
+        const startTime = Date.now();
+
+        // This should trigger cleanup of old notifications
+        await NotificationService.sendNotification('user_123', NOTIFICATION_TYPES.TASK_ASSIGNED, {
+          test: true,
+          trigger: 'cleanup',
+        });
+
+        const endTime = Date.now();
+        const timeTaken = endTime - startTime;
+
+        // Operation should complete quickly even with cleanup
+        expect(timeTaken).toBeLessThan(100);
+
+        // Old notifications should be cleaned up
+        const oldNotifications = NotificationService.pendingNotifications.filter((n) =>
+          n.id.startsWith('old_'),
+        );
+        expect(oldNotifications.length).toBe(0);
+
+        // Recent notifications should remain
+        const recentNotifications = NotificationService.pendingNotifications.filter((n) =>
+          n.id.startsWith('recent_'),
+        );
+        expect(recentNotifications.length).toBeGreaterThan(0);
       });
     });
   });
