@@ -44,9 +44,14 @@ class NotificationService implements INotificationService {
   private pendingNotifications: StoredNotification[] = [];
   private readonly STORAGE_KEY = '@adhdtodo:notifications';
   private readonly MAX_NOTIFICATIONS = 100; // Limit to prevent unbounded growth
+  private readonly MAX_NOTIFICATIONS_PER_USER = 50;
+  private readonly MAX_TOTAL_NOTIFICATIONS = 500;
+  private readonly NOTIFICATION_TTL_DAYS = 30;
+  private cleanupJobInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     void this.loadNotifications();
+    this.startCleanupJob();
   }
 
   private async loadNotifications(): Promise<void> {
@@ -70,6 +75,31 @@ class NotificationService implements INotificationService {
     }
   }
 
+  private cleanupOldNotifications(): void {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - this.NOTIFICATION_TTL_DAYS);
+
+    this.pendingNotifications = this.pendingNotifications.filter((n) => n.timestamp > cutoffDate);
+  }
+
+  private startCleanupJob(): void {
+    // Run cleanup every hour
+    this.cleanupJobInterval = setInterval(
+      () => {
+        this.cleanupOldNotifications();
+        void this.saveNotifications();
+      },
+      1000 * 60 * 60,
+    );
+  }
+
+  private stopCleanupJob(): void {
+    if (this.cleanupJobInterval) {
+      clearInterval(this.cleanupJobInterval);
+      this.cleanupJobInterval = null;
+    }
+  }
+
   async sendNotification(
     toUserId: string,
     type: NotificationTypes,
@@ -85,6 +115,24 @@ class NotificationService implements INotificationService {
       // Check user's notification preferences
       if (!this.shouldSendNotification(user, type)) {
         return false;
+      }
+
+      // Clean up old notifications if we're approaching total limit
+      if (this.pendingNotifications.length > this.MAX_TOTAL_NOTIFICATIONS) {
+        this.cleanupOldNotifications();
+      }
+
+      // Enforce per-user limits
+      const userNotifications = this.pendingNotifications.filter((n) => n.toUserId === toUserId);
+
+      if (userNotifications.length >= this.MAX_NOTIFICATIONS_PER_USER) {
+        // Remove oldest notification for this user
+        const oldestUserNotificationIndex = this.pendingNotifications.findIndex(
+          (n) => n.toUserId === toUserId,
+        );
+        if (oldestUserNotificationIndex !== -1) {
+          this.pendingNotifications.splice(oldestUserNotificationIndex, 1);
+        }
       }
 
       const notification: StoredNotification = {
