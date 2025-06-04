@@ -65,35 +65,38 @@ async function runMigration() {
         `\n[${i + 1}/${statements.length}] Executing ${statementType}: ${statementPreview}...`,
       );
 
-      const { error } = await supabase
-        .rpc('exec_sql', {
+      let error;
+
+      try {
+        const result = await supabase.rpc('exec_sql', {
           sql: statement,
-        })
-        .catch(async (_rpcError) => {
-          // If RPC doesn't exist, try direct query
-          const { data: _data, error: _error } = await supabase.from('_dummy_').select().limit(0);
-
-          // Use the Supabase SQL editor endpoint
-          const response = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: serviceRoleKey,
-              Authorization: `Bearer ${serviceRoleKey}`,
-            },
-            body: JSON.stringify({ sql: statement }),
-          }).catch(() => null);
-
-          if (!response || !response.ok) {
-            // Fallback: Use pg connection if available
-            console.log(
-              'Note: Direct SQL execution not available via RPC. Please run the SQL manually in Supabase dashboard.',
-            );
-            return { error: 'RPC not available' };
-          }
-
-          return { error: null };
         });
+        error = result.error;
+      } catch (_rpcError) {
+        // If RPC doesn't exist, try direct query
+        const { data: _data, error: _error } = await supabase.from('_dummy_').select().limit(0);
+
+        // Use the Supabase SQL editor endpoint
+        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ sql: statement }),
+        }).catch(() => null);
+
+        if (!response || !response.ok) {
+          // Fallback: Use pg connection if available
+          console.log(
+            'Note: Direct SQL execution not available via RPC. Please run the SQL manually in Supabase dashboard.',
+          );
+          error = 'RPC not available';
+        } else {
+          error = null;
+        }
+      }
 
       if (error) {
         console.error(`Error executing statement: ${error.message || error}`);
