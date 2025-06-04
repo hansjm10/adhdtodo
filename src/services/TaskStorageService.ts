@@ -2,7 +2,7 @@
 // Handles saving, loading, updating, and deleting tasks from local storage
 
 import SecureStorageService from './SecureStorageService';
-import UserStorageService from './UserStorageServiceWrapper';
+import UserStorageService from './UserStorageService';
 import ErrorHandler from '../utils/ErrorHandler';
 import { Task, TASK_CATEGORIES } from '../types/task.types';
 

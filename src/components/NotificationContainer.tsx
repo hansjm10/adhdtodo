@@ -6,7 +6,7 @@ import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import NotificationBanner from './NotificationBanner';
 import NotificationService from '../services/NotificationService';
-import UserStorageService from '../services/UserStorageServiceWrapper';
+import UserStorageService from '../services/UserStorageService';
 import { Notification, User, NotificationTypes } from '../types';
 
 // Extended notification type that includes the data property from the service
