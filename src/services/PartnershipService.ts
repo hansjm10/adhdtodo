@@ -1,17 +1,12 @@
-// ABOUTME: Service for managing partnerships between ADHD users and accountability partners
-// Handles partnership creation, invites, status updates, and partnership-related operations
+// ABOUTME: Supabase-based partnership service with real-time capabilities
+// Manages partnerships between ADHD users and accountability partners with live sync
 
-import SecureStorageService from './SecureStorageService';
-import {
-  createPartnership,
-  acceptPartnership,
-  updatePartnershipStats,
-} from '../utils/PartnershipModel';
-import { setUserPartner } from '../utils/UserModel';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from './SupabaseService';
 import UserStorageService from './UserStorageService';
-import { Partnership, PartnershipStats } from '../types';
-
-const STORAGE_KEY = 'partnerships';
+import { Partnership, PartnershipStatus, PartnershipStats, PartnershipSettings } from '../types';
+import { createPartnership, acceptPartnership } from '../utils/PartnershipModel';
+import { setUserPartner } from '../utils/UserModel';
 
 export interface IPartnershipService {
   getAllPartnerships(): Promise<Partnership[]>;
@@ -35,27 +30,72 @@ export interface IPartnershipService {
     increment?: number,
   ): Promise<boolean>;
   clearAllPartnerships(): Promise<boolean>;
+  subscribeToPartnershipUpdates(
+    userId: string,
+    callback: (partnership: Partnership, action: 'INSERT' | 'UPDATE' | 'DELETE') => void,
+  ): RealtimeChannel;
 }
 
-class PartnershipService implements IPartnershipService {
+class SupabasePartnershipService implements IPartnershipService {
+  private cache = new Map<string, { data: Partnership[]; timestamp: number }>();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  private getCacheKey(key: string): string {
+    return `partnerships_${key}`;
+  }
+
+  private isCacheValid(timestamp: number): boolean {
+    return Date.now() - timestamp < this.CACHE_DURATION;
+  }
+
+  private async getCachedOrFetch<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && this.isCacheValid(cached.timestamp)) {
+      return cached.data as T;
+    }
+
+    const data = await fetcher();
+    this.cache.set(cacheKey, { data: data as Partnership[], timestamp: Date.now() });
+    return data;
+  }
+
+  private invalidateCache(pattern?: string): void {
+    if (!pattern) {
+      this.cache.clear();
+      return;
+    }
+
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
   async getAllPartnerships(): Promise<Partnership[]> {
     try {
-      const partnerships = await SecureStorageService.getItem<Partnership[]>(STORAGE_KEY);
-      if (!partnerships) {
-        return [];
-      }
-      return Array.isArray(partnerships) ? partnerships : [];
+      return await this.getCachedOrFetch(this.getCacheKey('all'), async () => {
+        const { data, error } = await supabase.from('partnerships').select('*');
+
+        if (error) throw error;
+        return this.transformDatabasePartnerships(data || []);
+      });
     } catch (error) {
-      console.error('Error loading partnerships:', error);
+      console.error('Error fetching partnerships:', error);
       return [];
     }
   }
 
   async savePartnership(partnership: Partnership): Promise<boolean> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      partnerships.push(partnership);
-      await SecureStorageService.setItem(STORAGE_KEY, partnerships);
+      const dbPartnership = this.transformToDatabase(partnership);
+
+      const { error } = await supabase.from('partnerships').insert([dbPartnership]);
+
+      if (error) throw error;
+
+      this.invalidateCache();
       return true;
     } catch (error) {
       console.error('Error saving partnership:', error);
@@ -65,15 +105,16 @@ class PartnershipService implements IPartnershipService {
 
   async updatePartnership(updatedPartnership: Partnership): Promise<boolean> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      const partnershipIndex = partnerships.findIndex((p) => p.id === updatedPartnership.id);
+      const dbPartnership = this.transformToDatabase(updatedPartnership);
 
-      if (partnershipIndex === -1) {
-        return false;
-      }
+      const { error } = await supabase
+        .from('partnerships')
+        .update(dbPartnership)
+        .eq('id', updatedPartnership.id);
 
-      partnerships[partnershipIndex] = updatedPartnership;
-      await SecureStorageService.setItem(STORAGE_KEY, partnerships);
+      if (error) throw error;
+
+      this.invalidateCache();
       return true;
     } catch (error) {
       console.error('Error updating partnership:', error);
@@ -86,15 +127,30 @@ class PartnershipService implements IPartnershipService {
     invitedUserRole: string,
   ): Promise<Partnership | null> {
     try {
+      // Generate unique invite code
+      const { data: inviteCode, error: codeError } = await supabase.rpc('generate_invite_code');
+
+      if (codeError) throw codeError;
+
       const partnership = createPartnership({
         inviteSentBy: invitingUserId,
-        // Set the inviting user in the appropriate role
         adhdUserId: invitedUserRole === 'partner' ? invitingUserId : null,
         partnerId: invitedUserRole === 'adhd_user' ? invitingUserId : null,
+        inviteCode: inviteCode,
       });
 
-      await this.savePartnership(partnership);
-      return partnership;
+      const dbPartnership = this.transformToDatabase(partnership);
+
+      const { data, error } = await supabase
+        .from('partnerships')
+        .insert([dbPartnership])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      this.invalidateCache();
+      return this.transformDatabasePartnership(data);
     } catch (error) {
       console.error('Error creating partnership invite:', error);
       return null;
@@ -106,14 +162,20 @@ class PartnershipService implements IPartnershipService {
     acceptingUserId: string,
   ): Promise<{ success: boolean; error?: string; partnership?: Partnership }> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      const partnership = partnerships.find((p) => p.inviteCode === inviteCode);
+      // Find the partnership by invite code
+      const { data: partnershipData, error: findError } = await supabase
+        .from('partnerships')
+        .select('*')
+        .eq('invite_code', inviteCode)
+        .single();
 
-      if (!partnership) {
+      if (findError || !partnershipData) {
         return { success: false, error: 'Invalid invite code' };
       }
 
-      if (partnership.status !== 'pending') {
+      const partnership = this.transformDatabasePartnership(partnershipData);
+
+      if (partnership.status !== PartnershipStatus.PENDING) {
         return { success: false, error: 'Invite already used' };
       }
 
@@ -127,7 +189,16 @@ class PartnershipService implements IPartnershipService {
       }
 
       const acceptedPartnership = acceptPartnership(partnership);
-      await this.updatePartnership(acceptedPartnership);
+      const dbPartnership = this.transformToDatabase(acceptedPartnership);
+
+      const { data: updatedData, error: updateError } = await supabase
+        .from('partnerships')
+        .update(dbPartnership)
+        .eq('id', partnership.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
 
       // Update both users with partner IDs
       if (acceptedPartnership.adhdUserId && acceptedPartnership.partnerId) {
@@ -145,7 +216,11 @@ class PartnershipService implements IPartnershipService {
         }
       }
 
-      return { success: true, partnership: acceptedPartnership };
+      this.invalidateCache();
+      return {
+        success: true,
+        partnership: this.transformDatabasePartnership(updatedData),
+      };
     } catch (error) {
       console.error('Error accepting partnership invite:', error);
       return { success: false, error: 'Failed to accept invite' };
@@ -154,14 +229,17 @@ class PartnershipService implements IPartnershipService {
 
   async getPartnershipByUsers(userId1: string, userId2: string): Promise<Partnership | null> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      return (
-        partnerships.find(
-          (p) =>
-            (p.adhdUserId === userId1 && p.partnerId === userId2) ||
-            (p.adhdUserId === userId2 && p.partnerId === userId1),
-        ) || null
-      );
+      const { data, error } = await supabase
+        .from('partnerships')
+        .select('*')
+        .or(
+          `and(adhd_user_id.eq.${userId1},partner_id.eq.${userId2}),and(adhd_user_id.eq.${userId2},partner_id.eq.${userId1})`,
+        )
+        .single();
+
+      if (error || !data) return null;
+
+      return this.transformDatabasePartnership(data);
     } catch (error) {
       console.error('Error getting partnership by users:', error);
       return null;
@@ -170,8 +248,15 @@ class PartnershipService implements IPartnershipService {
 
   async getPartnershipByInviteCode(inviteCode: string): Promise<Partnership | null> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      return partnerships.find((p) => p.inviteCode === inviteCode) || null;
+      const { data, error } = await supabase
+        .from('partnerships')
+        .select('*')
+        .eq('invite_code', inviteCode)
+        .single();
+
+      if (error || !data) return null;
+
+      return this.transformDatabasePartnership(data);
     } catch (error) {
       console.error('Error getting partnership by invite code:', error);
       return null;
@@ -180,8 +265,15 @@ class PartnershipService implements IPartnershipService {
 
   async getUserPartnerships(userId: string): Promise<Partnership[]> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      return partnerships.filter((p) => p.adhdUserId === userId || p.partnerId === userId);
+      return await this.getCachedOrFetch(this.getCacheKey(`user_${userId}`), async () => {
+        const { data, error } = await supabase
+          .from('partnerships')
+          .select('*')
+          .or(`adhd_user_id.eq.${userId},partner_id.eq.${userId}`);
+
+        if (error) throw error;
+        return this.transformDatabasePartnerships(data || []);
+      });
     } catch (error) {
       console.error('Error getting user partnerships:', error);
       return [];
@@ -190,8 +282,16 @@ class PartnershipService implements IPartnershipService {
 
   async getActivePartnership(userId: string): Promise<Partnership | null> {
     try {
-      const partnerships = await this.getUserPartnerships(userId);
-      return partnerships.find((p) => p.status === 'active') || null;
+      const { data, error } = await supabase
+        .from('partnerships')
+        .select('*')
+        .or(`adhd_user_id.eq.${userId},partner_id.eq.${userId}`)
+        .eq('status', 'active')
+        .single();
+
+      if (error || !data) return null;
+
+      return this.transformDatabasePartnership(data);
     } catch (error) {
       console.error('Error getting active partnership:', error);
       return null;
@@ -204,19 +304,16 @@ class PartnershipService implements IPartnershipService {
     increment: number = 1,
   ): Promise<boolean> {
     try {
-      const partnerships = await this.getAllPartnerships();
-      const partnership = partnerships.find((p) => p.id === partnershipId);
+      const { error } = await supabase.rpc('update_partnership_stats', {
+        partnership_id: partnershipId,
+        stat_key: statKey,
+        increment: increment,
+      });
 
-      if (!partnership) {
-        return false;
-      }
+      if (error) throw error;
 
-      const updatedStats = {
-        [statKey]: (partnership.stats[statKey] || 0) + increment,
-      };
-
-      const updatedPartnership = updatePartnershipStats(partnership, updatedStats);
-      return await this.updatePartnership(updatedPartnership);
+      this.invalidateCache();
+      return true;
     } catch (error) {
       console.error('Error incrementing partnership stat:', error);
       return false;
@@ -225,13 +322,90 @@ class PartnershipService implements IPartnershipService {
 
   async clearAllPartnerships(): Promise<boolean> {
     try {
-      await SecureStorageService.removeItem(STORAGE_KEY);
+      const { error } = await supabase
+        .from('partnerships')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+      if (error) throw error;
+
+      this.invalidateCache();
       return true;
     } catch (error) {
       console.error('Error clearing partnerships:', error);
       return false;
     }
   }
+
+  subscribeToPartnershipUpdates(
+    userId: string,
+    callback: (partnership: Partnership, action: 'INSERT' | 'UPDATE' | 'DELETE') => void,
+  ): RealtimeChannel {
+    const channel = supabase
+      .channel(`partnerships-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'partnerships',
+          filter: `or(adhd_user_id.eq.${userId},partner_id.eq.${userId})`,
+        },
+        (payload) => {
+          this.invalidateCache(userId);
+
+          if (payload.new && (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')) {
+            const partnership = this.transformDatabasePartnership(payload.new);
+            callback(partnership, payload.eventType);
+          } else if (payload.old && payload.eventType === 'DELETE') {
+            const partnership = this.transformDatabasePartnership(payload.old);
+            callback(partnership, payload.eventType);
+          }
+        },
+      )
+      .subscribe();
+
+    return channel;
+  }
+
+  // Database transformation methods
+  private transformToDatabase(partnership: Partnership): any {
+    return {
+      id: partnership.id,
+      adhd_user_id: partnership.adhdUserId,
+      partner_id: partnership.partnerId,
+      status: partnership.status,
+      invite_code: partnership.inviteCode,
+      invite_sent_by: partnership.inviteSentBy,
+      settings: partnership.settings,
+      stats: partnership.stats,
+      created_at: partnership.createdAt?.toISOString(),
+      updated_at: partnership.updatedAt?.toISOString(),
+      accepted_at: partnership.acceptedAt?.toISOString(),
+      terminated_at: partnership.terminatedAt?.toISOString(),
+    };
+  }
+
+  private transformDatabasePartnership(dbPartnership: any): Partnership {
+    return {
+      id: dbPartnership.id,
+      adhdUserId: dbPartnership.adhd_user_id,
+      partnerId: dbPartnership.partner_id,
+      status: dbPartnership.status as PartnershipStatus,
+      inviteCode: dbPartnership.invite_code,
+      inviteSentBy: dbPartnership.invite_sent_by,
+      settings: dbPartnership.settings as PartnershipSettings,
+      stats: dbPartnership.stats as PartnershipStats,
+      createdAt: new Date(dbPartnership.created_at),
+      updatedAt: new Date(dbPartnership.updated_at),
+      acceptedAt: dbPartnership.accepted_at ? new Date(dbPartnership.accepted_at) : null,
+      terminatedAt: dbPartnership.terminated_at ? new Date(dbPartnership.terminated_at) : null,
+    };
+  }
+
+  private transformDatabasePartnerships(dbPartnerships: any[]): Partnership[] {
+    return dbPartnerships.map((dbPartnership) => this.transformDatabasePartnership(dbPartnership));
+  }
 }
 
-export default new PartnershipService();
+export default new SupabasePartnershipService();

@@ -51,19 +51,22 @@ This is an AI-first Expo React Native application for a todo app designed for AD
 - Start all files with `// ABOUTME: [description]` comment (2 lines max)
 - Comments must be evergreen - no temporal references
 - **NEVER implement mock modes** - always use real data and APIs
-- **NEVER name things** as 'improved', 'new', 'enhanced' - use evergreen names
+- **NEVER name things** as 'improved', 'new', 'enhanced', 'legacy', 'old', 'deprecated' - use evergreen names
 - When fixing bugs, **NEVER rewrite without explicit permission**
+- **NO LEGACY CODE** - this is an active development project, remove old patterns immediately
 
 ## Modern Code Requirements (CRITICAL)
 
 **We are in active development** - there is NO excuse for using legacy patterns:
 
-- **ALWAYS use modern APIs and patterns** - no deprecated or legacy code
+- **ALWAYS use modern APIs and patterns** - no deprecated, legacy, or old code
 - **NEVER use FlatList** - always use FlashList for lists
 - **NEVER use React Navigation** - always use Expo Router
 - **NEVER use old React patterns** - use hooks, functional components, and modern React
 - **NEVER use deprecated React Native APIs** - check documentation for current APIs
-- **Refactor legacy code on sight** - if you encounter old patterns, update them immediately
+- **REMOVE legacy code on sight** - delete old patterns, don't just refactor them
+- **NO .legacy, .old, .deprecated files** - delete them immediately
+- **NO commented-out legacy code** - remove it completely
 
 ## Context7 Usage (MANDATORY)
 
@@ -119,6 +122,33 @@ The following MCP servers are configured for this project:
 ## TypeScript Migration Status
 
 The project is currently **fully migrated to TypeScript**. All source files use `.ts` or `.tsx` extensions. Some test files still use `.js` extensions but this is acceptable.
+
+## Phase 3 Architecture (Current State)
+
+**Real-time Supabase Backend**: The app is fully integrated with Supabase for real-time collaboration and offline sync:
+
+### **Core Services:**
+
+- **PartnershipService**: Supabase-based partnership management with real-time subscriptions
+- **PresenceService**: Real-time user presence tracking (online/away/offline)
+- **OfflineQueueManager**: Robust offline operation queuing with automatic sync
+- **ConnectionMonitor**: Network state monitoring with circuit breaker pattern
+- **ConflictResolver**: Intelligent conflict resolution for concurrent edits
+
+### **Real-time Features:**
+
+- Live partnership status updates
+- Real-time presence indicators
+- Automatic conflict resolution
+- Offline-first operation queuing
+- Background sync capabilities
+
+### **Database:**
+
+- Enhanced partnerships table with invite codes and statistics
+- Real-time subscriptions for live updates
+- Row-level security policies
+- Database functions for invite generation and stats
 
 ## Common Development Commands
 

@@ -192,6 +192,48 @@ export const createMockEncouragementNotification = (overrides = {}) => {
 };
 
 /**
+ * Create a mock partnership object with sensible defaults
+ * @param {Object} overrides - Properties to override defaults
+ * @returns {Object} Mock partnership object
+ */
+export const createMockPartnership = (overrides = {}) => {
+  const now = new Date();
+  const partnershipId =
+    overrides.id || `partnership-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  const inviteCode =
+    overrides.inviteCode || `INVITE${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+  return {
+    id: partnershipId,
+    adhdUserId: overrides.adhdUserId || 'user-123',
+    partnerId: overrides.partnerId || 'partner-123',
+    status: 'active',
+    inviteCode: inviteCode,
+    inviteSentBy: overrides.inviteSentBy || overrides.adhdUserId || 'user-123',
+    settings: {
+      allowTaskAssignment: true,
+      shareProgress: true,
+      allowEncouragement: true,
+      allowCheckIns: true,
+      quietHoursStart: null,
+      quietHoursEnd: null,
+    },
+    stats: {
+      tasksAssigned: 0,
+      tasksCompleted: 0,
+      encouragementsSent: 0,
+      checkInsCompleted: 0,
+      partnershipDuration: 0,
+    },
+    createdAt: now,
+    updatedAt: now,
+    acceptedAt: overrides.status === 'active' ? now : null,
+    terminatedAt: null,
+    ...overrides,
+  };
+};
+
+/**
  * Create mock notification data for different types
  * @param {string} type - Notification type from NOTIFICATION_TYPES
  * @param {Object} overrides - Additional data overrides

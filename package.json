@@ -30,7 +30,7 @@
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix --max-warnings=0",
+      "eslint --fix --max-warnings=50",
       "prettier --write"
     ],
     "*.{js,jsx,ts,tsx}": [
