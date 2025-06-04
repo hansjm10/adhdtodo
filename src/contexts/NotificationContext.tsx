@@ -1,5 +1,5 @@
-// ABOUTME: NotificationContext provides centralized notification state management
-// Handles notification display, read status, and real-time updates across screens
+// ABOUTME: NotificationContext provides centralized notification state management with real-time updates
+// Integrates with Supabase-based NotificationService for live synchronization
 
 import React, {
   createContext,
@@ -8,42 +8,25 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   ReactNode,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NotificationPriority } from '../types/notification.types';
-
-// Internal notification structure that matches our storage format
-interface InternalNotification {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  priority?: NotificationPriority;
-  taskId?: string;
-  userId?: string;
-  fromUserId?: string;
-  isRead: boolean;
-  createdAt: string;
-  expiresAt?: string;
-  buttons?: Array<{
-    text: string;
-    action: () => void;
-    style?: 'default' | 'primary' | 'danger';
-  }>;
-}
+import NotificationService from '../services/NotificationService';
+import { Notification } from '../types/notification.types';
+import { NotificationTypes } from '../types/user.types';
+import { supabase } from '../services/SupabaseService';
 
 interface NotificationContextValue {
-  notifications: InternalNotification[];
+  notifications: Notification[];
   unreadCount: number;
   loading: boolean;
   error: string | null;
-  addNotification: (notificationData: Partial<InternalNotification>) => Promise<void>;
+  addNotification: (notificationData: Partial<Notification>) => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (notificationId: string) => Promise<void>;
   clearAllNotifications: () => Promise<void>;
-  getNotificationsByType: (type: string) => InternalNotification[];
+  getNotificationsByType: (type: string) => Notification[];
   refreshNotifications: () => Promise<void>;
 }
 
@@ -53,161 +36,216 @@ interface NotificationProviderProps {
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
 
-// Note: Module-level cache removed to prevent React Fast Refresh issues
-// Tests should use the context directly instead of module-level variables
-
 export const NotificationProvider = ({ children }: NotificationProviderProps) => {
-  const [notifications, setNotifications] = useState<InternalNotification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // Get current user from auth session
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
 
   // Calculate unread count
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Load notifications from AsyncStorage
+  // Get current user on mount and auth changes
+  useEffect(() => {
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+
+    checkUser();
+
+    // Subscribe to auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Load notifications from Supabase
   const loadNotifications = useCallback(async () => {
+    if (!currentUser?.id) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      const storedNotifications = await AsyncStorage.getItem('notifications');
-      if (storedNotifications) {
-        const parsed = JSON.parse(storedNotifications) as InternalNotification[];
-        setNotifications(parsed);
+      const loadedNotifications = await NotificationService.getNotificationsForUser(currentUser.id);
+
+      if (isMountedRef.current) {
+        setNotifications(loadedNotifications);
       }
     } catch (err) {
-      setError((err as Error).message);
-      console.error('Error loading notifications:', err);
+      if (isMountedRef.current) {
+        setError((err as Error).message);
+        console.error('Error loading notifications:', err);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [currentUser?.id]);
 
-  // Load notifications on mount
+  // Set up real-time subscription
   useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+    if (!currentUser?.id) return;
 
-  // Save notifications to storage
-  const saveNotifications = useCallback(async (newNotifications: InternalNotification[]) => {
-    try {
-      await AsyncStorage.setItem('notifications', JSON.stringify(newNotifications));
-    } catch (err) {
-      console.error('Error saving notifications:', err);
-    }
+    // Load initial notifications
+    loadNotifications();
+
+    // Subscribe to real-time updates
+    const unsubscribe = NotificationService.subscribeToNotifications(
+      currentUser.id,
+      (notification: Notification) => {
+        if (!isMountedRef.current) return;
+
+        // Add new notification to the beginning of the list
+        setNotifications((prev) => [notification, ...prev]);
+      },
+    );
+
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [currentUser?.id, loadNotifications]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
   }, []);
 
-  // Add a new notification
+  // Add a new notification (for local notifications)
   const addNotification = useCallback(
-    async (notificationData: Partial<InternalNotification>) => {
+    async (notificationData: Partial<Notification>): Promise<void> => {
       try {
         setError(null);
 
-        const newNotification: InternalNotification = {
-          id: notificationData.id || Date.now().toString(),
-          title: notificationData.title || '',
-          message: notificationData.message || '',
-          type: notificationData.type || 'info',
-          priority: notificationData.priority,
-          taskId: notificationData.taskId,
-          userId: notificationData.userId,
-          fromUserId: notificationData.fromUserId,
-          isRead: false,
-          createdAt: notificationData.createdAt || new Date().toISOString(),
-          expiresAt: notificationData.expiresAt,
-          buttons: notificationData.buttons,
-        };
+        if (!currentUser?.id) {
+          throw new Error('User not authenticated');
+        }
 
-        const updatedNotifications = [newNotification, ...notifications];
-        setNotifications(updatedNotifications);
-        await saveNotifications(updatedNotifications);
+        // Send notification through the service
+        await NotificationService.sendNotification(
+          currentUser.id,
+          (notificationData.type as NotificationTypes) || NotificationTypes.TASK_ASSIGNED,
+          notificationData.data || {},
+        );
+
+        // Real-time subscription will handle adding to state
       } catch (err) {
         setError((err as Error).message);
         console.error('Error adding notification:', err);
+        throw err;
       }
     },
-    [notifications, saveNotifications],
+    [currentUser?.id],
   );
 
-  // Mark a notification as read
-  const markAsRead = useCallback(
-    async (notificationId: string) => {
-      try {
-        setError(null);
+  // Mark notification as read
+  const markAsRead = useCallback(async (notificationId: string): Promise<void> => {
+    try {
+      setError(null);
 
-        const updatedNotifications = notifications.map((notif) =>
-          notif.id === notificationId ? { ...notif, isRead: true } : notif,
+      const success = await NotificationService.markNotificationAsRead(notificationId);
+
+      if (success) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
         );
-
-        setNotifications(updatedNotifications);
-        await saveNotifications(updatedNotifications);
-      } catch (err) {
-        setError((err as Error).message);
-        console.error('Error marking notification as read:', err);
       }
-    },
-    [notifications, saveNotifications],
-  );
-
-  // Mark all notifications as read
-  const markAllAsRead = useCallback(async () => {
-    try {
-      setError(null);
-
-      const updatedNotifications = notifications.map((notif) => ({
-        ...notif,
-        isRead: true,
-      }));
-
-      setNotifications(updatedNotifications);
-      await saveNotifications(updatedNotifications);
     } catch (err) {
       setError((err as Error).message);
-      console.error('Error marking all notifications as read:', err);
-    }
-  }, [notifications, saveNotifications]);
-
-  // Delete a notification
-  const deleteNotification = useCallback(
-    async (notificationId: string) => {
-      try {
-        setError(null);
-
-        const updatedNotifications = notifications.filter((notif) => notif.id !== notificationId);
-
-        setNotifications(updatedNotifications);
-        await saveNotifications(updatedNotifications);
-      } catch (err) {
-        setError((err as Error).message);
-        console.error('Error deleting notification:', err);
-      }
-    },
-    [notifications, saveNotifications],
-  );
-
-  // Clear all notifications
-  const clearAllNotifications = useCallback(async () => {
-    try {
-      setError(null);
-
-      setNotifications([]);
-      await AsyncStorage.removeItem('notifications');
-    } catch (err) {
-      setError((err as Error).message);
-      console.error('Error clearing notifications:', err);
+      console.error('Error marking notification as read:', err);
+      throw err;
     }
   }, []);
 
+  // Mark all notifications as read
+  const markAllAsRead = useCallback(async (): Promise<void> => {
+    if (!currentUser?.id) return;
+
+    try {
+      setError(null);
+
+      const success = await NotificationService.markAllNotificationsAsRead(currentUser.id);
+
+      if (success) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      }
+    } catch (err) {
+      setError((err as Error).message);
+      console.error('Error marking all notifications as read:', err);
+      throw err;
+    }
+  }, [currentUser?.id]);
+
+  // Delete a notification
+  const deleteNotification = useCallback(async (notificationId: string): Promise<void> => {
+    try {
+      setError(null);
+
+      // For now, we'll just remove it from local state
+      // In the future, we might want to add a delete method to NotificationService
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    } catch (err) {
+      setError((err as Error).message);
+      console.error('Error deleting notification:', err);
+      throw err;
+    }
+  }, []);
+
+  // Clear all notifications
+  const clearAllNotifications = useCallback(async (): Promise<void> => {
+    if (!currentUser?.id) return;
+
+    try {
+      setError(null);
+
+      const success = await NotificationService.clearNotificationsForUser(currentUser.id);
+
+      if (success) {
+        setNotifications([]);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+      console.error('Error clearing notifications:', err);
+      throw err;
+    }
+  }, [currentUser?.id]);
+
   // Get notifications by type
   const getNotificationsByType = useCallback(
-    (type: string): InternalNotification[] => {
-      return notifications.filter((notif) => notif.type === type);
+    (type: string): Notification[] => {
+      return notifications.filter((n) => n.type === type);
     },
     [notifications],
   );
 
   // Refresh notifications
-  const refreshNotifications = useCallback(async () => {
+  const refreshNotifications = useCallback(async (): Promise<void> => {
     await loadNotifications();
   }, [loadNotifications]);
 
