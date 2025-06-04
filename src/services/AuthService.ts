@@ -2,7 +2,7 @@
 // Provides secure password-based authentication with session tokens
 
 import CryptoService, { ICryptoService } from './CryptoService';
-import UserStorageService, { IUserStorageService } from './UserStorageService';
+import UserStorageService, { IUserStorageService } from './UserStorageServiceWrapper';
 import SecureLogger from './SecureLogger';
 import RateLimiter, { IRateLimiter } from './RateLimiter';
 import ValidationService from './ValidationService';

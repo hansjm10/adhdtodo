@@ -135,9 +135,15 @@ const NotificationListScreen = () => {
       case NOTIFICATION_TYPES.TASK_OVERDUE:
         return `"${data.taskTitle}" is overdue`;
       case NOTIFICATION_TYPES.ENCOURAGEMENT:
-        return data.message || `${data.fromUser} sent you encouragement`;
+        return (
+          (typeof data.message === 'string' ? data.message : null) ||
+          `${data.fromUser} sent you encouragement`
+        );
       case NOTIFICATION_TYPES.CHECK_IN:
-        return data.message || `${data.fromUser} is checking in`;
+        return (
+          (typeof data.message === 'string' ? data.message : null) ||
+          `${data.fromUser} is checking in`
+        );
       case NOTIFICATION_TYPES.DEADLINE_CHANGE_REQUEST:
         return `Deadline change requested for "${data.taskTitle}"`;
       default:

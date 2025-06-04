@@ -28,7 +28,7 @@ export interface Notification {
   expiresAt?: Date;
   buttons?: NotificationButton[];
   timestamp: string | Date; // ISO string timestamp or Date object
-  data?: Record<string, any>; // Additional notification data
+  data?: Record<string, unknown>; // Additional notification data
 }
 
 export interface NotificationContextValue {

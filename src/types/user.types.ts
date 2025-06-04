@@ -66,6 +66,7 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   lastActiveAt: Date;
+  theme?: string; // Optional theme preference (e.g., 'system', 'light', 'dark')
 }
 
 export interface PartnershipSettings {

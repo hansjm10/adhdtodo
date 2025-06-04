@@ -9,12 +9,25 @@ import { createTask } from '../../utils/TaskModel';
 jest.mock('../SecureStorageService');
 
 describe('TaskStorageService Performance Improvements', () => {
+  let mockStorage = {};
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
-    SecureStorageService.setItem.mockImplementation(() => Promise.resolve());
-    SecureStorageService.getItem.mockImplementation(() => Promise.resolve(null));
-    SecureStorageService.removeItem.mockImplementation(() => Promise.resolve());
+    mockStorage = {};
+
+    // Mock storage that actually stores and retrieves values
+    SecureStorageService.setItem.mockImplementation((key, value) => {
+      mockStorage[key] = value;
+      return Promise.resolve();
+    });
+    SecureStorageService.getItem.mockImplementation((key) => {
+      return Promise.resolve(mockStorage[key] || null);
+    });
+    SecureStorageService.removeItem.mockImplementation((key) => {
+      delete mockStorage[key];
+      return Promise.resolve();
+    });
   });
 
   describe('Category-based storage', () => {
@@ -41,10 +54,8 @@ describe('TaskStorageService Performance Improvements', () => {
         createTask({ title: 'Red 1', category: 'red' }),
         createTask({ title: 'Red 2', category: 'red' }),
       ];
-      SecureStorageService.getItem.mockImplementation((key) => {
-        if (key === 'tasks_red') return Promise.resolve(redTasks);
-        return Promise.resolve(null);
-      });
+      // Pre-populate storage with red tasks
+      mockStorage['tasks_red'] = redTasks;
 
       const tasks = await TaskStorageService.getTasksByCategory('red');
 
@@ -58,16 +69,9 @@ describe('TaskStorageService Performance Improvements', () => {
     it('should maintain task index for efficient updates', async () => {
       const task = createTask({ title: 'Test Task', category: 'red' });
 
-      // Mock the index
-      SecureStorageService.getItem.mockImplementation((key) => {
-        if (key === 'tasks_index') {
-          return Promise.resolve({ [task.id]: 'red' });
-        }
-        if (key === 'tasks_red') {
-          return Promise.resolve([task]);
-        }
-        return Promise.resolve(null);
-      });
+      // Pre-populate storage with index and task
+      mockStorage['tasks_index'] = { [task.id]: 'red' };
+      mockStorage['tasks_red'] = [task];
 
       const updatedTask = { ...task, title: 'Updated Task' };
       await TaskStorageService.updateTask(updatedTask);
@@ -84,12 +88,10 @@ describe('TaskStorageService Performance Improvements', () => {
       const blueTasks = [createTask({ title: 'Blue', category: 'blue' })];
       const greenTasks = [createTask({ title: 'Green', category: 'green' })];
 
-      SecureStorageService.getItem.mockImplementation((key) => {
-        if (key === 'tasks_red') return Promise.resolve(redTasks);
-        if (key === 'tasks_blue') return Promise.resolve(blueTasks);
-        if (key === 'tasks_green') return Promise.resolve(greenTasks);
-        return Promise.resolve(null);
-      });
+      // Pre-populate storage with tasks in different categories
+      mockStorage['tasks_red'] = redTasks;
+      mockStorage['tasks_blue'] = blueTasks;
+      mockStorage['tasks_green'] = greenTasks;
 
       const allTasks = await TaskStorageService.getAllTasks();
 
@@ -117,21 +119,9 @@ describe('TaskStorageService Performance Improvements', () => {
         );
       }
 
-      // Mock to simulate loading existing tasks
-      let storedTasks = [];
-      SecureStorageService.getItem.mockImplementation((key) => {
-        if (key === 'tasks_index') return Promise.resolve({});
-        if (key === 'tasks_red') return Promise.resolve(storedTasks);
-        if (key === 'tasks_red_1') return Promise.resolve([]);
-        return Promise.resolve(null);
-      });
-
-      SecureStorageService.setItem.mockImplementation((key, value) => {
-        if (key === 'tasks_red') {
-          storedTasks = value;
-        }
-        return Promise.resolve();
-      });
+      // Initialize empty storage
+      mockStorage['tasks_index'] = {};
+      mockStorage['tasks_red'] = [];
 
       // Save tasks individually - they should accumulate and eventually split
       for (const task of tasks) {

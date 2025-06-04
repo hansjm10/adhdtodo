@@ -196,7 +196,11 @@ const TaskAssignmentScreen = () => {
       style={[styles.priorityButton, priority === value && { backgroundColor: color + '20' }]}
       onPress={() => setPriority(value)}
     >
-      <Ionicons name={icon as any} size={24} color={priority === value ? color : '#BDC3C7'} />
+      <Ionicons
+        name={icon as keyof typeof Ionicons.glyphMap}
+        size={24}
+        color={priority === value ? color : '#BDC3C7'}
+      />
       <Text style={[styles.priorityLabel, priority === value && { color }]}>{label}</Text>
     </TouchableOpacity>
   );
