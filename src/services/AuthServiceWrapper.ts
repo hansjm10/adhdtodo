@@ -166,13 +166,13 @@ class AuthServiceWrapper implements IAuthService {
 
   // Migration helpers
   private async shouldCreateShadowAccount(): Promise<boolean> {
-    const flags = await FeatureFlags.getAllFlags();
-    return flags.enableDataMigration && process.env.EXPO_PUBLIC_SUPABASE_URL !== undefined;
+    // Migration is no longer supported - always return false
+    return false;
   }
 
   private async shouldAttemptMigration(): Promise<boolean> {
-    const flags = await FeatureFlags.getAllFlags();
-    return flags.enableDataMigration && !flags.useSupabaseAuth;
+    // Migration is no longer supported - always return false
+    return false;
   }
 
   private async createShadowSupabaseAccount(

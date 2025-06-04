@@ -8,7 +8,7 @@ import {
   updatePartnershipStats,
 } from '../utils/PartnershipModel';
 import { setUserPartner } from '../utils/UserModel';
-import UserStorageService from './UserStorageServiceWrapper';
+import UserStorageService from './UserStorageService';
 import { Partnership, PartnershipStats } from '../types';
 
 const STORAGE_KEY = 'partnerships';

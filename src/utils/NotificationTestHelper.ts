@@ -2,7 +2,7 @@
 // Creates sample notifications for testing the notification UI components
 
 import NotificationService from '../services/NotificationService';
-import UserStorageService from '../services/UserStorageServiceWrapper';
+import UserStorageService from '../services/UserStorageService';
 import { NotificationTypes } from '../types/user.types';
 
 export const createTestNotifications = async (): Promise<void> => {

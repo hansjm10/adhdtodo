@@ -3,7 +3,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
-import UserStorageService from './UserStorageServiceWrapper';
+import UserStorageService from './UserStorageService';
 import SecureLogger from './SecureLogger';
 import { Notification, NotificationPriority } from '../types';
 import { User, NotificationTypes } from '../types';

@@ -1,23 +1,19 @@
 // ABOUTME: Feature flag service for controlling rollout of new features
-// Allows gradual migration from local to Supabase services
+// Controls which services use Supabase vs local implementations
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface FeatureFlags {
   useSupabaseAuth: boolean;
-  useSupabaseUserStorage: boolean;
   useSupabaseTaskStorage: boolean;
   useSupabaseNotifications: boolean;
-  enableDataMigration: boolean;
   enableRealTimeSync: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
   useSupabaseAuth: false,
-  useSupabaseUserStorage: false,
   useSupabaseTaskStorage: false,
   useSupabaseNotifications: false,
-  enableDataMigration: true,
   enableRealTimeSync: false,
 };
 
@@ -78,7 +74,8 @@ class FeatureFlagService {
   }
 
   async isDataMigrationEnabled(): Promise<boolean> {
-    return this.getFlag('enableDataMigration');
+    // Migration is no longer supported - always return false
+    return false;
   }
 
   async isRealTimeSyncEnabled(): Promise<boolean> {
@@ -92,7 +89,6 @@ class FeatureFlagService {
 
   async enableAllSupabaseFeatures(): Promise<void> {
     await this.setFlag('useSupabaseAuth', true);
-    await this.setFlag('useSupabaseUserStorage', true);
     await this.setFlag('useSupabaseTaskStorage', true);
     await this.setFlag('useSupabaseNotifications', true);
     await this.setFlag('enableRealTimeSync', true);

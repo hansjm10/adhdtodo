@@ -10,7 +10,7 @@ import ValidationService from './ValidationService';
 import { User, UserRole, SecureToken, NotificationPreference } from '../types/user.types';
 import { IAuthService } from './AuthService';
 import * as SecureStore from 'expo-secure-store';
-import UserStorageService from './UserStorageServiceWrapper';
+import UserStorageService from './UserStorageService';
 
 // type DbUser = Database['public']['Tables']['users']['Row']; // Will be used in future
 

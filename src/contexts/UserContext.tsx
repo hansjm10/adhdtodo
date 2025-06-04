@@ -12,7 +12,7 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
-import UserStorageService from '../services/UserStorageServiceWrapper';
+import UserStorageService from '../services/UserStorageService';
 import { User, Partnership } from '../types/user.types';
 
 interface UserContextValue {
