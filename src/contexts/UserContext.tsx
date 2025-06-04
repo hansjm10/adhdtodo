@@ -1,5 +1,5 @@
 // ABOUTME: UserContext provides centralized user, partner, and partnership state management
-// Eliminates prop drilling and duplicate data fetching across screens
+// Integrates with real-time user updates from Supabase for live synchronization
 
 import React, {
   createContext,
@@ -8,6 +8,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -40,6 +41,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   const [partnership, setPartnership] = useState<Partnership | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const partnerUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Load user data from AsyncStorage
   const loadUserData = useCallback(async () => {
@@ -81,10 +84,76 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     }
   }, []);
 
-  // Load user data on mount
+  // Load user data on mount and set up real-time subscriptions
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
+
+  // Set up real-time user subscription
+  useEffect(() => {
+    if (!user?.id) {
+      // Clean up any existing subscriptions
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      return;
+    }
+
+    // Subscribe to real-time user updates
+    const setupSubscription = async () => {
+      const unsubscribe = await UserStorageService.subscribeToUserUpdates(
+        user.id,
+        (updatedUser) => {
+          setUserState(updatedUser);
+        },
+      );
+      unsubscribeRef.current = unsubscribe;
+    };
+
+    setupSubscription();
+
+    // Cleanup on unmount or user change
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [user?.id]);
+
+  // Set up real-time partner subscription
+  useEffect(() => {
+    if (!partner?.id) {
+      // Clean up any existing subscriptions
+      if (partnerUnsubscribeRef.current) {
+        partnerUnsubscribeRef.current();
+        partnerUnsubscribeRef.current = null;
+      }
+      return;
+    }
+
+    // Subscribe to real-time partner updates
+    const setupPartnerSubscription = async () => {
+      const unsubscribe = await UserStorageService.subscribeToUserUpdates(
+        partner.id,
+        (updatedPartner) => {
+          setPartner(updatedPartner);
+        },
+      );
+      partnerUnsubscribeRef.current = unsubscribe;
+    };
+
+    setupPartnerSubscription();
+
+    // Cleanup on unmount or partner change
+    return () => {
+      if (partnerUnsubscribeRef.current) {
+        partnerUnsubscribeRef.current();
+        partnerUnsubscribeRef.current = null;
+      }
+    };
+  }, [partner?.id]);
 
   // Update user and persist to storage
   const setUser = useCallback(async (newUser: User | null): Promise<void> => {
@@ -143,6 +212,16 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   // Logout - clear all user data
   const logout = useCallback(async (): Promise<void> => {
     try {
+      // Clean up real-time subscriptions
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      if (partnerUnsubscribeRef.current) {
+        partnerUnsubscribeRef.current();
+        partnerUnsubscribeRef.current = null;
+      }
+
       await AuthService.logout();
       setUserState(null);
       setPartner(null);

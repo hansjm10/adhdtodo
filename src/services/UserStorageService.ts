@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from './SupabaseService';
 import SecureLogger from './SecureLogger';
 import { User, UserRole, NotificationPreference } from '../types/user.types';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export interface IUserStorageService {
   getCurrentUser(): Promise<User | null>;
@@ -18,6 +19,7 @@ export interface IUserStorageService {
   saveUserToken(token: string): Promise<boolean>;
   getUserToken(): Promise<string | null>;
   clearAllUsers(): Promise<boolean>;
+  subscribeToUserUpdates(userId: string, callback: (user: User) => void): Promise<() => void>;
 }
 
 // Database user type mapping
@@ -49,6 +51,7 @@ class UserStorageService implements IUserStorageService {
   private currentUserCache: User | null = null;
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private subscriptions = new Map<string, RealtimeChannel>();
 
   async getCurrentUser(): Promise<User | null> {
     try {
@@ -423,6 +426,61 @@ class UserStorageService implements IUserStorageService {
       partnerId: dbUser.partner_id || null,
       theme: dbUser.theme || 'system',
     };
+  }
+
+  async subscribeToUserUpdates(
+    userId: string,
+    callback: (user: User) => void,
+  ): Promise<() => void> {
+    try {
+      // Create channel for user updates
+      const channel = supabase
+        .channel(`user:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${userId}`,
+          },
+          (payload: RealtimePostgresChangesPayload<DbUser>) => {
+            if (payload.new) {
+              const updatedUser = this.transformDbUserToUser(payload.new as DbUser);
+
+              // Update cache if it's the current user
+              if (this.currentUserCache?.id === userId) {
+                this.currentUserCache = updatedUser;
+                this.cacheTimestamp = Date.now();
+              }
+
+              // Notify callback
+              callback(updatedUser);
+            }
+          },
+        )
+        .subscribe();
+
+      // Store subscription
+      this.subscriptions.set(userId, channel);
+
+      // Return unsubscribe function
+      return () => {
+        const sub = this.subscriptions.get(userId);
+        if (sub) {
+          sub.unsubscribe();
+          this.subscriptions.delete(userId);
+        }
+      };
+    } catch (error) {
+      SecureLogger.error('Failed to subscribe to user updates', {
+        code: 'USER_016',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // Return no-op unsubscribe function
+      return () => {};
+    }
   }
 }
 
