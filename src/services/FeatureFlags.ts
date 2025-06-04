@@ -74,7 +74,8 @@ class FeatureFlagService {
   }
 
   async isDataMigrationEnabled(): Promise<boolean> {
-    return this.getFlag('enableDataMigration');
+    // Migration is no longer supported - always return false
+    return false;
   }
 
   async isRealTimeSyncEnabled(): Promise<boolean> {
@@ -88,7 +89,6 @@ class FeatureFlagService {
 
   async enableAllSupabaseFeatures(): Promise<void> {
     await this.setFlag('useSupabaseAuth', true);
-    await this.setFlag('useSupabaseUserStorage', true);
     await this.setFlag('useSupabaseTaskStorage', true);
     await this.setFlag('useSupabaseNotifications', true);
     await this.setFlag('enableRealTimeSync', true);
