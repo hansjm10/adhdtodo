@@ -1,5 +1,5 @@
-// ABOUTME: TaskContext provides centralized task state management with caching
-// Single source of truth for tasks, eliminating duplicate fetches across screens
+// ABOUTME: TaskContext provides centralized task state management with real-time updates
+// Integrates with Supabase-based TaskStorageService for live synchronization
 
 import React, {
   createContext,
@@ -13,6 +13,7 @@ import React, {
 } from 'react';
 import TaskStorageService from '../services/TaskStorageService';
 import { Task, TaskStatus, TaskPriority } from '../types/task.types';
+import { supabase } from '../services/SupabaseService';
 
 // Define the context value interface
 interface TaskContextValue {
@@ -32,9 +33,6 @@ interface TaskContextValue {
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 interface TaskProviderProps {
   children: ReactNode;
 }
@@ -43,58 +41,112 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [taskCache, setTaskCache] = useState<Task[] | null>(null);
-  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
   const isMountedRef = useRef<boolean>(true);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Load tasks from storage
-  const loadTasks = useCallback(
-    async (forceRefresh: boolean = false): Promise<void> => {
-      try {
-        // Use cache if available and not expired
-        if (
-          !forceRefresh &&
-          taskCache &&
-          cacheTimestamp &&
-          Date.now() - cacheTimestamp < CACHE_DURATION
-        ) {
-          setTasks(taskCache);
-          setLoading(false);
-          return;
-        }
+  // Get current user from auth session
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
 
-        setLoading(true);
-        setError(null);
-
-        const loadedTasks = await TaskStorageService.getAllTasks();
-
-        if (isMountedRef.current) {
-          setTasks(loadedTasks);
-          setTaskCache(loadedTasks);
-          setCacheTimestamp(Date.now());
-        }
-      } catch (err) {
-        if (isMountedRef.current) {
-          setError((err as Error).message);
-          console.error('Error loading tasks:', err);
-        }
-      } finally {
-        if (isMountedRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [taskCache, cacheTimestamp],
-  );
-
-  // Load tasks on mount
+  // Get current user on mount and auth changes
   useEffect(() => {
-    loadTasks();
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+
+    checkUser();
+
+    // Subscribe to auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
 
     return () => {
-      isMountedRef.current = false;
+      authListener?.subscription.unsubscribe();
     };
-  }, [loadTasks]);
+  }, []);
+
+  // Load tasks from storage
+  const loadTasks = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const loadedTasks = await TaskStorageService.getAllTasks();
+
+      if (isMountedRef.current) {
+        setTasks(loadedTasks);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setError((err as Error).message);
+        console.error('Error loading tasks:', err);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    // Load initial tasks
+    loadTasks();
+
+    // Subscribe to real-time updates
+    const unsubscribe = TaskStorageService.subscribeToTaskUpdates(
+      currentUser.id,
+      (task: Task, eventType: string) => {
+        if (!isMountedRef.current) return;
+
+        setTasks((prevTasks) => {
+          switch (eventType) {
+            case 'INSERT':
+              // Add new task if it doesn't exist
+              if (!prevTasks.find((t) => t.id === task.id)) {
+                return [...prevTasks, task];
+              }
+              return prevTasks;
+
+            case 'UPDATE':
+              // Update existing task
+              return prevTasks.map((t) => (t.id === task.id ? task : t));
+
+            case 'DELETE':
+              // Remove deleted task
+              return prevTasks.filter((t) => t.id !== task.id);
+
+            default:
+              return prevTasks;
+          }
+        });
+      },
+    );
+
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [currentUser?.id, loadTasks]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, []);
 
   // Filter tasks by user
   const getTasksByUser = useCallback(
@@ -112,9 +164,9 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     [tasks],
   );
 
-  // Get pending (incomplete) tasks
+  // Get pending tasks
   const getPendingTasks = useCallback((): Task[] => {
-    return tasks.filter((task) => !task.completed);
+    return tasks.filter((task) => task.status === TaskStatus.PENDING);
   }, [tasks]);
 
   // Get tasks assigned by a specific user
@@ -131,10 +183,8 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         setError(null);
 
-        // Generate ID if not provided
-        const now = new Date();
         const newTask: Task = {
-          id: taskData.id || Date.now().toString(),
+          id: `task-${Date.now()}`,
           title: taskData.title || '',
           description: taskData.description || '',
           category: taskData.category || null,
@@ -144,8 +194,8 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
           timeSpent: taskData.timeSpent || 0,
           completed: taskData.completed || false,
           completedAt: taskData.completedAt || null,
-          createdAt: taskData.createdAt || now,
-          updatedAt: taskData.updatedAt || now,
+          createdAt: taskData.createdAt || new Date(),
+          updatedAt: taskData.updatedAt || new Date(),
           xpEarned: taskData.xpEarned || 0,
           streakContribution: taskData.streakContribution || false,
           assignedBy: taskData.assignedBy || null,
@@ -159,46 +209,39 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
             onOverdue: false,
           },
           encouragementReceived: taskData.encouragementReceived || [],
-          userId: taskData.userId || null,
+          userId: taskData.userId || currentUser?.id || null,
         };
 
         await TaskStorageService.saveTask(newTask);
-
-        const updatedTasks = [...tasks, newTask];
-        setTasks(updatedTasks);
-        setTaskCache(updatedTasks);
-        setCacheTimestamp(Date.now());
+        // Real-time subscription will handle adding to state
       } catch (err) {
         setError((err as Error).message);
         console.error('Error adding task:', err);
         throw err;
       }
     },
-    [tasks],
+    [currentUser?.id],
   );
 
-  // Update an existing task
+  // Update a task
   const updateTask = useCallback(
     async (taskId: string, updates: Partial<Task>): Promise<void> => {
       try {
         setError(null);
 
-        const taskToUpdate = tasks.find((task) => task.id === taskId);
-        if (!taskToUpdate) {
+        const existingTask = tasks.find((task) => task.id === taskId);
+        if (!existingTask) {
           throw new Error('Task not found');
         }
 
-        const updatedTask = {
-          ...taskToUpdate,
+        const updatedTask: Task = {
+          ...existingTask,
           ...updates,
           updatedAt: new Date(),
         };
-        await TaskStorageService.updateTask(updatedTask);
 
-        const updatedTasks = tasks.map((task) => (task.id === taskId ? updatedTask : task));
-        setTasks(updatedTasks);
-        setTaskCache(updatedTasks);
-        setCacheTimestamp(Date.now());
+        await TaskStorageService.updateTask(updatedTask);
+        // Real-time subscription will handle updating state
       } catch (err) {
         setError((err as Error).message);
         console.error('Error updating task:', err);
@@ -209,36 +252,31 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
   );
 
   // Delete a task
-  const deleteTask = useCallback(
-    async (taskId: string): Promise<void> => {
-      try {
-        setError(null);
+  const deleteTask = useCallback(async (taskId: string): Promise<void> => {
+    try {
+      setError(null);
 
-        await TaskStorageService.deleteTask(taskId);
-
-        const updatedTasks = tasks.filter((task) => task.id !== taskId);
-        setTasks(updatedTasks);
-        setTaskCache(updatedTasks);
-        setCacheTimestamp(Date.now());
-      } catch (err) {
-        setError((err as Error).message);
-        console.error('Error deleting task:', err);
-        throw err;
-      }
-    },
-    [tasks],
-  );
+      await TaskStorageService.deleteTask(taskId);
+      // Real-time subscription will handle removing from state
+    } catch (err) {
+      setError((err as Error).message);
+      console.error('Error deleting task:', err);
+      throw err;
+    }
+  }, []);
 
   // Refresh tasks from storage
   const refreshTasks = useCallback(async (): Promise<void> => {
-    await loadTasks(true);
+    await loadTasks();
   }, [loadTasks]);
 
   // Clear cache (useful for logout)
   const clearCache = useCallback((): void => {
-    setTaskCache(null);
-    setCacheTimestamp(null);
     setTasks([]);
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
   }, []);
 
   const value = useMemo<TaskContextValue>(

@@ -1,21 +1,10 @@
-// ABOUTME: Service for managing task persistence using SecureStorageService
-// Handles saving, loading, updating, and deleting tasks from local storage
+// ABOUTME: Simplified TaskStorageService that directly uses Supabase for all task storage
+// No local storage fallback, no migration logic - pure Supabase implementation
 
-import SecureStorageService from './SecureStorageService';
-import UserStorageService from './UserStorageService';
-import ErrorHandler from '../utils/ErrorHandler';
-import { Task, TASK_CATEGORIES } from '../types/task.types';
-
-const STORAGE_KEY = 'tasks';
-const TASK_INDEX_KEY = 'tasks_index';
-const STORAGE_SIZE_LIMIT = 1800; // Leave some buffer from 2048 limit
-
-// For testing, we can override the storage size limit
-let storageLimit: number = STORAGE_SIZE_LIMIT;
-
-interface TaskIndex {
-  [taskId: string]: string; // Maps task ID to category
-}
+import { supabase } from './SupabaseService';
+import SecureLogger from './SecureLogger';
+import { Task, TaskStatus, TaskPriority, PartnerNotificationStatus } from '../types/task.types';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface TaskStorageOptions {
   page?: number;
@@ -30,7 +19,6 @@ interface TaskStats {
 }
 
 interface ITaskStorageService {
-  checkAndMigrate(): Promise<boolean>;
   getAllTasks(): Promise<Task[]>;
   saveTask(task: Task): Promise<boolean>;
   updateTask(updatedTask: Task): Promise<boolean>;
@@ -46,583 +34,670 @@ interface ITaskStorageService {
   getPartnerTasks(userId: string): Promise<Task[]>;
   getOverdueTasks(userId: string): Promise<Task[]>;
   getUpcomingTasks(userId: string, hoursAhead?: number): Promise<Task[]>;
+  subscribeToTaskUpdates(
+    userId: string,
+    callback: (task: Task, eventType: string) => void,
+  ): () => void;
 }
 
-// Storage batch for atomic operations
-interface StorageBatch {
-  operations: Array<() => Promise<void>>;
-  commit(): Promise<void>;
-  removeItem(key: string): void;
-  moveItem(oldKey: string, newKey: string): void;
-}
-
-class StorageBatchImpl implements StorageBatch {
-  operations: Array<() => Promise<void>> = [];
-
-  removeItem(key: string): void {
-    this.operations.push(() => SecureStorageService.removeItem(key));
-  }
-
-  moveItem(oldKey: string, newKey: string): void {
-    this.operations.push(async () => {
-      const value = await SecureStorageService.getItem(oldKey);
-      if (value !== null) {
-        await SecureStorageService.setItem(newKey, value);
-        await SecureStorageService.removeItem(oldKey);
-      }
-    });
-  }
-
-  async commit(): Promise<void> {
-    // Execute all operations sequentially for consistency
-    for (const operation of this.operations) {
-      await operation();
-    }
-  }
+// Database task type mapping
+interface DbTask {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  priority?: string;
+  status?: string;
+  due_date?: string | null;
+  time_estimate?: number | null;
+  time_spent?: number;
+  started_at?: string | null;
+  completed_at?: string | null;
+  assigned_by?: string | null;
+  assigned_to?: string | null;
+  reminder_1?: string | null;
+  reminder_2?: string | null;
+  reminder_custom?: string | null;
+  xp_earned?: number;
+  streak_contribution?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 class TaskStorageService implements ITaskStorageService {
-  private readonly writeLocks = new Map<string, Promise<void>>();
+  private taskCache = new Map<string, Task[]>();
+  private cacheTimestamp = new Map<string, number>();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private subscriptions = new Map<string, RealtimeChannel>();
 
-  private async withWriteLock<T>(category: string, operation: () => Promise<T>): Promise<T> {
-    // Wait for any existing write to complete
-    const existingLock = this.writeLocks.get(category);
-    if (existingLock) {
-      await existingLock;
-    }
-
-    // Create new lock
-    let releaseLock: () => void = () => {};
-    const newLock = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-    this.writeLocks.set(category, newLock);
-
-    try {
-      return await operation();
-    } finally {
-      releaseLock();
-      this.writeLocks.delete(category);
-    }
+  private transformDbTaskToTask(dbTask: DbTask): Task {
+    return {
+      id: dbTask.id,
+      title: dbTask.title,
+      description: dbTask.description || '',
+      category: dbTask.category || null,
+      status: (dbTask.status as TaskStatus) || TaskStatus.PENDING,
+      priority: (dbTask.priority as TaskPriority) || TaskPriority.MEDIUM,
+      timeEstimate: dbTask.time_estimate || null,
+      timeSpent: dbTask.time_spent || 0,
+      completed: dbTask.status === TaskStatus.COMPLETED,
+      completedAt: dbTask.completed_at ? new Date(dbTask.completed_at) : null,
+      createdAt: new Date(dbTask.created_at || Date.now()),
+      updatedAt: new Date(dbTask.updated_at || Date.now()),
+      xpEarned: dbTask.xp_earned || 0,
+      streakContribution: dbTask.streak_contribution || false,
+      assignedBy: dbTask.assigned_by || null,
+      assignedTo: dbTask.assigned_to || null,
+      dueDate: dbTask.due_date ? new Date(dbTask.due_date) : null,
+      preferredStartTime: null, // Not stored in DB yet
+      startedAt: dbTask.started_at ? new Date(dbTask.started_at) : null,
+      partnerNotified: {
+        onStart: false,
+        onComplete: false,
+        onOverdue: false,
+      } as PartnerNotificationStatus,
+      encouragementReceived: [], // Will need to be loaded from a separate table or JSONB column
+      userId: dbTask.user_id,
+    };
   }
 
-  // Check if we need to migrate from old format
-  async checkAndMigrate(): Promise<boolean> {
-    try {
-      // Check if we've already migrated by looking for the index
-      const index = await SecureStorageService.getItem(TASK_INDEX_KEY);
-      if (index !== null) {
-        // Already migrated
-        return false;
-      }
-
-      const oldTasks = await SecureStorageService.getItem(STORAGE_KEY);
-      if (oldTasks && Array.isArray(oldTasks) && oldTasks.length > 0) {
-        // Migrate to new category-based format
-        await this.migrateToNewFormat(oldTasks as Task[]);
-        await SecureStorageService.removeItem(STORAGE_KEY);
-        return true;
-      }
-
-      // No old tasks, initialize empty index if we're not in test environment
-      // In tests, null index might mean we're testing old format
-      if (oldTasks === null && process.env.NODE_ENV !== 'test') {
-        await SecureStorageService.setItem(TASK_INDEX_KEY, {});
-      }
-      return false;
-    } catch (error) {
-      console.error('Migration check failed:', error);
-      return false;
-    }
+  private transformTaskToDb(task: Task): Partial<DbTask> {
+    return {
+      title: task.title,
+      description: task.description || null,
+      category: task.category || null,
+      priority: task.priority,
+      status: task.status,
+      due_date: task.dueDate ? task.dueDate.toISOString() : null,
+      time_estimate: task.timeEstimate || null,
+      time_spent: task.timeSpent || 0,
+      started_at: task.startedAt ? task.startedAt.toISOString() : null,
+      completed_at: task.completedAt ? task.completedAt.toISOString() : null,
+      assigned_by: task.assignedBy || null,
+      assigned_to: task.assignedTo || null,
+      xp_earned: task.xpEarned || 0,
+      streak_contribution: task.streakContribution || false,
+      user_id: task.userId || '',
+    };
   }
 
-  private async migrateToNewFormat(tasks: Task[]): Promise<void> {
-    const tasksByCategory: Record<string, Task[]> = {};
-    const index: TaskIndex = {};
-
-    // Group tasks by category
-    tasks.forEach((task) => {
-      const category = task.category || 'uncategorized';
-      if (!tasksByCategory[category]) {
-        tasksByCategory[category] = [];
-      }
-      tasksByCategory[category].push(task);
-      index[task.id] = category;
-    });
-
-    // Save each category separately
-    for (const [category, categoryTasks] of Object.entries(tasksByCategory)) {
-      await this.saveCategoryTasks(category, categoryTasks);
-    }
-
-    // Save index
-    await SecureStorageService.setItem(TASK_INDEX_KEY, index);
+  private isCacheValid(cacheKey: string): boolean {
+    const timestamp = this.cacheTimestamp.get(cacheKey);
+    return timestamp ? Date.now() - timestamp < this.CACHE_DURATION : false;
   }
 
-  private async saveCategoryTasksAtomic(category: string, tasks: Task[]): Promise<void> {
-    const chunks = this.chunkTasksBySize(tasks);
+  private updateCache(cacheKey: string, tasks: Task[]): void {
+    this.taskCache.set(cacheKey, tasks);
+    this.cacheTimestamp.set(cacheKey, Date.now());
+  }
 
-    if (chunks.length === 0) {
-      // If no tasks, save empty array to main key
-      await SecureStorageService.setItem(`tasks_${category}`, []);
-      // Clean up any existing chunks
-      for (let i = 1; i < 10; i++) {
-        const key = `tasks_${category}_${i}`;
-        const exists = await SecureStorageService.getItem(key);
-        if (exists !== null) {
-          await SecureStorageService.removeItem(key);
+  private invalidateCache(userId?: string): void {
+    if (userId) {
+      // Invalidate all caches for this user
+      for (const [key] of this.taskCache) {
+        if (key.includes(userId)) {
+          this.taskCache.delete(key);
+          this.cacheTimestamp.delete(key);
         }
       }
-      return;
+    } else {
+      // Invalidate all caches
+      this.taskCache.clear();
+      this.cacheTimestamp.clear();
     }
-
-    // Prepare all chunks with temporary keys
-    const tempKeys: string[] = [];
-    const operations: Array<() => Promise<void>> = [];
-    const timestamp = Date.now();
-
-    for (let i = 0; i < chunks.length; i++) {
-      const tempKey = `tasks_${category}_temp_${timestamp}_${i}`;
-      tempKeys.push(tempKey);
-      operations.push(() => SecureStorageService.setItem(tempKey, chunks[i]));
-    }
-
-    // Save all chunks to temp locations
-    await Promise.all(operations.map((op) => op()));
-
-    // Atomic swap: delete old and rename temp in transaction
-    const batch = new StorageBatchImpl();
-
-    // Delete all old keys
-    batch.removeItem(`tasks_${category}`);
-    for (let i = 1; i < 10; i++) {
-      // Reasonable max
-      batch.removeItem(`tasks_${category}_${i}`);
-    }
-
-    // Rename temp keys to final keys
-    for (let i = 0; i < tempKeys.length; i++) {
-      const finalKey = i === 0 ? `tasks_${category}` : `tasks_${category}_${i}`;
-      batch.moveItem(tempKeys[i], finalKey);
-    }
-
-    await batch.commit();
-  }
-
-  private async saveCategoryTasks(category: string, tasks: Task[]): Promise<void> {
-    return this.withWriteLock(category, async () => {
-      return this.saveCategoryTasksAtomic(category, tasks);
-    });
-  }
-
-  private chunkTasksBySize(tasks: Task[]): Task[][] {
-    const chunks: Task[][] = [];
-    let currentChunk: Task[] = [];
-    let currentSize = 2; // Account for array brackets []
-
-    for (let i = 0; i < tasks.length; i++) {
-      const task = tasks[i];
-      const taskSize = JSON.stringify(task).length;
-      const separatorSize = i > 0 ? 1 : 0; // comma separator
-
-      // Check if adding this task would exceed the limit
-      if (currentSize + taskSize + separatorSize > storageLimit && currentChunk.length > 0) {
-        chunks.push(currentChunk);
-        currentChunk = [];
-        currentSize = 2; // Reset for new array
-      }
-
-      currentChunk.push(task);
-      currentSize += taskSize + separatorSize;
-    }
-
-    if (currentChunk.length > 0) {
-      chunks.push(currentChunk);
-    }
-
-    return chunks;
-  }
-
-  // For testing purposes - allows overriding the storage limit
-  static setStorageLimit(limit: number): void {
-    storageLimit = limit;
-  }
-
-  static resetStorageLimit(): void {
-    storageLimit = STORAGE_SIZE_LIMIT;
   }
 
   async getAllTasks(): Promise<Task[]> {
     try {
-      const migrated = await this.checkAndMigrate();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
 
-      // If we just migrated, we need to reload from the new format
-      if (migrated) {
-        return this.getAllTasksFromCategories();
+      const cacheKey = `all:${user.id}`;
+      if (this.isCacheValid(cacheKey)) {
+        return this.taskCache.get(cacheKey) || [];
       }
 
-      // Check if we're using the old format
-      const oldTasks = await SecureStorageService.getItem(STORAGE_KEY);
-      if (oldTasks && Array.isArray(oldTasks)) {
-        return oldTasks as Task[];
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch all tasks', {
+          code: 'TASK_001',
+          context: error.message,
+        });
+        return [];
       }
 
-      // Load from new category-based format
-      return this.getAllTasksFromCategories();
+      const tasks = (data || []).map(this.transformDbTaskToTask);
+      this.updateCache(cacheKey, tasks);
+      return tasks;
     } catch (error) {
-      ErrorHandler.handleStorageError(error, 'load');
+      SecureLogger.error('Failed to get all tasks', {
+        code: 'TASK_002',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return [];
     }
   }
 
-  private async getAllTasksFromCategories(): Promise<Task[]> {
-    const allTasks: Task[] = [];
-
-    // Get all known categories from TASK_CATEGORIES constant
-    const knownCategories = Object.values(TASK_CATEGORIES).map((cat) => cat.id);
-
-    // Also check for any other categories that might exist (like red, blue, green from tests)
-    const additionalCategories = ['red', 'blue', 'green', 'uncategorized'];
-    const allCategories = Array.from(new Set([...knownCategories, ...additionalCategories]));
-
-    // Load tasks from each category
-    for (const category of allCategories) {
-      const categoryTasks = await this.loadCategoryTasks(category);
-      allTasks.push(...categoryTasks);
-    }
-
-    return allTasks;
-  }
-
-  private async loadCategoryTasks(category: string): Promise<Task[]> {
-    const tasks: Task[] = [];
-
-    // Load main category storage
-    const mainKey = `tasks_${category}`;
-    const mainTasks = await SecureStorageService.getItem(mainKey);
-    if (mainTasks && Array.isArray(mainTasks)) {
-      tasks.push(...(mainTasks as Task[]));
-    }
-
-    // Load any additional chunks starting from 1
-    let chunkIndex = 1;
-    let hasMoreChunks = true;
-    while (hasMoreChunks) {
-      const chunkKey = `tasks_${category}_${chunkIndex}`;
-      const chunkTasks = await SecureStorageService.getItem(chunkKey);
-
-      if (!chunkTasks || !Array.isArray(chunkTasks) || chunkTasks.length === 0) {
-        hasMoreChunks = false;
-      } else {
-        tasks.push(...(chunkTasks as Task[]));
-        chunkIndex++;
-      }
-    }
-
-    return tasks;
-  }
-
   async saveTask(task: Task): Promise<boolean> {
     try {
-      await this.checkAndMigrate();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return false;
 
-      const category = task.category || 'uncategorized';
+      const dbTask = this.transformTaskToDb(task);
+      dbTask.user_id = user.id;
 
-      return this.withWriteLock(category, async () => {
-        const categoryTasks = await this.loadCategoryTasks(category);
-        categoryTasks.push(task);
+      const { error } = await supabase.from('tasks').insert(dbTask).select().single();
 
-        // Update category storage atomically
-        await this.saveCategoryTasksAtomic(category, categoryTasks);
-
-        // Update index atomically with category lock
-        const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
-        index[task.id] = category;
-        await SecureStorageService.setItem(TASK_INDEX_KEY, index);
-
-        return true;
-      });
-    } catch (error) {
-      // If it's a size error, it means saveCategoryTasks failed to properly chunk
-      // This shouldn't happen with proper chunking, but log it
-      if (error instanceof Error && error.message.includes('size exceeds')) {
-        console.error('Size limit exceeded despite chunking:', error);
+      if (error) {
+        SecureLogger.error('Failed to save task', {
+          code: 'TASK_003',
+          context: error.message,
+        });
+        return false;
       }
-      ErrorHandler.handleStorageError(error, 'save', () => this.saveTask(task));
+
+      // Invalidate cache for this user
+      this.invalidateCache(user.id);
+
+      return true;
+    } catch (error) {
+      SecureLogger.error('Failed to save task', {
+        code: 'TASK_004',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }
 
   async updateTask(updatedTask: Task): Promise<boolean> {
     try {
-      await this.checkAndMigrate();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return false;
 
-      // Get task's current category from index
-      const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
-      const oldCategory = index[updatedTask.id];
-      const newCategory = updatedTask.category || 'uncategorized';
+      const dbTask = this.transformTaskToDb(updatedTask);
 
-      if (!oldCategory) {
-        // Task not found in index
+      const { error } = await supabase
+        .from('tasks')
+        .update(dbTask)
+        .eq('id', updatedTask.id)
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`);
+
+      if (error) {
+        SecureLogger.error('Failed to update task', {
+          code: 'TASK_005',
+          context: error.message,
+        });
         return false;
       }
 
-      // If category changed, we need to lock both categories
-      if (oldCategory !== newCategory) {
-        // Sort categories to avoid deadlock (always lock in same order)
-        const [firstCategory, secondCategory] = [oldCategory, newCategory].sort();
+      // Invalidate cache for this user
+      this.invalidateCache(user.id);
 
-        return this.withWriteLock(firstCategory, async () => {
-          return this.withWriteLock(secondCategory, async () => {
-            // Double-check task still exists after acquiring locks
-            const currentIndex =
-              ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
-            if (currentIndex[updatedTask.id] !== oldCategory) {
-              return false; // Task was moved by another operation
-            }
-
-            // Remove from old category
-            const oldCategoryTasks = await this.loadCategoryTasks(oldCategory);
-            const filteredOldTasks = oldCategoryTasks.filter((task) => task.id !== updatedTask.id);
-            await this.saveCategoryTasksAtomic(oldCategory, filteredOldTasks);
-
-            // Add to new category
-            const newCategoryTasks = await this.loadCategoryTasks(newCategory);
-            newCategoryTasks.push(updatedTask);
-            await this.saveCategoryTasksAtomic(newCategory, newCategoryTasks);
-
-            // Update index
-            currentIndex[updatedTask.id] = newCategory;
-            await SecureStorageService.setItem(TASK_INDEX_KEY, currentIndex);
-
-            return true;
-          });
-        });
-      } else {
-        // Update within same category
-        return this.withWriteLock(newCategory, async () => {
-          const categoryTasks = await this.loadCategoryTasks(newCategory);
-          const taskIndex = categoryTasks.findIndex((task) => task.id === updatedTask.id);
-
-          if (taskIndex === -1) {
-            return false;
-          }
-
-          categoryTasks[taskIndex] = updatedTask;
-          await this.saveCategoryTasksAtomic(newCategory, categoryTasks);
-
-          return true;
-        });
-      }
+      return true;
     } catch (error) {
-      ErrorHandler.handleStorageError(error, 'update', () => this.updateTask(updatedTask));
+      SecureLogger.error('Failed to update task', {
+        code: 'TASK_006',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }
 
   async deleteTask(taskId: string): Promise<boolean> {
     try {
-      await this.checkAndMigrate();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return false;
 
-      // Get task's category from index
-      const index = ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
-      const category = index[taskId];
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+        .eq('user_id', user.id);
 
-      if (!category) {
+      if (error) {
+        SecureLogger.error('Failed to delete task', {
+          code: 'TASK_007',
+          context: error.message,
+        });
         return false;
       }
 
-      return this.withWriteLock(category, async () => {
-        // Double-check task still exists after acquiring lock
-        const currentIndex =
-          ((await SecureStorageService.getItem(TASK_INDEX_KEY)) as TaskIndex) || {};
-        if (currentIndex[taskId] !== category) {
-          return false; // Task was already deleted or moved
-        }
+      // Invalidate cache for this user
+      this.invalidateCache(user.id);
 
-        // Remove from category
-        const categoryTasks = await this.loadCategoryTasks(category);
-        const filteredTasks = categoryTasks.filter((task) => task.id !== taskId);
-        await this.saveCategoryTasksAtomic(category, filteredTasks);
-
-        // Remove from index
-        delete currentIndex[taskId];
-        await SecureStorageService.setItem(TASK_INDEX_KEY, currentIndex);
-
-        return true;
-      });
+      return true;
     } catch (error) {
-      ErrorHandler.handleStorageError(error, 'delete', () => this.deleteTask(taskId));
+      SecureLogger.error('Failed to delete task', {
+        code: 'TASK_008',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }
 
   async clearAllTasks(): Promise<boolean> {
     try {
-      // Clear old format
-      await SecureStorageService.removeItem(STORAGE_KEY);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return false;
 
-      // Get all known categories
-      const knownCategories = Object.values(TASK_CATEGORIES).map((cat) => cat.id);
-      const additionalCategories = ['red', 'blue', 'green', 'uncategorized'];
-      const allCategories = Array.from(new Set([...knownCategories, ...additionalCategories]));
+      const { error } = await supabase.from('tasks').delete().eq('user_id', user.id);
 
-      // Clear all category storages
-      for (const category of allCategories) {
-        await SecureStorageService.removeItem(`tasks_${category}`);
-
-        // Clear any chunks
-        let chunkIndex = 1;
-        let hasMoreChunks = true;
-        while (hasMoreChunks) {
-          try {
-            const key = `tasks_${category}_${chunkIndex}`;
-            const exists = await SecureStorageService.getItem(key);
-            if (exists === null) {
-              hasMoreChunks = false;
-            } else {
-              await SecureStorageService.removeItem(key);
-              chunkIndex++;
-            }
-          } catch {
-            hasMoreChunks = false;
-          }
-        }
+      if (error) {
+        SecureLogger.error('Failed to clear all tasks', {
+          code: 'TASK_009',
+          context: error.message,
+        });
+        return false;
       }
 
-      // Clear index
-      await SecureStorageService.removeItem(TASK_INDEX_KEY);
+      // Invalidate all caches for this user
+      this.invalidateCache(user.id);
 
       return true;
     } catch (error) {
-      ErrorHandler.handleStorageError(error, 'delete', () => this.clearAllTasks());
+      SecureLogger.error('Failed to clear all tasks', {
+        code: 'TASK_010',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return false;
     }
   }
 
-  // Base method for filtering tasks to reduce duplication
-  private async getFilteredTasks(filterFn: (task: Task) => boolean): Promise<Task[]> {
+  async getTasksByCategory(categoryId: string, options?: TaskStorageOptions): Promise<Task[]> {
     try {
-      // Don't check migration here to avoid infinite loops
-      const allTasks = await this.getAllTasksFromCategories();
-      return allTasks.filter(filterFn);
-    } catch (error) {
-      ErrorHandler.handleStorageError(error, 'load');
-      return [];
-    }
-  }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
 
-  async getTasksByCategory(categoryId: string, options: TaskStorageOptions = {}): Promise<Task[]> {
-    try {
-      await this.checkAndMigrate();
+      const cacheKey = `category:${user.id}:${categoryId}`;
+      if (this.isCacheValid(cacheKey) && !options?.page) {
+        return this.taskCache.get(cacheKey) || [];
+      }
 
-      const tasks = await this.loadCategoryTasks(categoryId);
+      let query = supabase
+        .from('tasks')
+        .select('*')
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+        .eq('category', categoryId)
+        .order('created_at', { ascending: false });
 
-      // Apply pagination if requested
-      if (options.page && options.pageSize) {
-        const start = (options.page - 1) * options.pageSize;
-        const end = start + options.pageSize;
-        return tasks.slice(start, end);
+      if (options?.page && options?.pageSize) {
+        const offset = (options.page - 1) * options.pageSize;
+        query = query.range(offset, offset + options.pageSize - 1);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        SecureLogger.error('Failed to fetch tasks by category', {
+          code: 'TASK_011',
+          context: error.message,
+        });
+        return [];
+      }
+
+      const tasks = (data || []).map(this.transformDbTaskToTask);
+
+      if (!options?.page) {
+        this.updateCache(cacheKey, tasks);
       }
 
       return tasks;
     } catch (error) {
-      ErrorHandler.handleStorageError(error, 'load');
+      SecureLogger.error('Failed to get tasks by category', {
+        code: 'TASK_012',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return [];
     }
   }
 
   async getCompletedTasks(): Promise<Task[]> {
-    return this.getFilteredTasks((task) => task.completed);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+        .eq('status', TaskStatus.COMPLETED)
+        .order('completed_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch completed tasks', {
+          code: 'TASK_013',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get completed tasks', {
+        code: 'TASK_014',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   async getPendingTasks(): Promise<Task[]> {
-    return this.getFilteredTasks((task) => !task.completed);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+        .eq('status', TaskStatus.PENDING)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch pending tasks', {
+          code: 'TASK_015',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get pending tasks', {
+        code: 'TASK_016',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   async getTaskStats(): Promise<TaskStats> {
-    const tasks = await this.getAllTasks();
-    const completed = tasks.filter((task) => task.completed).length;
-    const pending = tasks.filter((task) => !task.completed).length;
-    const totalXP = tasks.reduce((sum, task) => sum + (task.xpEarned || 0), 0);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        return { total: 0, completed: 0, pending: 0, totalXP: 0 };
+      }
 
-    return {
-      total: tasks.length,
-      completed,
-      pending,
-      totalXP,
-    };
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('status, xp_earned')
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`);
+
+      if (error) {
+        SecureLogger.error('Failed to fetch task stats', {
+          code: 'TASK_017',
+          context: error.message,
+        });
+        return { total: 0, completed: 0, pending: 0, totalXP: 0 };
+      }
+
+      const tasks = data || [];
+      const stats = {
+        total: tasks.length,
+        completed: tasks.filter((t) => t.status === TaskStatus.COMPLETED).length,
+        pending: tasks.filter((t) => t.status === TaskStatus.PENDING).length,
+        totalXP: tasks.reduce((sum, t) => sum + (t.xp_earned || 0), 0),
+      };
+
+      return stats;
+    } catch (error) {
+      SecureLogger.error('Failed to get task stats', {
+        code: 'TASK_018',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return { total: 0, completed: 0, pending: 0, totalXP: 0 };
+    }
   }
 
-  // Multi-user support methods
   async getTasksForUser(userId: string): Promise<Task[]> {
-    return this.getFilteredTasks(
-      (task) => task.assignedTo === userId || (!task.assignedTo && !task.assignedBy), // Include non-assigned tasks for backward compatibility
-    );
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch tasks for user', {
+          code: 'TASK_019',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get tasks for user', {
+        code: 'TASK_020',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   async getTasksAssignedByUser(userId: string): Promise<Task[]> {
-    return this.getFilteredTasks((task) => task.assignedBy === userId);
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('assigned_by', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch tasks assigned by user', {
+          code: 'TASK_021',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get tasks assigned by user', {
+        code: 'TASK_022',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   async getAssignedTasks(userId: string): Promise<Task[]> {
-    return this.getFilteredTasks((task) => task.assignedTo === userId && task.assignedBy !== null);
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('assigned_to', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch assigned tasks', {
+          code: 'TASK_023',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get assigned tasks', {
+        code: 'TASK_024',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   async getPartnerTasks(userId: string): Promise<Task[]> {
     try {
-      const currentUser = await UserStorageService.getCurrentUser();
-      if (!currentUser || !currentUser.partnerId) {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .or(`assigned_by.eq.${userId},assigned_to.eq.${userId}`)
+        .neq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch partner tasks', {
+          code: 'TASK_025',
+          context: error.message,
+        });
         return [];
       }
 
-      // Get tasks where current user assigned to partner OR partner assigned to current user
-      return this.getFilteredTasks(
-        (task) =>
-          task.assignedBy !== null &&
-          task.assignedBy !== undefined &&
-          task.assignedTo !== null &&
-          task.assignedTo !== undefined &&
-          ((task.assignedBy === userId && task.assignedTo === currentUser.partnerId) ||
-            (task.assignedBy === currentUser.partnerId && task.assignedTo === userId)),
-      );
+      return (data || []).map(this.transformDbTaskToTask);
     } catch (error) {
-      ErrorHandler.handleStorageError(error, 'load');
+      SecureLogger.error('Failed to get partner tasks', {
+        code: 'TASK_026',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
       return [];
     }
   }
 
   async getOverdueTasks(userId: string): Promise<Task[]> {
-    const tasks = await this.getTasksForUser(userId);
-    const now = new Date();
-    return tasks.filter((task) => !task.completed && task.dueDate && new Date(task.dueDate) < now);
+    try {
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
+        .lt('due_date', now)
+        .neq('status', TaskStatus.COMPLETED)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch overdue tasks', {
+          code: 'TASK_027',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get overdue tasks', {
+        code: 'TASK_028',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
   }
 
   async getUpcomingTasks(userId: string, hoursAhead: number = 24): Promise<Task[]> {
-    const tasks = await this.getTasksForUser(userId);
-    const now = new Date();
-    const futureTime = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
+    try {
+      const now = new Date();
+      const future = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
 
-    return tasks.filter(
-      (task) =>
-        !task.completed &&
-        task.dueDate &&
-        new Date(task.dueDate) >= now &&
-        new Date(task.dueDate) <= futureTime,
-    );
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
+        .gte('due_date', now.toISOString())
+        .lte('due_date', future.toISOString())
+        .neq('status', TaskStatus.COMPLETED)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        SecureLogger.error('Failed to fetch upcoming tasks', {
+          code: 'TASK_029',
+          context: error.message,
+        });
+        return [];
+      }
+
+      return (data || []).map(this.transformDbTaskToTask);
+    } catch (error) {
+      SecureLogger.error('Failed to get upcoming tasks', {
+        code: 'TASK_030',
+        context: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
+  }
+
+  subscribeToTaskUpdates(
+    userId: string,
+    callback: (task: Task, eventType: string) => void,
+  ): () => void {
+    const channel = supabase
+      .channel(`tasks:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<DbTask>) => {
+          if (payload.new) {
+            const task = this.transformDbTaskToTask(payload.new as DbTask);
+            callback(task, payload.eventType);
+
+            // Invalidate cache for this user
+            this.invalidateCache(userId);
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `assigned_to=eq.${userId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<DbTask>) => {
+          if (payload.new) {
+            const task = this.transformDbTaskToTask(payload.new as DbTask);
+            callback(task, payload.eventType);
+
+            // Invalidate cache for this user
+            this.invalidateCache(userId);
+          }
+        },
+      )
+      .subscribe();
+
+    // Store subscription
+    this.subscriptions.set(userId, channel);
+
+    // Return unsubscribe function
+    return () => {
+      const sub = this.subscriptions.get(userId);
+      if (sub) {
+        sub.unsubscribe();
+        this.subscriptions.delete(userId);
+      }
+    };
   }
 }
 
-// Create instance with proper typing
-interface TaskStorageServiceInstance extends TaskStorageService {
-  setStorageLimit: typeof TaskStorageService.setStorageLimit;
-  resetStorageLimit: typeof TaskStorageService.resetStorageLimit;
-}
-
-const taskStorageService = new TaskStorageService() as TaskStorageServiceInstance;
-
-// Export instance methods and static methods
-taskStorageService.setStorageLimit = TaskStorageService.setStorageLimit;
-taskStorageService.resetStorageLimit = TaskStorageService.resetStorageLimit;
-
-export default taskStorageService;
+export default new TaskStorageService();
+export { TaskStorageService };
+export type { ITaskStorageService, TaskStorageOptions, TaskStats };
