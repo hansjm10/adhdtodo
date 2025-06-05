@@ -16,10 +16,50 @@ type TabBarIconProps = {
   size: number;
 };
 
+const TabIcon = ({
+  focused,
+  color,
+  size,
+  focusedName,
+  unfocusedName,
+}: TabBarIconProps & {
+  focusedName: keyof typeof Ionicons.glyphMap;
+  unfocusedName: keyof typeof Ionicons.glyphMap;
+}) => <Ionicons name={focused ? focusedName : unfocusedName} size={size} color={color} />;
+
+const TasksIcon = (props: TabBarIconProps) => (
+  <TabIcon {...props} focusedName="checkbox" unfocusedName="checkbox-outline" />
+);
+
+const FocusIcon = (props: TabBarIconProps) => (
+  <TabIcon {...props} focusedName="time" unfocusedName="time-outline" />
+);
+
+const PartnerIcon = (props: TabBarIconProps) => (
+  <TabIcon {...props} focusedName="people" unfocusedName="people-outline" />
+);
+
+const ProfileIcon = (props: TabBarIconProps) => (
+  <TabIcon {...props} focusedName="person" unfocusedName="person-outline" />
+);
+
+const useNotificationHeaderButton = (unreadCount: number) => {
+  const router = useRouter();
+  return () => (
+    <NotificationBadge
+      count={unreadCount}
+      onPress={() => {
+        router.push('/notifications');
+      }}
+    />
+  );
+};
+
 export default function TabLayout() {
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [, setCurrentUser] = useState<User | null>(null);
+  const NotificationHeaderButton = useNotificationHeaderButton(unreadCount);
 
   const loadUnreadCount = useCallback(async (): Promise<void> => {
     try {
@@ -38,10 +78,14 @@ export default function TabLayout() {
   }, []);
 
   useEffect(() => {
-    loadUnreadCount();
+    loadUnreadCount().catch(() => {});
     // Set up interval to check for new notifications
-    const interval = setInterval(loadUnreadCount, 10000); // Check every 10 seconds
-    return () => { clearInterval(interval); };
+    const interval = setInterval(() => {
+      loadUnreadCount().catch(() => {});
+    }, 10000); // Check every 10 seconds
+    return () => {
+      clearInterval(interval);
+    };
   }, [loadUnreadCount]);
 
   return (
@@ -56,12 +100,8 @@ export default function TabLayout() {
         options={{
           title: 'Tasks',
           tabBarButtonTestID: 'tab-tasks',
-          tabBarIcon: ({ focused, color, size }: TabBarIconProps) => (
-            <Ionicons name={focused ? 'checkbox' : 'checkbox-outline'} size={size} color={color} />
-          ),
-          headerRight: () => (
-            <NotificationBadge count={unreadCount} onPress={() => { router.push('/notifications'); }} />
-          ),
+          tabBarIcon: TasksIcon,
+          headerRight: NotificationHeaderButton,
         }}
       />
       <Tabs.Screen
@@ -69,9 +109,7 @@ export default function TabLayout() {
         options={{
           title: 'Focus',
           tabBarButtonTestID: 'tab-focus',
-          tabBarIcon: ({ focused, color, size }: TabBarIconProps) => (
-            <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color} />
-          ),
+          tabBarIcon: FocusIcon,
         }}
       />
       <Tabs.Screen
@@ -79,9 +117,7 @@ export default function TabLayout() {
         options={{
           title: 'Partner',
           tabBarButtonTestID: 'tab-partner',
-          tabBarIcon: ({ focused, color, size }: TabBarIconProps) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
-          ),
+          tabBarIcon: PartnerIcon,
         }}
       />
       <Tabs.Screen
@@ -89,9 +125,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarButtonTestID: 'tab-profile',
-          tabBarIcon: ({ focused, color, size }: TabBarIconProps) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
-          ),
+          tabBarIcon: ProfileIcon,
         }}
       />
       {/* Hidden screens that are part of focus stack */}

@@ -2,9 +2,7 @@
 // Includes task details, due dates, preferred start times, and priority settings
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -14,7 +12,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
 } from 'react-native';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -39,12 +37,45 @@ interface PriorityButtonProps {
 interface TimeEstimateButtonProps {
   minutes: number;
   label: string;
+  isActive: boolean;
+  onPress: () => void;
 }
+
+const PriorityButton = ({
+  value,
+  label,
+  icon,
+  color,
+  isActive,
+  onPress,
+}: PriorityButtonProps & { isActive: boolean; onPress: () => void }) => (
+  <TouchableOpacity
+    style={[styles.priorityButton, isActive && { backgroundColor: `${color}20` }]}
+    onPress={onPress}
+  >
+    <Ionicons
+      name={icon as keyof typeof Ionicons.glyphMap}
+      size={24}
+      color={isActive ? color : '#BDC3C7'}
+    />
+    <Text style={[styles.priorityLabel, isActive && { color }]}>{label}</Text>
+  </TouchableOpacity>
+);
+
+const TimeEstimateButton = ({ minutes, label, isActive, onPress }: TimeEstimateButtonProps) => (
+  <TouchableOpacity
+    style={[styles.timeButton, isActive && styles.timeButtonActive]}
+    onPress={onPress}
+  >
+    <Text style={[styles.timeButtonText, isActive && styles.timeButtonTextActive]}>{label}</Text>
+  </TouchableOpacity>
+);
 
 interface Styles {
   container: ViewStyle;
   header: ViewStyle;
   headerTitle: TextStyle;
+  headerSpacer: ViewStyle;
   form: ViewStyle;
   inputGroup: ViewStyle;
   label: TextStyle;
@@ -99,7 +130,7 @@ const TaskAssignmentScreen = () => {
   }, []);
 
   useEffect(() => {
-    loadUserData();
+    loadUserData().catch(() => {});
   }, [loadUserData]);
 
   const handleAssignTask = async (): Promise<void> => {
@@ -169,11 +200,15 @@ const TaskAssignmentScreen = () => {
       Alert.alert('Task Assigned!', `"${title}" has been assigned successfully.`, [
         {
           text: 'Assign Another',
-          onPress: () => { resetForm(); },
+          onPress: () => {
+            resetForm();
+          },
         },
         {
           text: 'Done',
-          onPress: () => { router.back(); },
+          onPress: () => {
+            router.back();
+          },
         },
       ]);
     } catch (error) {
@@ -192,33 +227,6 @@ const TaskAssignmentScreen = () => {
     setPreferredStartTime(null);
     setTimeEstimate(30);
   };
-
-  const PriorityButton = ({ value, label, icon, color }: PriorityButtonProps) => (
-    <TouchableOpacity
-      style={[styles.priorityButton, priority === value && { backgroundColor: `${color  }20` }]}
-      onPress={() => { setPriority(value); }}
-    >
-      <Ionicons
-        name={icon as keyof typeof Ionicons.glyphMap}
-        size={24}
-        color={priority === value ? color : '#BDC3C7'}
-      />
-      <Text style={[styles.priorityLabel, priority === value && { color }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-
-  const TimeEstimateButton = ({ minutes, label }: TimeEstimateButtonProps) => (
-    <TouchableOpacity
-      style={[styles.timeButton, timeEstimate === minutes && styles.timeButtonActive]}
-      onPress={() => { setTimeEstimate(minutes); }}
-    >
-      <Text
-        style={[styles.timeButtonText, timeEstimate === minutes && styles.timeButtonTextActive]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
 
   const handleDueDateChange = (event: DateTimePickerEvent, selectedDate?: Date): void => {
     setShowDueDatePicker(false);
@@ -241,11 +249,15 @@ const TaskAssignmentScreen = () => {
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => { router.back(); }}>
+          <TouchableOpacity
+            onPress={() => {
+              router.back();
+            }}
+          >
             <Ionicons name="close" size={28} color="#2C3E50" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Assign Task</Text>
-          <View style={{ width: 28 }} />
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.form}>
@@ -283,19 +295,40 @@ const TaskAssignmentScreen = () => {
                 label="Low"
                 icon="flag-outline"
                 color="#27AE60"
+                isActive={priority === TASK_PRIORITY.LOW}
+                onPress={() => {
+                  setPriority(TASK_PRIORITY.LOW);
+                }}
               />
               <PriorityButton
                 value={TASK_PRIORITY.MEDIUM}
                 label="Medium"
                 icon="flag-outline"
                 color="#F39C12"
+                isActive={priority === TASK_PRIORITY.MEDIUM}
+                onPress={() => {
+                  setPriority(TASK_PRIORITY.MEDIUM);
+                }}
               />
-              <PriorityButton value={TASK_PRIORITY.HIGH} label="High" icon="flag" color="#E74C3C" />
+              <PriorityButton
+                value={TASK_PRIORITY.HIGH}
+                label="High"
+                icon="flag"
+                color="#E74C3C"
+                isActive={priority === TASK_PRIORITY.HIGH}
+                onPress={() => {
+                  setPriority(TASK_PRIORITY.HIGH);
+                }}
+              />
               <PriorityButton
                 value={TASK_PRIORITY.URGENT}
                 label="Urgent"
                 icon="warning"
                 color="#C0392B"
+                isActive={priority === TASK_PRIORITY.URGENT}
+                onPress={() => {
+                  setPriority(TASK_PRIORITY.URGENT);
+                }}
               />
             </View>
           </View>
@@ -303,17 +336,57 @@ const TaskAssignmentScreen = () => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Time Estimate</Text>
             <View style={styles.timeContainer}>
-              <TimeEstimateButton minutes={5} label="5 min" />
-              <TimeEstimateButton minutes={15} label="15 min" />
-              <TimeEstimateButton minutes={30} label="30 min" />
-              <TimeEstimateButton minutes={60} label="1 hour" />
-              <TimeEstimateButton minutes={120} label="2 hours" />
+              <TimeEstimateButton
+                minutes={5}
+                label="5 min"
+                isActive={timeEstimate === 5}
+                onPress={() => {
+                  setTimeEstimate(5);
+                }}
+              />
+              <TimeEstimateButton
+                minutes={15}
+                label="15 min"
+                isActive={timeEstimate === 15}
+                onPress={() => {
+                  setTimeEstimate(15);
+                }}
+              />
+              <TimeEstimateButton
+                minutes={30}
+                label="30 min"
+                isActive={timeEstimate === 30}
+                onPress={() => {
+                  setTimeEstimate(30);
+                }}
+              />
+              <TimeEstimateButton
+                minutes={60}
+                label="1 hour"
+                isActive={timeEstimate === 60}
+                onPress={() => {
+                  setTimeEstimate(60);
+                }}
+              />
+              <TimeEstimateButton
+                minutes={120}
+                label="2 hours"
+                isActive={timeEstimate === 120}
+                onPress={() => {
+                  setTimeEstimate(120);
+                }}
+              />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Due Date</Text>
-            <TouchableOpacity style={styles.dateButton} onPress={() => { setShowDueDatePicker(true); }}>
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => {
+                setShowDueDatePicker(true);
+              }}
+            >
               <Ionicons name="calendar-outline" size={20} color="#7F8C8D" />
               <Text style={styles.dateButtonText}>
                 {dueDate ? dueDate.toLocaleDateString() : 'Set due date'}
@@ -325,7 +398,9 @@ const TaskAssignmentScreen = () => {
             <Text style={styles.label}>Preferred Start Time</Text>
             <TouchableOpacity
               style={styles.dateButton}
-              onPress={() => { setShowStartTimePicker(true); }}
+              onPress={() => {
+                setShowStartTimePicker(true);
+              }}
             >
               <Ionicons name="time-outline" size={20} color="#7F8C8D" />
               <Text style={styles.dateButtonText}>
@@ -347,9 +422,11 @@ const TaskAssignmentScreen = () => {
                   key={cat.id}
                   style={[
                     styles.categoryButton,
-                    category === cat.id && { backgroundColor: `${cat.color  }20` },
+                    category === cat.id && { backgroundColor: `${cat.color}20` },
                   ]}
-                  onPress={() => { setCategory(category === cat.id ? null : cat.id); }}
+                  onPress={() => {
+                    setCategory(category === cat.id ? null : cat.id);
+                  }}
                 >
                   <Text style={styles.categoryIcon}>{cat.icon}</Text>
                   <Text style={[styles.categoryLabel, category === cat.id && { color: cat.color }]}>
@@ -362,7 +439,9 @@ const TaskAssignmentScreen = () => {
 
           <TouchableOpacity
             style={[styles.assignButton, loading && styles.assignButtonDisabled]}
-            onPress={handleAssignTask}
+            onPress={() => {
+              handleAssignTask().catch(() => {});
+            }}
             disabled={loading}
           >
             <Text style={styles.assignButtonText}>{loading ? 'Assigning...' : 'Assign Task'}</Text>
@@ -372,7 +451,7 @@ const TaskAssignmentScreen = () => {
 
       {showDueDatePicker && (
         <DateTimePicker
-          value={dueDate || new Date()}
+          value={dueDate ?? new Date()}
           mode="date"
           display="default"
           minimumDate={new Date()}
@@ -382,7 +461,7 @@ const TaskAssignmentScreen = () => {
 
       {showStartTimePicker && (
         <DateTimePicker
-          value={preferredStartTime || new Date()}
+          value={preferredStartTime ?? new Date()}
           mode="time"
           display="default"
           onChange={handleStartTimeChange}
@@ -412,6 +491,9 @@ const styles = StyleSheet.create<Styles>({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2C3E50',
+  },
+  headerSpacer: {
+    width: 28,
   },
   form: {
     padding: 20,

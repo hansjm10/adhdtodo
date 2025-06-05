@@ -1,16 +1,11 @@
 // ABOUTME: User model utilities for creating and managing user accounts
 // Provides functions to create users, manage partnerships, and handle notifications
 
-import type {
-  User,
-  UserNotificationPreferences} from '../types/user.types';
-import {
-  UserRole,
-  NotificationPreference
-} from '../types/user.types';
+import type { User, UserNotificationPreferences } from '../types/user.types';
+import { UserRole, NotificationPreference } from '../types/user.types';
 
 export const generateUserId = (): string => {
-  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 };
 
 export const createUser = (userData: Partial<User> = {}): User => {
@@ -18,14 +13,14 @@ export const createUser = (userData: Partial<User> = {}): User => {
 
   return {
     id: generateUserId(),
-    email: userData.email || '',
-    name: userData.name || '',
-    role: userData.role || UserRole.ADHD_USER,
+    email: userData.email ?? '',
+    name: userData.name ?? '',
+    role: userData.role ?? UserRole.ADHD_USER,
     // Authentication fields
-    passwordHash: userData.passwordHash || null,
-    passwordSalt: userData.passwordSalt || null,
-    sessionToken: userData.sessionToken || null,
-    lastLoginAt: userData.lastLoginAt || null,
+    passwordHash: userData.passwordHash ?? null,
+    passwordSalt: userData.passwordSalt ?? null,
+    sessionToken: userData.sessionToken ?? null,
+    lastLoginAt: userData.lastLoginAt ?? null,
     partnerId: null, // Will be set when partnership is established
     notificationPreferences: {
       global: NotificationPreference.ALL,

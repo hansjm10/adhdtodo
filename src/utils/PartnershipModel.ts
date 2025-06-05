@@ -6,7 +6,7 @@ import { PartnershipStatus } from '../types/user.types';
 import type { ValidationResult } from './UserModel';
 
 export const generatePartnershipId = (): string => {
-  return `partnership_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `partnership_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 };
 
 export const createPartnership = (partnershipData: Partial<Partnership> = {}): Partnership => {
@@ -14,11 +14,11 @@ export const createPartnership = (partnershipData: Partial<Partnership> = {}): P
 
   return {
     id: generatePartnershipId(),
-    adhdUserId: partnershipData.adhdUserId || null,
-    partnerId: partnershipData.partnerId || null,
+    adhdUserId: partnershipData.adhdUserId ?? null,
+    partnerId: partnershipData.partnerId ?? null,
     status: PartnershipStatus.PENDING,
     inviteCode: generateInviteCode(),
-    inviteSentBy: partnershipData.inviteSentBy || null,
+    inviteSentBy: partnershipData.inviteSentBy ?? null,
     settings: {
       allowTaskAssignment: true,
       shareProgress: true,
