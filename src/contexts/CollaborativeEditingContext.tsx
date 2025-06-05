@@ -7,7 +7,7 @@ import CollaborativeEditingService, {
   EditOperation,
   CollaboratorCursor,
 } from '../services/CollaborativeEditingService';
-import { useAuth } from './AuthContext';
+import { useUser } from './UserContext';
 
 interface CollaborativeEditingState {
   activeSessions: Map<string, TaskEditSession>;
@@ -154,7 +154,7 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
   children,
 }) => {
   const [state, dispatch] = useReducer(collaborativeEditingReducer, initialState);
-  const { currentUser: user } = useAuth();
+  const { user } = useUser();
 
   // Monitor collaborators for current session
   useEffect(() => {

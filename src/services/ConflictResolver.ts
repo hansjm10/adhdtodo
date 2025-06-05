@@ -23,13 +23,13 @@ export interface ResolvedConflict<T = unknown> {
 }
 
 class ConflictResolver {
-  private defaultResolutions: Map<string, ConflictResolution> = new Map();
+  private defaultResolutions: Map<string, ConflictResolution<any>> = new Map();
 
   /**
    * Register default resolution strategy for an entity type
    */
   registerDefaultResolution<T>(entityType: string, resolution: ConflictResolution<T>): void {
-    this.defaultResolutions.set(entityType, resolution);
+    this.defaultResolutions.set(entityType, resolution as ConflictResolution<any>);
   }
 
   /**
@@ -39,7 +39,7 @@ class ConflictResolver {
     conflict: ConflictInfo<T>,
     customResolution?: ConflictResolution<T>,
   ): Promise<ResolvedConflict<T>> {
-    const resolution = customResolution || this.defaultResolutions.get(conflict.entity);
+    const resolution = customResolution || (this.defaultResolutions.get(conflict.entity) as ConflictResolution<T> | undefined);
 
     if (!resolution) {
       // Default to server-wins strategy if no resolution defined
@@ -66,11 +66,11 @@ class ConflictResolver {
         };
 
       case 'merge':
-        return this.mergeData(conflict, resolution);
+        return this.mergeData(conflict, resolution) as ResolvedConflict<T>;
 
       case 'manual':
         if (resolution.resolver) {
-          const resolvedData = resolution.resolver(conflict.localData, conflict.remoteData);
+          const resolvedData = resolution.resolver(conflict.localData, conflict.remoteData) as T;
           return {
             resolvedData,
             strategy: 'manual',
@@ -273,7 +273,7 @@ class ConflictResolver {
    * Register task-specific conflict resolution
    */
   setupTaskResolution(): void {
-    this.registerDefaultResolution('task', {
+    this.registerDefaultResolution<Record<string, any>>('task', {
       strategy: 'merge',
       fieldResolvers: {
         // Title: prefer local (user input)
@@ -306,7 +306,7 @@ class ConflictResolver {
    * Register user-specific conflict resolution
    */
   setupUserResolution(): void {
-    this.registerDefaultResolution('user', {
+    this.registerDefaultResolution<Record<string, any>>('user', {
       strategy: 'merge',
       fieldResolvers: {
         // Stats: merge by taking higher values
@@ -333,12 +333,12 @@ class ConflictResolver {
     this.setupUserResolution();
 
     // Partnership resolution: prefer server (administrative data)
-    this.registerDefaultResolution('partnership', {
+    this.registerDefaultResolution<Record<string, any>>('partnership', {
       strategy: 'server-wins',
     });
 
     // Notification resolution: prefer server (authoritative)
-    this.registerDefaultResolution('notification', {
+    this.registerDefaultResolution<Record<string, any>>('notification', {
       strategy: 'server-wins',
     });
   }

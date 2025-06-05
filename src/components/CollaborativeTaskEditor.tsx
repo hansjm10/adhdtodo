@@ -6,7 +6,7 @@ import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { useCollaborativeEditing } from '../contexts/CollaborativeEditingContext';
 import { Task, TaskStatus, TaskPriority } from '../types/task.types';
-import { colors, typography, layout } from '../styles';
+import { colors, typography, spacing } from '../styles';
 
 interface CollaborativeTaskEditorProps {
   task: Task;
@@ -123,7 +123,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
 
   const titleInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const collaborators = getCurrentCollaborators();
   const locked = isTaskLocked();
@@ -218,9 +218,9 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
       case TaskStatus.COMPLETED:
-        return colors.states.success;
+        return colors.semantic.success;
       case TaskStatus.IN_PROGRESS:
-        return colors.states.warning;
+        return colors.semantic.warning;
       default:
         return colors.text.secondary;
     }
@@ -229,11 +229,11 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
   const getPriorityColor = (priority: TaskPriority) => {
     switch (priority) {
       case TaskPriority.HIGH:
-        return colors.states.error;
+        return colors.semantic.error;
       case TaskPriority.MEDIUM:
-        return colors.states.warning;
+        return colors.semantic.warning;
       default:
-        return colors.states.success;
+        return colors.semantic.success;
     }
   };
 
@@ -255,7 +255,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.doneButton} onPress={handleStopEditing}>
-              <Ionicons name="checkmark" size={20} color={colors.surface} />
+              <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
               <Text style={styles.doneButtonText}>Done</Text>
             </TouchableOpacity>
           )}
@@ -268,7 +268,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               <Ionicons
                 name={locked ? 'lock-closed' : 'lock-open'}
                 size={16}
-                color={locked ? colors.surface : colors.text.primary}
+                color={locked ? colors.text.inverse : colors.text.primary}
               />
             </TouchableOpacity>
           )}
@@ -393,7 +393,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
         <View
           style={[
             styles.connectionIndicator,
-            { backgroundColor: state.isConnected ? colors.states.success : colors.states.error },
+            { backgroundColor: state.isConnected ? colors.semantic.success : colors.semantic.error },
           ]}
         />
         <Text style={styles.statusText}>
@@ -409,62 +409,62 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,
-    padding: layout.spacing.medium,
+    padding: spacing.md,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: layout.spacing.medium,
-    paddingBottom: layout.spacing.small,
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: layout.spacing.small,
+    gap: spacing.sm,
   },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: layout.spacing.medium,
-    paddingVertical: layout.spacing.small,
-    backgroundColor: colors.background.secondary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.states.hover,
     borderRadius: 8,
-    gap: layout.spacing.xsmall,
+    gap: spacing.xs,
   },
   editButtonText: {
     color: colors.primary,
-    fontSize: typography.sizes.small,
+    fontSize: typography.bodySmall.fontSize,
     fontWeight: '600',
   },
   doneButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: layout.spacing.medium,
-    paddingVertical: layout.spacing.small,
-    backgroundColor: colors.success,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.semantic.success,
     borderRadius: 8,
-    gap: layout.spacing.xsmall,
+    gap: spacing.xs,
   },
   doneButtonText: {
-    color: colors.white,
-    fontSize: typography.sizes.small,
+    color: colors.text.inverse,
+    fontSize: typography.bodySmall.fontSize,
     fontWeight: '600',
   },
   lockButton: {
-    padding: layout.spacing.small,
+    padding: spacing.sm,
     borderRadius: 6,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.states.hover,
   },
   lockButtonActive: {
-    backgroundColor: colors.warning,
+    backgroundColor: colors.semantic.warning,
   },
   collaboratorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: layout.spacing.small,
+    gap: spacing.sm,
   },
   collaboratorList: {
     flexDirection: 'row',
@@ -478,11 +478,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: -8,
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: colors.surface,
   },
   collaboratorInitial: {
-    color: colors.white,
-    fontSize: typography.sizes.small,
+    color: colors.text.inverse,
+    fontSize: typography.bodySmall.fontSize,
     fontWeight: 'bold',
   },
   collaboratorOverflow: {
@@ -494,80 +494,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: -8,
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: colors.surface,
   },
   collaboratorOverflowText: {
-    color: colors.white,
-    fontSize: typography.sizes.xsmall,
+    color: colors.text.inverse,
+    fontSize: typography.caption.fontSize,
     fontWeight: 'bold',
   },
   collaboratorStatus: {
-    fontSize: typography.sizes.small,
+    fontSize: typography.bodySmall.fontSize,
     color: colors.text.secondary,
   },
   lockControls: {
-    backgroundColor: colors.background.tertiary,
-    padding: layout.spacing.medium,
+    backgroundColor: colors.states.hover,
+    padding: spacing.md,
     borderRadius: 8,
-    marginBottom: layout.spacing.medium,
+    marginBottom: spacing.md,
   },
   lockText: {
-    fontSize: typography.sizes.small,
+    fontSize: typography.bodySmall.fontSize,
     color: colors.text.secondary,
-    marginBottom: layout.spacing.small,
+    marginBottom: spacing.sm,
   },
   lockToggleButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: layout.spacing.medium,
-    paddingVertical: layout.spacing.small,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
     borderRadius: 6,
   },
   lockToggleText: {
-    color: colors.white,
-    fontSize: typography.sizes.small,
+    color: colors.text.inverse,
+    fontSize: typography.bodySmall.fontSize,
     fontWeight: '600',
   },
   fieldContainer: {
-    marginBottom: layout.spacing.large,
+    marginBottom: spacing.lg,
   },
   fieldLabel: {
-    fontSize: typography.sizes.small,
+    fontSize: typography.bodySmall.fontSize,
     fontWeight: '600',
     color: colors.text.primary,
-    marginBottom: layout.spacing.small,
+    marginBottom: spacing.sm,
   },
   inputContainer: {
     position: 'relative',
   },
   titleInput: {
-    fontSize: typography.sizes.large,
+    fontSize: typography.h3.fontSize,
     fontWeight: 'bold',
     color: colors.text.primary,
-    paddingVertical: layout.spacing.small,
-    paddingHorizontal: layout.spacing.medium,
-    backgroundColor: colors.background.secondary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.states.hover,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
   },
   descriptionInput: {
-    fontSize: typography.sizes.medium,
+    fontSize: typography.bodyMedium.fontSize,
     color: colors.text.primary,
-    paddingVertical: layout.spacing.small,
-    paddingHorizontal: layout.spacing.medium,
-    backgroundColor: colors.background.secondary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.states.hover,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
     textAlignVertical: 'top',
   },
   readOnlyInput: {
-    backgroundColor: colors.background.primary,
+    backgroundColor: colors.background,
     borderColor: 'transparent',
   },
   lockedInput: {
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: colors.states.hover,
     opacity: 0.6,
   },
   cursorsContainer: {
@@ -582,14 +582,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 2,
     height: 20,
-    top: layout.spacing.small,
+    top: spacing.sm,
   },
   cursorLabel: {
     position: 'absolute',
     top: -20,
     left: -10,
-    fontSize: typography.sizes.xsmall,
-    color: colors.white,
+    fontSize: typography.caption.fontSize,
+    color: colors.text.inverse,
     backgroundColor: 'rgba(0,0,0,0.8)',
     paddingHorizontal: 4,
     paddingVertical: 2,
@@ -597,41 +597,41 @@ const styles = StyleSheet.create({
   },
   metadataContainer: {
     flexDirection: 'row',
-    gap: layout.spacing.medium,
-    marginBottom: layout.spacing.large,
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   metadataField: {
     flex: 1,
   },
   statusButton: {
-    paddingHorizontal: layout.spacing.medium,
-    paddingVertical: layout.spacing.small,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 6,
     alignItems: 'center',
   },
   statusButtonText: {
     color: colors.surface,
-    fontSize: typography.body.fontSize,
+    fontSize: typography.bodyMedium.fontSize,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
   priorityButton: {
-    paddingHorizontal: layout.containerPadding,
-    paddingVertical: layout.containerPadding / 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 6,
     alignItems: 'center',
   },
   priorityText: {
     color: colors.surface,
-    fontSize: typography.body.fontSize,
+    fontSize: typography.bodyMedium.fontSize,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
   statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: layout.containerPadding / 2,
-    paddingTop: layout.containerPadding,
+    gap: spacing.xs,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusText: {
-    fontSize: typography.sizes.xsmall,
+    fontSize: typography.caption.fontSize,
     color: colors.text.secondary,
   },
 });

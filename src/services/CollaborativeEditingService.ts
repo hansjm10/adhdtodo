@@ -141,6 +141,7 @@ class CollaborativeEditingService {
         await OfflineQueueManager.addOperation('collaborative_edit', operation, {
           priority: 'high',
           maxRetries: 5,
+          userId: operation.userId,
         });
         return false;
       }
@@ -247,20 +248,20 @@ class CollaborativeEditingService {
 
     const channel = supabase
       .channel(`task_edit:${taskId}`)
-      .on('broadcast', { event: 'user_joined' }, (payload) => {
-        this.handleUserJoined(taskId, payload);
+      .on('broadcast', { event: 'user_joined' }, ({ payload }) => {
+        this.handleUserJoined(taskId, payload as { userId: string; cursor: CollaboratorCursor });
       })
-      .on('broadcast', { event: 'user_left' }, (payload) => {
-        this.handleUserLeft(taskId, payload);
+      .on('broadcast', { event: 'user_left' }, ({ payload }) => {
+        this.handleUserLeft(taskId, payload as { userId: string });
       })
-      .on('broadcast', { event: 'operation_applied' }, (payload) => {
-        this.handleOperationReceived(taskId, payload);
+      .on('broadcast', { event: 'operation_applied' }, ({ payload }) => {
+        this.handleOperationReceived(taskId, payload as { operation: EditOperation; userId: string });
       })
-      .on('broadcast', { event: 'cursor_updated' }, (payload) => {
-        this.handleCursorUpdate(taskId, payload);
+      .on('broadcast', { event: 'cursor_updated' }, ({ payload }) => {
+        this.handleCursorUpdate(taskId, payload as { userId: string; cursor: { field: string; position: number; lastSeen: string } });
       })
-      .on('broadcast', { event: 'lock_changed' }, (payload) => {
-        this.handleLockChanged(taskId, payload);
+      .on('broadcast', { event: 'lock_changed' }, ({ payload }) => {
+        this.handleLockChanged(taskId, payload as { isLocked: boolean; lockOwner?: string });
       })
       .subscribe();
 
@@ -270,7 +271,7 @@ class CollaborativeEditingService {
   /**
    * Broadcast event to all collaborators
    */
-  private async broadcastEvent(taskId: string, event: string, payload: unknown): Promise<void> {
+  private async broadcastEvent(taskId: string, event: string, payload: Record<string, any>): Promise<void> {
     const channel = this.channels.get(taskId);
     if (channel) {
       await channel.send({
@@ -327,7 +328,7 @@ class CollaborativeEditingService {
           // Adjust position if op2 inserted before op1
           return {
             ...op1,
-            position: op1.position! + (op2.content?.length || 0),
+            position: op1.position! + ((op2.content as string)?.length || 0),
           };
         }
       } else if (op1.operation === 'delete' && op2.operation === 'insert') {
@@ -335,7 +336,7 @@ class CollaborativeEditingService {
         if (op1.position! > op2.position!) {
           return {
             ...op1,
-            position: op1.position! + (op2.content?.length || 0),
+            position: op1.position! + ((op2.content as string)?.length || 0),
           };
         }
       }
@@ -362,7 +363,7 @@ class CollaborativeEditingService {
 
           if (!currentTask) return false;
 
-          let currentValue = currentTask[operation.field] || '';
+          let currentValue = (currentTask as any)[operation.field] || '';
 
           if (operation.operation === 'insert') {
             currentValue =
@@ -565,16 +566,16 @@ class CollaborativeEditingService {
 
       // Use ConflictResolver for complex conflicts
       const conflictInfo = {
+        entity: 'task',
         entityId: taskId,
-        entityType: 'task',
-        field,
-        localValue: null, // Would be set by calling code
-        remoteValue: currentTask[field],
-        lastSyncTime: new Date(),
+        localData: currentTask, // Use full task as local data
+        remoteData: currentTask, // Use full task as remote data
+        conflictFields: [field],
+        timestamp: new Date(),
       };
 
       const resolution = await ConflictResolver.resolveConflict(conflictInfo);
-      return resolution.resolvedValue;
+      return resolution.resolvedData[field];
     } catch (error) {
       console.error('Error resolving conflict:', error);
       return null;
