@@ -7,14 +7,9 @@ import type {
   TextStyle,
   TextInputProps,
   NativeSyntheticEvent,
-  TextInputFocusEventData} from 'react-native';
-import {
-  TextInput,
-  View,
-  Text,
-  StyleSheet,
-  Animated
+  TextInputFocusEventData,
 } from 'react-native';
+import { TextInput, View, Text, StyleSheet, Animated } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '../../styles/theme';
 
 interface ThemedInputProps extends Omit<TextInputProps, 'style'> {
@@ -102,8 +97,8 @@ export const ThemedInput = ({
         />
       </Animated.View>
 
-      {(error || helper) && (
-        <Text style={[styles.helperText, error && styles.errorText]}>{error || helper}</Text>
+      {(error ?? helper) && (
+        <Text style={[styles.helperText, error && styles.errorText]}>{error ?? helper}</Text>
       )}
     </View>
   );

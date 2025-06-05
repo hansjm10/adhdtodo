@@ -9,6 +9,22 @@ import { PartnershipStatus } from '../types';
 import { createPartnership, acceptPartnership } from '../utils/PartnershipModel';
 import { setUserPartner } from '../utils/UserModel';
 
+// Database type definitions for partnerships table
+interface DatabasePartnership {
+  id: string;
+  adhd_user_id: string | null;
+  partner_id: string | null;
+  status: string;
+  invite_code: string;
+  invite_sent_by: string | null;
+  settings: PartnershipSettings;
+  stats: PartnershipStats;
+  created_at: string;
+  updated_at: string;
+  accepted_at: string | null;
+  terminated_at: string | null;
+}
+
 export interface IPartnershipService {
   getAllPartnerships(): Promise<Partnership[]>;
   savePartnership(partnership: Partnership): Promise<boolean>;
@@ -80,7 +96,7 @@ class SupabasePartnershipService implements IPartnershipService {
         const { data, error } = await supabase.from('partnerships').select('*');
 
         if (error) throw error;
-        return this.transformDatabasePartnerships(data || []);
+        return this.transformDatabasePartnerships((data ?? []) as DatabasePartnership[]);
       });
     } catch (error) {
       console.error('Error fetching partnerships:', error);
@@ -129,9 +145,11 @@ class SupabasePartnershipService implements IPartnershipService {
   ): Promise<Partnership | null> {
     try {
       // Generate unique invite code
-      const { data: inviteCode, error: codeError } = await supabase.rpc('generate_invite_code');
+      const result = await supabase.rpc('generate_invite_code');
 
-      if (codeError) throw codeError;
+      if (result.error) throw result.error;
+
+      const inviteCode = result.data as string;
 
       const partnership = createPartnership({
         inviteSentBy: invitingUserId,
@@ -146,7 +164,7 @@ class SupabasePartnershipService implements IPartnershipService {
         .from('partnerships')
         .insert([dbPartnership])
         .select()
-        .single();
+        .single<DatabasePartnership>();
 
       if (error) throw error;
 
@@ -168,7 +186,7 @@ class SupabasePartnershipService implements IPartnershipService {
         .from('partnerships')
         .select('*')
         .eq('invite_code', inviteCode)
-        .single();
+        .single<DatabasePartnership>();
 
       if (findError || !partnershipData) {
         return { success: false, error: 'Invalid invite code' };
@@ -197,7 +215,7 @@ class SupabasePartnershipService implements IPartnershipService {
         .update(dbPartnership)
         .eq('id', partnership.id)
         .select()
-        .single();
+        .single<DatabasePartnership>();
 
       if (updateError) throw updateError;
 
@@ -236,7 +254,7 @@ class SupabasePartnershipService implements IPartnershipService {
         .or(
           `and(adhd_user_id.eq.${userId1},partner_id.eq.${userId2}),and(adhd_user_id.eq.${userId2},partner_id.eq.${userId1})`,
         )
-        .single();
+        .single<DatabasePartnership>();
 
       if (error || !data) return null;
 
@@ -253,7 +271,7 @@ class SupabasePartnershipService implements IPartnershipService {
         .from('partnerships')
         .select('*')
         .eq('invite_code', inviteCode)
-        .single();
+        .single<DatabasePartnership>();
 
       if (error || !data) return null;
 
@@ -273,7 +291,7 @@ class SupabasePartnershipService implements IPartnershipService {
           .or(`adhd_user_id.eq.${userId},partner_id.eq.${userId}`);
 
         if (error) throw error;
-        return this.transformDatabasePartnerships(data || []);
+        return this.transformDatabasePartnerships((data ?? []) as DatabasePartnership[]);
       });
     } catch (error) {
       console.error('Error getting user partnerships:', error);
@@ -288,7 +306,7 @@ class SupabasePartnershipService implements IPartnershipService {
         .select('*')
         .or(`adhd_user_id.eq.${userId},partner_id.eq.${userId}`)
         .eq('status', 'active')
-        .single();
+        .single<DatabasePartnership>();
 
       if (error || !data) return null;
 
@@ -356,10 +374,14 @@ class SupabasePartnershipService implements IPartnershipService {
           this.invalidateCache(userId);
 
           if (payload.new && (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')) {
-            const partnership = this.transformDatabasePartnership(payload.new);
+            const partnership = this.transformDatabasePartnership(
+              payload.new as DatabasePartnership,
+            );
             callback(partnership, payload.eventType);
           } else if (payload.old && payload.eventType === 'DELETE') {
-            const partnership = this.transformDatabasePartnership(payload.old);
+            const partnership = this.transformDatabasePartnership(
+              payload.old as DatabasePartnership,
+            );
             callback(partnership, payload.eventType);
           }
         },
@@ -387,26 +409,24 @@ class SupabasePartnershipService implements IPartnershipService {
     };
   }
 
-  private transformDatabasePartnership(dbPartnership: Record<string, unknown>): Partnership {
+  private transformDatabasePartnership(dbPartnership: DatabasePartnership): Partnership {
     return {
-      id: dbPartnership.id as string,
-      adhdUserId: dbPartnership.adhd_user_id as string | null,
-      partnerId: dbPartnership.partner_id as string | null,
+      id: dbPartnership.id,
+      adhdUserId: dbPartnership.adhd_user_id,
+      partnerId: dbPartnership.partner_id,
       status: dbPartnership.status as PartnershipStatus,
-      inviteCode: dbPartnership.invite_code as string,
-      inviteSentBy: dbPartnership.invite_sent_by as string | null,
-      settings: dbPartnership.settings as PartnershipSettings,
-      stats: dbPartnership.stats as PartnershipStats,
-      createdAt: new Date(dbPartnership.created_at as string),
-      updatedAt: new Date(dbPartnership.updated_at as string),
-      acceptedAt: dbPartnership.accepted_at ? new Date(dbPartnership.accepted_at as string) : null,
-      terminatedAt: dbPartnership.terminated_at
-        ? new Date(dbPartnership.terminated_at as string)
-        : null,
+      inviteCode: dbPartnership.invite_code,
+      inviteSentBy: dbPartnership.invite_sent_by,
+      settings: dbPartnership.settings,
+      stats: dbPartnership.stats,
+      createdAt: new Date(dbPartnership.created_at),
+      updatedAt: new Date(dbPartnership.updated_at),
+      acceptedAt: dbPartnership.accepted_at ? new Date(dbPartnership.accepted_at) : null,
+      terminatedAt: dbPartnership.terminated_at ? new Date(dbPartnership.terminated_at) : null,
     };
   }
 
-  private transformDatabasePartnerships(dbPartnerships: Array<Record<string, unknown>>): Partnership[] {
+  private transformDatabasePartnerships(dbPartnerships: DatabasePartnership[]): Partnership[] {
     return dbPartnerships.map((dbPartnership) => this.transformDatabasePartnership(dbPartnership));
   }
 }

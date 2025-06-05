@@ -420,7 +420,8 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
                 const priorityFlow: Record<TaskPriority, TaskPriority> = {
                   [TaskPriority.LOW]: TaskPriority.MEDIUM,
                   [TaskPriority.MEDIUM]: TaskPriority.HIGH,
-                  [TaskPriority.HIGH]: TaskPriority.LOW,
+                  [TaskPriority.HIGH]: TaskPriority.URGENT,
+                  [TaskPriority.URGENT]: TaskPriority.LOW,
                 };
                 const newPriority = priorityFlow[localTask.priority] ?? TaskPriority.LOW;
                 handleFieldChange('priority', newPriority).catch((error) => {

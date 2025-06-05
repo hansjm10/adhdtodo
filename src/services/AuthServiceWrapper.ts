@@ -109,7 +109,7 @@ class AuthServiceWrapper implements IAuthService {
   }
 
   sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'> {
-    const service = this.currentService || this.localService;
+    const service = this.currentService ?? this.localService;
     return service.sanitizeUser(user);
   }
 
@@ -160,17 +160,17 @@ class AuthServiceWrapper implements IAuthService {
   }
 
   detectAnomalousUsage(secureToken: SecureToken): boolean {
-    const service = this.currentService || this.localService;
+    const service = this.currentService ?? this.localService;
     return service.detectAnomalousUsage(secureToken);
   }
 
   // Migration helpers
-  private async shouldCreateShadowAccount(): Promise<boolean> {
+  private shouldCreateShadowAccount(): boolean {
     // Migration is no longer supported - always return false
     return false;
   }
 
-  private async shouldAttemptMigration(): Promise<boolean> {
+  private shouldAttemptMigration(): boolean {
     // Migration is no longer supported - always return false
     return false;
   }

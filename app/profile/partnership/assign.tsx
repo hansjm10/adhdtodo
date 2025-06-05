@@ -42,7 +42,7 @@ interface TimeEstimateButtonProps {
 }
 
 const PriorityButton = ({
-  value,
+  value: _value,
   label,
   icon,
   color,
@@ -62,7 +62,12 @@ const PriorityButton = ({
   </TouchableOpacity>
 );
 
-const TimeEstimateButton = ({ minutes, label, isActive, onPress }: TimeEstimateButtonProps) => (
+const TimeEstimateButton = ({
+  minutes: _minutes,
+  label,
+  isActive,
+  onPress,
+}: TimeEstimateButtonProps) => (
   <TouchableOpacity
     style={[styles.timeButton, isActive && styles.timeButtonActive]}
     onPress={onPress}

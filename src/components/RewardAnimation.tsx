@@ -21,6 +21,7 @@ interface Particle {
   rotation: Animated.Value;
   color?: string;
   emoji?: string;
+  startX: number;
 }
 
 const CELEBRATION_EMOJIS = ['🎉', '✨', '🌟', '⭐', '🎊', '💫', '🏆', '🎯'];
@@ -60,6 +61,7 @@ export const RewardAnimation: React.FC<RewardAnimationProps> = ({
         type === 'emoji'
           ? CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)]
           : emoji,
+      startX,
     };
   };
 
@@ -97,8 +99,7 @@ export const RewardAnimation: React.FC<RewardAnimationProps> = ({
           useNativeDriver: true,
         }),
         Animated.timing(particle.x, {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          toValue: (particle.x as any)._value + xDrift,
+          toValue: particle.startX + xDrift,
           duration: duration.verySlow * 2,
           useNativeDriver: true,
         }),

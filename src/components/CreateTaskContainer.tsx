@@ -16,7 +16,7 @@ export const CreateTaskContainer: React.FC = () => {
 
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(category || null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(category ?? null);
   const [selectedTimePreset, setSelectedTimePreset] = useState<number | null>(null);
 
   const handleSave = async (): Promise<void> => {
@@ -61,7 +61,13 @@ export const CreateTaskContainer: React.FC = () => {
       onDescriptionChange={setDescription}
       onCategorySelect={setSelectedCategory}
       onTimePresetSelect={setSelectedTimePreset}
-      onSave={handleSave}
+      onSave={() => {
+        handleSave().catch((error) => {
+          if (global.__DEV__) {
+            console.error('Failed to save task:', error);
+          }
+        });
+      }}
       onCancel={handleCancel}
     />
   );

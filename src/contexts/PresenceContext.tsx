@@ -32,39 +32,40 @@ export const PresenceProvider: React.FC<PresenceProviderProps> = ({ children }) 
 
   // Initialize presence when user logs in
   useEffect(() => {
-    if (user?.id) {
-      const initializePresence = async () => {
-        try {
-          await PresenceService.startPresence(user.id);
+    if (!user?.id) return undefined;
 
-          // Set up periodic updates
-          const updateInterval = setInterval(() => {
-            setPresenceStates(new Map(PresenceService.getAllPresenceStates()));
-            setMyPresence(PresenceService.getPresenceState(user.id) || null);
-          }, 5000); // Update every 5 seconds
+    let updateInterval: ReturnType<typeof setInterval> | null = null;
 
-          return () => {
-            clearInterval(updateInterval);
-          };
-        } catch (error) {
-          console.error('Error initializing presence:', error);
-        }
-      };
+    const initializePresence = async () => {
+      try {
+        await PresenceService.startPresence(user.id);
 
-      initializePresence();
+        // Set up periodic updates
+        updateInterval = setInterval(() => {
+          setPresenceStates(new Map(PresenceService.getAllPresenceStates()));
+          setMyPresence(PresenceService.getPresenceState(user.id) ?? null);
+        }, 5000); // Update every 5 seconds
+      } catch (error) {
+        console.error('Error initializing presence:', error);
+      }
+    };
 
-      // Cleanup on unmount or user change
-      return () => {
-        PresenceService.stopPresence();
-      };
-    }
+    void initializePresence();
+
+    // Cleanup on unmount or user change
+    return () => {
+      if (updateInterval) {
+        clearInterval(updateInterval);
+      }
+      void PresenceService.stopPresence();
+    };
   }, [user?.id]);
 
   // Set up activity tracking
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === 'active') {
-        PresenceService.signalActivity();
+        void PresenceService.signalActivity();
       }
     };
 
@@ -110,23 +111,36 @@ export const PresenceProvider: React.FC<PresenceProviderProps> = ({ children }) 
     async (status: 'online' | 'away' | 'offline', currentTaskId?: string): Promise<void> => {
       await PresenceService.updatePresence(status, currentTaskId);
       if (user?.id) {
-        setMyPresence(PresenceService.getPresenceState(user.id) || null);
+        setMyPresence(PresenceService.getPresenceState(user.id) ?? null);
       }
     },
     [user?.id],
   );
 
-  const value: PresenceContextType = {
-    presenceStates,
-    isUserOnline,
-    getUserActivity,
-    setCurrentTask,
-    signalActivity,
-    getOnlineUsers,
-    myPresence,
-    subscribeToPartnerPresence,
-    updatePresence,
-  };
+  const value: PresenceContextType = React.useMemo(
+    () => ({
+      presenceStates,
+      isUserOnline,
+      getUserActivity,
+      setCurrentTask,
+      signalActivity,
+      getOnlineUsers,
+      myPresence,
+      subscribeToPartnerPresence,
+      updatePresence,
+    }),
+    [
+      presenceStates,
+      isUserOnline,
+      getUserActivity,
+      setCurrentTask,
+      signalActivity,
+      getOnlineUsers,
+      myPresence,
+      subscribeToPartnerPresence,
+      updatePresence,
+    ],
+  );
 
   return <PresenceContext.Provider value={value}>{children}</PresenceContext.Provider>;
 };

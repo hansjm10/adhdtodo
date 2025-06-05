@@ -73,7 +73,7 @@ function collaborativeEditingReducer(
 
     case 'SET_CURRENT_TASK': {
       const currentSession = action.payload.taskId
-        ? state.activeSessions.get(action.payload.taskId) || null
+        ? (state.activeSessions.get(action.payload.taskId) ?? null)
         : null;
       return {
         ...state,
@@ -160,7 +160,7 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
 
   // Monitor collaborators for current session
   useEffect(() => {
-    if (!state.currentTaskId) return;
+    if (!state.currentTaskId) return undefined;
 
     const interval = setInterval(() => {
       const collaborators = CollaborativeEditingService.getCollaborators(state.currentTaskId!);
@@ -170,7 +170,9 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
       });
     }, 2000); // Update every 2 seconds
 
-    return () => { clearInterval(interval); };
+    return () => {
+      clearInterval(interval);
+    };
   }, [state.currentTaskId]);
 
   const startEditing = async (taskId: string): Promise<void> => {
@@ -276,26 +278,41 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
   };
 
   const isTaskLocked = (): boolean => {
-    return state.currentSession?.isLocked || false;
+    return state.currentSession?.isLocked ?? false;
   };
 
   const getLockOwner = (): string | undefined => {
     return state.currentSession?.lockOwner;
   };
 
-  const contextValue: CollaborativeEditingContextType = {
-    state,
-    startEditing,
-    stopEditing,
-    applyOperation,
-    updateCursor,
-    toggleTaskLock,
-    createTextOperation,
-    createFieldOperation,
-    getCurrentCollaborators,
-    isTaskLocked,
-    getLockOwner,
-  };
+  const contextValue: CollaborativeEditingContextType = React.useMemo(
+    () => ({
+      state,
+      startEditing,
+      stopEditing,
+      applyOperation,
+      updateCursor,
+      toggleTaskLock,
+      createTextOperation,
+      createFieldOperation,
+      getCurrentCollaborators,
+      isTaskLocked,
+      getLockOwner,
+    }),
+    [
+      state,
+      startEditing,
+      stopEditing,
+      applyOperation,
+      updateCursor,
+      toggleTaskLock,
+      createTextOperation,
+      createFieldOperation,
+      getCurrentCollaborators,
+      isTaskLocked,
+      getLockOwner,
+    ],
+  );
 
   return (
     <CollaborativeEditingContext.Provider value={contextValue}>

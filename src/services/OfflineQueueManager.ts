@@ -12,7 +12,9 @@ interface NetInfoState {
 const NetInfo = {
   addEventListener: (callback: (state: NetInfoState) => void) => {
     // Mock implementation - always return online
-    setTimeout(() => { callback({ isConnected: true }); }, 100);
+    setTimeout(() => {
+      callback({ isConnected: true });
+    }, 100);
     return () => {}; // unsubscribe function
   },
 };
@@ -64,7 +66,7 @@ class OfflineQueueManager {
 
   constructor() {
     this.initializeNetworkListener();
-    this.loadPersistedQueue();
+    void this.loadPersistedQueue();
   }
 
   /**
@@ -73,12 +75,12 @@ class OfflineQueueManager {
   private initializeNetworkListener(): void {
     NetInfo.addEventListener((state) => {
       const wasOnline = this.isOnline;
-      this.isOnline = state.isConnected || false;
+      this.isOnline = state.isConnected ?? false;
 
       if (!wasOnline && this.isOnline) {
         // Came back online, process queue
         console.info('📡 Connection restored, processing offline queue');
-        this.processQueue();
+        void this.processQueue();
       } else if (wasOnline && !this.isOnline) {
         console.info('📡 Connection lost, switching to offline mode');
       }
@@ -96,17 +98,19 @@ class OfflineQueueManager {
       ]);
 
       if (queueData) {
-        this.queue = JSON.parse(queueData).map((op: Record<string, unknown>) => ({
+        this.queue = (JSON.parse(queueData) as Array<Record<string, unknown>>).map((op) => ({
           ...op,
           timestamp: new Date(op.timestamp as string),
         })) as OfflineOperation[];
       }
 
       if (deadLetterData) {
-        this.deadLetterQueue = JSON.parse(deadLetterData).map((op: Record<string, unknown>) => ({
-          ...op,
-          timestamp: new Date(op.timestamp as string),
-        })) as OfflineOperation[];
+        this.deadLetterQueue = (JSON.parse(deadLetterData) as Array<Record<string, unknown>>).map(
+          (op) => ({
+            ...op,
+            timestamp: new Date(op.timestamp as string),
+          }),
+        ) as OfflineOperation[];
       }
 
       // Sort queue by priority and timestamp
@@ -177,8 +181,8 @@ class OfflineQueueManager {
       data,
       timestamp: new Date(),
       retryCount: 0,
-      maxRetries: options.maxRetries || 3,
-      priority: options.priority || 'medium',
+      maxRetries: options.maxRetries ?? 3,
+      priority: options.priority ?? 'medium',
       userId: options.userId,
       dependsOn: options.dependsOn,
     };
@@ -197,7 +201,7 @@ class OfflineQueueManager {
 
     // Try to process immediately if online
     if (this.isOnline && !this.isProcessing) {
-      this.processQueue();
+      void this.processQueue();
     }
 
     return operation.id;
@@ -376,7 +380,7 @@ class OfflineQueueManager {
     await this.persistQueue();
 
     if (this.isOnline) {
-      this.processQueue();
+      void this.processQueue();
     }
   }
 

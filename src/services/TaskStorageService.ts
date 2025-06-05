@@ -76,20 +76,20 @@ class TaskStorageService implements ITaskStorageService {
     return {
       id: dbTask.id,
       title: dbTask.title,
-      description: dbTask.description || '',
-      category: dbTask.category || null,
-      status: (dbTask.status as TaskStatus) || TaskStatus.PENDING,
-      priority: (dbTask.priority as TaskPriority) || TaskPriority.MEDIUM,
-      timeEstimate: dbTask.time_estimate || null,
-      timeSpent: dbTask.time_spent || 0,
+      description: dbTask.description ?? '',
+      category: dbTask.category ?? null,
+      status: (dbTask.status as TaskStatus) ?? TaskStatus.PENDING,
+      priority: (dbTask.priority as TaskPriority) ?? TaskPriority.MEDIUM,
+      timeEstimate: dbTask.time_estimate ?? null,
+      timeSpent: dbTask.time_spent ?? 0,
       completed: dbTask.status === TaskStatus.COMPLETED,
       completedAt: dbTask.completed_at ? new Date(dbTask.completed_at) : null,
-      createdAt: new Date(dbTask.created_at || Date.now()),
-      updatedAt: new Date(dbTask.updated_at || Date.now()),
-      xpEarned: dbTask.xp_earned || 0,
-      streakContribution: dbTask.streak_contribution || false,
-      assignedBy: dbTask.assigned_by || null,
-      assignedTo: dbTask.assigned_to || null,
+      createdAt: new Date(dbTask.created_at ?? Date.now()),
+      updatedAt: new Date(dbTask.updated_at ?? Date.now()),
+      xpEarned: dbTask.xp_earned ?? 0,
+      streakContribution: dbTask.streak_contribution ?? false,
+      assignedBy: dbTask.assigned_by ?? null,
+      assignedTo: dbTask.assigned_to ?? null,
       dueDate: dbTask.due_date ? new Date(dbTask.due_date) : null,
       preferredStartTime: null, // Not stored in DB yet
       startedAt: dbTask.started_at ? new Date(dbTask.started_at) : null,
@@ -106,20 +106,20 @@ class TaskStorageService implements ITaskStorageService {
   private transformTaskToDb(task: Task): Partial<DbTask> {
     return {
       title: task.title,
-      description: task.description || null,
-      category: task.category || null,
+      description: task.description ?? null,
+      category: task.category ?? null,
       priority: task.priority,
       status: task.status,
       due_date: task.dueDate ? task.dueDate.toISOString() : null,
-      time_estimate: task.timeEstimate || null,
-      time_spent: task.timeSpent || 0,
+      time_estimate: task.timeEstimate ?? null,
+      time_spent: task.timeSpent ?? 0,
       started_at: task.startedAt ? task.startedAt.toISOString() : null,
       completed_at: task.completedAt ? task.completedAt.toISOString() : null,
-      assigned_by: task.assignedBy || null,
-      assigned_to: task.assignedTo || null,
-      xp_earned: task.xpEarned || 0,
-      streak_contribution: task.streakContribution || false,
-      user_id: task.userId || '',
+      assigned_by: task.assignedBy ?? null,
+      assigned_to: task.assignedTo ?? null,
+      xp_earned: task.xpEarned ?? 0,
+      streak_contribution: task.streakContribution ?? false,
+      user_id: task.userId ?? '',
     };
   }
 
@@ -158,7 +158,7 @@ class TaskStorageService implements ITaskStorageService {
 
       const cacheKey = `all:${user.id}`;
       if (this.isCacheValid(cacheKey)) {
-        return this.taskCache.get(cacheKey) || [];
+        return this.taskCache.get(cacheKey) ?? [];
       }
 
       const { data, error } = await supabase
@@ -175,7 +175,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      const tasks = (data || []).map(this.transformDbTaskToTask);
+      const tasks = (data ?? []).map(this.transformDbTaskToTask);
       this.updateCache(cacheKey, tasks);
       return tasks;
     } catch (error) {
@@ -329,7 +329,7 @@ class TaskStorageService implements ITaskStorageService {
 
       const cacheKey = `category:${user.id}:${categoryId}`;
       if (this.isCacheValid(cacheKey) && !options?.page) {
-        return this.taskCache.get(cacheKey) || [];
+        return this.taskCache.get(cacheKey) ?? [];
       }
 
       let query = supabase
@@ -354,7 +354,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      const tasks = (data || []).map(this.transformDbTaskToTask);
+      const tasks = (data ?? []).map(this.transformDbTaskToTask);
 
       if (!options?.page) {
         this.updateCache(cacheKey, tasks);
@@ -392,7 +392,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get completed tasks', {
         code: 'TASK_014',
@@ -424,7 +424,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get pending tasks', {
         code: 'TASK_016',
@@ -456,12 +456,12 @@ class TaskStorageService implements ITaskStorageService {
         return { total: 0, completed: 0, pending: 0, totalXP: 0 };
       }
 
-      const tasks = data || [];
-      const stats = {
+      const tasks = data ?? [];
+      const stats: TaskStats = {
         total: tasks.length,
         completed: tasks.filter((t) => t.status === TaskStatus.COMPLETED).length,
         pending: tasks.filter((t) => t.status === TaskStatus.PENDING).length,
-        totalXP: tasks.reduce((sum, t) => sum + (t.xp_earned || 0), 0),
+        totalXP: tasks.reduce((sum: number, t) => Number(sum) + Number(t.xp_earned ?? 0), 0),
       };
 
       return stats;
@@ -490,7 +490,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get tasks for user', {
         code: 'TASK_020',
@@ -516,7 +516,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get tasks assigned by user', {
         code: 'TASK_022',
@@ -542,7 +542,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get assigned tasks', {
         code: 'TASK_024',
@@ -569,7 +569,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get partner tasks', {
         code: 'TASK_026',
@@ -599,7 +599,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get overdue tasks', {
         code: 'TASK_028',
@@ -631,7 +631,7 @@ class TaskStorageService implements ITaskStorageService {
         return [];
       }
 
-      return (data || []).map(this.transformDbTaskToTask);
+      return (data ?? []).map(this.transformDbTaskToTask);
     } catch (error) {
       SecureLogger.error('Failed to get upcoming tasks', {
         code: 'TASK_030',
@@ -692,7 +692,7 @@ class TaskStorageService implements ITaskStorageService {
     return () => {
       const sub = this.subscriptions.get(userId);
       if (sub) {
-        sub.unsubscribe();
+        void sub.unsubscribe();
         this.subscriptions.delete(userId);
       }
     };

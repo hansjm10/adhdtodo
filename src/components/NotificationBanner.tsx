@@ -6,15 +6,9 @@ import type {
   GestureResponderEvent,
   PanResponderGestureState,
   ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  PanResponder
+  TextStyle,
 } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, PanResponder } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
 import type { NotificationTypes } from '../types/user.types';
@@ -88,7 +82,7 @@ const NotificationBanner = ({ notification, onDismiss, onPress }: NotificationBa
 
   // Get notification message
   const getMessage = (): string => {
-    const data = notification.data || {};
+    const data = notification.data ?? {};
     switch (notification.type) {
       case NOTIFICATION_TYPES.TASK_ASSIGNED:
         return `${data.assignedBy} assigned you "${data.taskTitle}"`;
@@ -99,9 +93,9 @@ const NotificationBanner = ({ notification, onDismiss, onPress }: NotificationBa
       case NOTIFICATION_TYPES.TASK_OVERDUE:
         return `"${data.taskTitle}" is overdue`;
       case NOTIFICATION_TYPES.ENCOURAGEMENT:
-        return data.message || `${data.fromUser} sent you encouragement`;
+        return data.message ?? `${data.fromUser} sent you encouragement`;
       case NOTIFICATION_TYPES.CHECK_IN:
-        return data.message || `${data.fromUser} is checking in`;
+        return data.message ?? `${data.fromUser} is checking in`;
       case NOTIFICATION_TYPES.DEADLINE_CHANGE_REQUEST:
         return `Deadline change requested for "${data.taskTitle}"`;
       default:

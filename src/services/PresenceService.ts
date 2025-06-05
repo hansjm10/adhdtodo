@@ -131,16 +131,16 @@ class PresenceService {
     if (!this.currentUserId) return;
 
     const currentState = this.presenceState.get(this.currentUserId);
-    const status = currentState?.status || 'online';
+    const status = currentState?.status ?? 'online';
 
-    await this.updatePresence(status, taskId || undefined);
+    await this.updatePresence(status, taskId ?? undefined);
   }
 
   /**
    * Get presence state for a specific user
    */
   getPresenceState(userId: string): PresenceState | null {
-    return this.presenceState.get(userId) || null;
+    return this.presenceState.get(userId) ?? null;
   }
 
   /**
@@ -211,12 +211,12 @@ class PresenceService {
       clearInterval(this.heartbeatTimer);
     }
 
-    this.heartbeatTimer = setInterval(async () => {
+    this.heartbeatTimer = setInterval(() => {
       if (!this.currentUserId) return;
 
       const currentState = this.presenceState.get(this.currentUserId);
       if (currentState?.status === 'online') {
-        await this.updatePresence('online', currentState.currentTaskId);
+        void this.updatePresence('online', currentState.currentTaskId);
       }
     }, this.config.heartbeatInterval);
   }
@@ -230,7 +230,7 @@ class PresenceService {
     }
 
     this.awayTimer = setTimeout(() => {
-      this.markAway();
+      void this.markAway();
     }, this.config.awayTimeout);
   }
 

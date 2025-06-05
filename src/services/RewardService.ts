@@ -92,7 +92,8 @@ class RewardService implements IRewardService {
           await this.setStreakData(streakData);
         }
         return streakData;
-      } if (daysDiff === 1) {
+      }
+      if (daysDiff === 1) {
         // Consecutive day, increment streak
         streakData.current = (streakData.current || 0) + 1;
         streakData.best = Math.max(streakData.current, streakData.best);
@@ -114,7 +115,7 @@ class RewardService implements IRewardService {
   async getStreakData(): Promise<StreakData> {
     try {
       const data = await AsyncStorage.getItem(STREAK_KEY);
-      return data ? JSON.parse(data) : { current: 0, best: 0 };
+      return data ? (JSON.parse(data) as StreakData) : { current: 0, best: 0 };
     } catch (error) {
       ErrorHandler.handleStorageError(error, 'load');
       return { current: 0, best: 0 };
@@ -133,7 +134,7 @@ class RewardService implements IRewardService {
     const allTasks = await TaskStorageService.getAllTasks();
     const completedTasks = await TaskStorageService.getCompletedTasks();
 
-    const totalXP = completedTasks.reduce((sum, task) => sum + (task.xpEarned || 0), 0);
+    const totalXP = completedTasks.reduce((sum, task) => sum + (task.xpEarned ?? 0), 0);
     const tasksCompleted = completedTasks.length;
     const totalTasks = allTasks.length;
     const completionRate = totalTasks > 0 ? Math.round((tasksCompleted / totalTasks) * 100) : 0;

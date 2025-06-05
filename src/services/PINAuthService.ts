@@ -26,7 +26,7 @@ export class PINAuthService {
     if (!storedHash) {
       return false;
     }
-    return await CryptoService.verifyPIN(pin, storedHash);
+    return CryptoService.verifyPIN(pin, storedHash);
   }
 
   /**
@@ -90,7 +90,7 @@ export class PINAuthService {
    * Record a failed PIN attempt
    */
   static async recordFailedPINAttempt(): Promise<number> {
-    const attempts = (await SecureStorageService.getSecure<number>('FAILED_PIN_ATTEMPTS')) || 0;
+    const attempts = (await SecureStorageService.getSecure<number>('FAILED_PIN_ATTEMPTS')) ?? 0;
     const newCount = attempts + 1;
     await SecureStorageService.saveSecure('FAILED_PIN_ATTEMPTS', newCount);
     return newCount;

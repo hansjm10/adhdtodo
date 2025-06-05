@@ -2,9 +2,7 @@
 // Provides form inputs to modify task details and delete functionality
 
 import React, { useState, useEffect } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -15,17 +13,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import type {
-  TaskCategory,
-  TimePreset,
-  Task} from '../../src/types/task.types';
-import {
-  TASK_CATEGORIES,
-  TIME_PRESETS
-} from '../../src/types/task.types';
+import type { TaskCategory, TimePreset, Task } from '../../src/types/task.types';
+import { TASK_CATEGORIES, TIME_PRESETS } from '../../src/types/task.types';
 import { useTasks } from '../../src/contexts';
 
 const EditTaskScreen = () => {
@@ -50,7 +42,27 @@ const EditTaskScreen = () => {
     // Otherwise try to parse from params
     if (taskParam) {
       try {
-        const parsed = JSON.parse(taskParam);
+        const parsed = JSON.parse(taskParam) as {
+          id: string;
+          title: string;
+          completed: boolean;
+          category: string | null;
+          timeEstimate: number | null;
+          description?: string;
+          createdAt: string;
+          updatedAt: string;
+          completedAt?: string | null;
+          dueDate?: string | null;
+          preferredStartTime?: string | null;
+          startedAt?: string | null;
+          partnerId?: string | null;
+          urgency?: string | null;
+          actualTimeSpent?: number | null;
+          completionEnergy?: string | null;
+          steps?: Array<{ id: string; title: string; completed: boolean }>;
+          tags?: string[];
+          progress?: number;
+        };
         return {
           ...parsed,
           createdAt: new Date(parsed.createdAt),
@@ -80,7 +92,7 @@ const EditTaskScreen = () => {
     }
   }, [task]);
 
-  const handleSave = async (): Promise<void> => {
+  const handleSave = (): void => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a task title');
       return;
@@ -92,19 +104,24 @@ const EditTaskScreen = () => {
     }
 
     setLoading(true);
-    try {
-      await updateTask(task.id, {
-        title: title.trim(),
-        description: description.trim(),
-        category: selectedCategory,
-        timeEstimate: selectedTimePreset,
-      });
-      router.back();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update task. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    const doUpdate = async (): Promise<void> => {
+      try {
+        await updateTask(task.id, {
+          title: title.trim(),
+          description: description.trim(),
+          category: selectedCategory,
+          timeEstimate: selectedTimePreset,
+        });
+        router.back();
+      } catch (error) {
+        Alert.alert('Error', 'Failed to update task. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    doUpdate().catch(() => {
+      // Error already handled in the function
+    });
   };
 
   const handleDelete = (): void => {
@@ -118,16 +135,21 @@ const EditTaskScreen = () => {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async (): Promise<void> => {
-          setLoading(true);
-          try {
-            await deleteTask(task.id);
-            router.back();
-          } catch (error) {
-            Alert.alert('Error', 'Failed to delete task. Please try again.');
-          } finally {
-            setLoading(false);
-          }
+        onPress: (): void => {
+          const doDelete = async (): Promise<void> => {
+            setLoading(true);
+            try {
+              await deleteTask(task.id);
+              router.back();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete task. Please try again.');
+            } finally {
+              setLoading(false);
+            }
+          };
+          doDelete().catch(() => {
+            // Error already handled in the function
+          });
         },
       },
     ]);
@@ -189,7 +211,9 @@ const EditTaskScreen = () => {
                   { backgroundColor: category.color },
                   selectedCategory === category.id && styles.selectedCategory,
                 ]}
-                onPress={() => { setSelectedCategory(category.id); }}
+                onPress={() => {
+                  setSelectedCategory(category.id);
+                }}
               >
                 <Text style={styles.categoryIcon}>{category.icon}</Text>
                 <Text style={styles.categoryText}>{category.label}</Text>
@@ -207,7 +231,9 @@ const EditTaskScreen = () => {
                   styles.timeButton,
                   selectedTimePreset === preset.minutes && styles.selectedTime,
                 ]}
-                onPress={() => { setSelectedTimePreset(preset.minutes); }}
+                onPress={() => {
+                  setSelectedTimePreset(preset.minutes);
+                }}
               >
                 <Text style={styles.timeText}>{preset.label}</Text>
               </TouchableOpacity>

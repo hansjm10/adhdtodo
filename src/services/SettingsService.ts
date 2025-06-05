@@ -58,7 +58,7 @@ class SettingsService {
     try {
       const stored = await AsyncStorage.getItem(SETTINGS_KEY);
       if (stored) {
-        this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+        this.settings = { ...DEFAULT_SETTINGS, ...(JSON.parse(stored) as Partial<AppSettings>) };
       }
       return this.settings;
     } catch (error) {
@@ -133,8 +133,9 @@ class SettingsService {
   static resetInstance(): void {
     if (process.env.NODE_ENV === 'test') {
       // Force reset for testing purposes
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (SettingsService as any).instance = null;
+
+      // @ts-expect-error - Test helper for resetting singleton
+      SettingsService.instance = null;
     }
   }
 }

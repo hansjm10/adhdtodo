@@ -122,11 +122,11 @@ export const HyperfocusView: React.FC<HyperfocusViewProps> = ({
 
         <View style={styles.motivationContainer}>
           <Text style={styles.motivationText}>
-            {isBreak
-              ? '🌟 Great job! Enjoy your break'
-              : isRunning
-                ? '🎯 Stay focused, you got this!'
-                : '💪 Ready when you are'}
+            {(() => {
+              if (isBreak) return '🌟 Great job! Enjoy your break';
+              if (isRunning) return '🎯 Stay focused, you got this!';
+              return '💪 Ready when you are';
+            })()}
           </Text>
         </View>
       </View>

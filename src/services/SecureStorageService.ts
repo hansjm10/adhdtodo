@@ -5,16 +5,16 @@ import * as SecureStore from 'expo-secure-store';
 import SecureLogger from './SecureLogger';
 
 export interface ISecureStorageService {
-  setItem<T = unknown>(key: string, value: T): Promise<void>;
+  setItem(key: string, value: unknown): Promise<void>;
   getItem<T = unknown>(key: string): Promise<T | null>;
   removeItem(key: string): Promise<void>;
   getAllKeys(): Promise<string[]>;
   clear(): Promise<void>;
   multiGet<T = unknown>(keys: string[]): Promise<Array<[string, T | null]>>;
-  multiSet<T = unknown>(kvPairs: Array<[string, T]>): Promise<void>;
+  multiSet(kvPairs: Array<[string, unknown]>): Promise<void>;
   multiRemove(keys: string[]): Promise<void>;
-  mergeItem<T extends Record<string, unknown>>(key: string, value: T): Promise<void>;
-  saveSecure<T = unknown>(key: string, value: T): Promise<void>;
+  mergeItem(key: string, value: Record<string, unknown>): Promise<void>;
+  saveSecure(key: string, value: unknown): Promise<void>;
   getSecure<T = unknown>(key: string): Promise<T | null>;
   deleteSecure(key: string): Promise<void>;
 }
@@ -29,7 +29,7 @@ class SecureStorageService implements ISecureStorageService {
     }
   }
 
-  async setItem<T = unknown>(key: string, value: T): Promise<void> {
+  async setItem(key: string, value: unknown): Promise<void> {
     this.validateKey(key);
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
@@ -63,15 +63,15 @@ class SecureStorageService implements ISecureStorageService {
     await SecureStore.deleteItemAsync(key);
   }
 
-  async getAllKeys(): Promise<string[]> {
+  getAllKeys(): Promise<string[]> {
     // SecureStore does not support getting all keys
     // Return empty array for compatibility
-    return [];
+    return Promise.resolve([]);
   }
 
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     // SecureStore does not support clearing all items
-    throw new Error('SecureStore does not support clearing all items');
+    return Promise.reject(new Error('SecureStore does not support clearing all items'));
   }
 
   async multiGet<T = unknown>(keys: string[]): Promise<Array<[string, T | null]>> {
@@ -94,7 +94,7 @@ class SecureStorageService implements ISecureStorageService {
     return Promise.all(promises);
   }
 
-  async multiSet<T = unknown>(kvPairs: Array<[string, T]>): Promise<void> {
+  async multiSet(kvPairs: Array<[string, unknown]>): Promise<void> {
     if (!Array.isArray(kvPairs)) {
       throw new Error('Key-value pairs must be an array');
     }
@@ -156,7 +156,7 @@ class SecureStorageService implements ISecureStorageService {
     }
   }
 
-  async mergeItem<T extends Record<string, unknown>>(key: string, value: T): Promise<void> {
+  async mergeItem(key: string, value: Record<string, unknown>): Promise<void> {
     this.validateKey(key);
 
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -176,7 +176,7 @@ class SecureStorageService implements ISecureStorageService {
   }
 
   // Alias methods for security-specific operations
-  async saveSecure<T = unknown>(key: string, value: T): Promise<void> {
+  async saveSecure(key: string, value: unknown): Promise<void> {
     return this.setItem(key, value);
   }
 

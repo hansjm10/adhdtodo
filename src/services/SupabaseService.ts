@@ -4,8 +4,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '') as string;
+const supabaseAnonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '') as string;
 
 // Only throw in non-test environments
 if ((!supabaseUrl || !supabaseAnonKey) && process.env.NODE_ENV !== 'test') {
@@ -26,7 +26,7 @@ export const supabase =
     : (null as unknown as ReturnType<typeof createClient>); // Mock for tests when credentials not available
 
 export const getServiceRoleSupabase = () => {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
   if (!serviceRoleKey) {
     throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY. This is required for admin operations.');
   }

@@ -68,6 +68,7 @@ module.exports = [
       ],
       'prefer-const': 'error',
       'no-var': 'error',
+      'no-void': 'off', // Allow void for ignoring floating promises
 
       // Code style
       quotes: ['error', 'single', { avoidEscape: true }],
@@ -122,7 +123,7 @@ module.exports = [
       ],
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'error', // Changed from warn to error
-      
+
       // Ban problematic types
       '@typescript-eslint/no-wrapper-object-types': 'error',
       '@typescript-eslint/no-empty-object-type': [
@@ -132,26 +133,32 @@ module.exports = [
           allowObjectTypes: 'never',
         },
       ],
-      
+
       // Strict type safety rules
       '@typescript-eslint/no-unsafe-assignment': 'error',
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-call': 'error',
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unsafe-argument': 'error',
-      
+
       // Promise handling
-      '@typescript-eslint/no-floating-promises': ['error', {
-        ignoreVoid: false,
-        ignoreIIFE: false,
-      }],
-      '@typescript-eslint/no-misused-promises': ['error', {
-        checksConditionals: true,
-        checksVoidReturn: true,
-        checksSpreads: true,
-      }],
+      '@typescript-eslint/no-floating-promises': [
+        'error',
+        {
+          ignoreVoid: true,
+          ignoreIIFE: false,
+        },
+      ],
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        {
+          checksConditionals: true,
+          checksVoidReturn: true,
+          checksSpreads: true,
+        },
+      ],
       '@typescript-eslint/require-await': 'error',
-      
+
       // Type improvements
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/no-unnecessary-type-parameters': 'error',
@@ -159,11 +166,14 @@ module.exports = [
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-confusing-void-expression': 'error',
       '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
-      '@typescript-eslint/consistent-type-imports': ['error', {
-        prefer: 'type-imports',
-        fixStyle: 'separate-type-imports',
-      }],
-      
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'separate-type-imports',
+        },
+      ],
+
       // Code quality
       '@typescript-eslint/no-implied-eval': 'error',
       '@typescript-eslint/default-param-last': 'error',
@@ -172,14 +182,17 @@ module.exports = [
       // React specific overrides
       'react/prop-types': 'off', // Using TypeScript for prop validation
       'react/react-in-jsx-scope': 'off', // Not needed with React 17+
-      
+
       // Additional React rules for better code quality
-      'react/jsx-no-bind': ['error', {
-        ignoreRefs: true,
-        allowArrowFunctions: true,
-        allowFunctions: false,
-        allowBind: false,
-      }],
+      'react/jsx-no-bind': [
+        'error',
+        {
+          ignoreRefs: true,
+          allowArrowFunctions: true,
+          allowFunctions: false,
+          allowBind: false,
+        },
+      ],
       'react/no-unused-prop-types': 'error',
       'react/no-unused-state': 'error',
       'react/jsx-key': ['error', { checkFragmentShorthand: true }],
@@ -191,7 +204,7 @@ module.exports = [
       'react/jsx-boolean-value': ['error', 'never'],
       'react/hook-use-state': 'error',
       'react/jsx-no-constructed-context-values': 'error',
-      
+
       // React Native specific rules
       'react-native/no-unused-styles': 'error',
       'react-native/split-platform-components': 'error',
@@ -208,14 +221,14 @@ module.exports = [
       'no-debugger': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-throw-literal': 'error',
       'prefer-template': 'error',
       'no-useless-concat': 'error',
       'no-nested-ternary': 'error',
       'no-unneeded-ternary': 'error',
       'no-else-return': ['error', { allowElseIf: false }],
-      
+
       // Security and error prevention
       'no-eval': 'error',
       'no-new-func': 'error',
@@ -225,8 +238,8 @@ module.exports = [
       'no-labels': 'error',
       'no-lone-blocks': 'error',
       'no-new-wrappers': 'error',
-      'radix': 'error',
-      'no-void': 'error',
+      radix: 'error',
+      'no-void': 'off', // Allow void for ignoring floating promises
       'no-with': 'error',
       'prefer-promise-reject-errors': 'error',
       'no-return-await': 'error',

@@ -564,8 +564,20 @@ class AuthService implements IAuthService {
     const newToken = await this.createSecureToken(userId);
     await this.storeSecureToken(userId, newToken);
 
-    // Notify other sessions of rotation
-    await this.invalidateOtherSessions(userId);
+    // Fire and forget - we don't need to wait for this
+    // Start the invalidation process but don't wait for it
+    const startInvalidation = async () => {
+      try {
+        await this.invalidateOtherSessions(userId);
+      } catch (err: unknown) {
+        if (global.__DEV__ && err) {
+          console.error('Failed to invalidate other sessions:', String(err));
+        }
+      }
+    };
+
+    // Execute without waiting
+    void startInvalidation();
 
     return newToken.encryptedToken;
   }
@@ -647,6 +659,7 @@ class AuthService implements IAuthService {
   }
 
   // Invalidate other sessions (placeholder for future implementation)
+  // eslint-disable-next-line @typescript-eslint/require-await
   async invalidateOtherSessions(_userId: string): Promise<void> {
     // In a real implementation, this would notify a backend service
     // to invalidate tokens from other devices

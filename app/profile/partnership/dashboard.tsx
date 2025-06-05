@@ -48,7 +48,7 @@ interface TabButtonProps {
   onPress: () => void;
 }
 
-const TabButton = ({ tab, label, count, isActive, onPress }: TabButtonProps) => (
+const TabButton = ({ tab: _tab, label, count, isActive, onPress }: TabButtonProps) => (
   <TouchableOpacity
     style={[styles.tabButton, isActive && styles.tabButtonActive]}
     onPress={onPress}
@@ -298,11 +298,15 @@ const PartnerDashboardScreen = () => {
               )}
               {task.dueDate && (
                 <Text style={[styles.dueText, isOverdue(task) && styles.overdueText]}>
-                  {isOverdue(task)
-                    ? `Overdue by ${Math.abs(daysUntilDue!)} days`
-                    : task.completed
-                      ? `Completed ${task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'recently'}`
-                      : `Due in ${daysUntilDue} days`}
+                  {(() => {
+                    if (isOverdue(task)) {
+                      return `Overdue by ${Math.abs(daysUntilDue!)} days`;
+                    }
+                    if (task.completed) {
+                      return `Completed ${task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'recently'}`;
+                    }
+                    return `Due in ${daysUntilDue} days`;
+                  })()}
                 </Text>
               )}
               {task.status === TASK_STATUS.IN_PROGRESS && (
@@ -363,7 +367,18 @@ const PartnerDashboardScreen = () => {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            onRefresh().catch((error) => {
+              if (global.__DEV__) {
+                console.error('Failed to refresh:', error);
+              }
+            });
+          }}
+        />
+      }
     >
       <View style={styles.header}>
         <Text style={styles.partnerName}>{partner.name}&apos;s Progress</Text>

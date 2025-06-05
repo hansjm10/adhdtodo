@@ -43,12 +43,16 @@ export const HyperfocusContainer: React.FC = () => {
       setTimeLeft(workSec);
     };
 
-    loadSettings();
+    loadSettings().catch((error) => {
+      if (global.__DEV__) {
+        console.error('Failed to load settings:', error);
+      }
+    });
   }, []);
 
   // Find the task from context
   const task = useMemo(() => {
-    return tasks.find((t) => t.id === taskId) || null;
+    return tasks.find((t) => t.id === taskId) ?? null;
   }, [tasks, taskId]);
 
   const updateTaskTimeSpent = useCallback(async (): Promise<void> => {
@@ -84,11 +88,20 @@ export const HyperfocusContainer: React.FC = () => {
             setIsRunning(true);
           },
         },
-        { text: 'Exit', onPress: () => { router.back(); } },
+        {
+          text: 'Exit',
+          onPress: () => {
+            router.back();
+          },
+        },
       ]);
     } else {
       setSessionCount((prev) => prev + 1);
-      updateTaskTimeSpent();
+      updateTaskTimeSpent().catch((error) => {
+        if (global.__DEV__) {
+          console.error('Failed to update time spent:', error);
+        }
+      });
       Alert.alert('Great Work!', 'Time for a break. You deserve it!', [
         {
           text: 'Take Break',
@@ -103,8 +116,18 @@ export const HyperfocusContainer: React.FC = () => {
             setIsRunning(true);
           },
         },
-        { text: 'Skip Break', onPress: () => { setTimeLeft(workDuration); } },
-        { text: 'Exit', onPress: () => { router.back(); } },
+        {
+          text: 'Skip Break',
+          onPress: () => {
+            setTimeLeft(workDuration);
+          },
+        },
+        {
+          text: 'Exit',
+          onPress: () => {
+            router.back();
+          },
+        },
       ]);
     }
   }, [
@@ -160,7 +183,12 @@ export const HyperfocusContainer: React.FC = () => {
     if (isRunning) {
       Alert.alert('Exit Hyperfocus Mode?', 'Your progress will be saved.', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', onPress: () => { router.back(); } },
+        {
+          text: 'Exit',
+          onPress: () => {
+            router.back();
+          },
+        },
       ]);
     } else {
       router.back();

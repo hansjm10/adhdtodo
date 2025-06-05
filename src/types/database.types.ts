@@ -127,30 +127,45 @@ export interface Database {
       partnerships: {
         Row: {
           id: string;
-          user1_id: string;
-          user2_id: string;
-          status: 'pending' | 'active' | 'rejected' | 'ended';
+          adhd_user_id: string | null;
+          partner_id: string | null;
+          status: 'pending' | 'active' | 'paused' | 'declined' | 'terminated';
+          invite_code: string;
+          invite_sent_by: string | null;
+          settings: Json;
+          stats: Json;
           created_at: string;
+          updated_at: string;
           accepted_at: string | null;
-          ended_at: string | null;
+          terminated_at: string | null;
         };
         Insert: {
           id?: string;
-          user1_id: string;
-          user2_id: string;
-          status?: 'pending' | 'active' | 'rejected' | 'ended';
+          adhd_user_id?: string | null;
+          partner_id?: string | null;
+          status?: 'pending' | 'active' | 'paused' | 'declined' | 'terminated';
+          invite_code?: string;
+          invite_sent_by?: string | null;
+          settings?: Json;
+          stats?: Json;
           created_at?: string;
+          updated_at?: string;
           accepted_at?: string | null;
-          ended_at?: string | null;
+          terminated_at?: string | null;
         };
         Update: {
           id?: string;
-          user1_id?: string;
-          user2_id?: string;
-          status?: 'pending' | 'active' | 'rejected' | 'ended';
+          adhd_user_id?: string | null;
+          partner_id?: string | null;
+          status?: 'pending' | 'active' | 'paused' | 'declined' | 'terminated';
+          invite_code?: string;
+          invite_sent_by?: string | null;
+          settings?: Json;
+          stats?: Json;
           created_at?: string;
+          updated_at?: string;
           accepted_at?: string | null;
-          ended_at?: string | null;
+          terminated_at?: string | null;
         };
       };
       notifications: {
@@ -198,6 +213,22 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       cleanup_old_notifications: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      generate_invite_code: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      update_partnership_stats: {
+        Args: {
+          partnership_id: string;
+          stat_key: string;
+          increment: number;
+        };
+        Returns: void;
+      };
+      update_partnership_durations: {
         Args: Record<string, never>;
         Returns: void;
       };
