@@ -163,3 +163,14 @@ jest.mock('@shopify/flash-list', () => {
     FlashList: MockFlashList,
   };
 });
+
+// Global console overrides to reduce noise in tests
+global.console = {
+  ...console,
+  // Suppress console.info in tests unless explicitly enabled
+  info: process.env.JEST_VERBOSE === 'true' ? console.info : jest.fn(),
+  // Suppress console.warn in tests unless explicitly enabled
+  warn: process.env.JEST_VERBOSE === 'true' ? console.warn : jest.fn(),
+  // Keep console.error for debugging but allow suppression
+  error: process.env.JEST_VERBOSE === 'true' ? console.error : jest.fn(),
+};

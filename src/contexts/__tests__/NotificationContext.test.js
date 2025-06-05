@@ -6,9 +6,46 @@ import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import { NotificationProvider, useNotifications } from '../NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NotificationService from '../../services/NotificationService';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
+
+// Mock Supabase Service
+jest.mock('../../services/SupabaseService', () => ({
+  supabase: {
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ data: { user: { id: 'user1' } }, error: null })),
+      onAuthStateChange: jest.fn(() => ({
+        data: { subscription: { unsubscribe: jest.fn() } },
+      })),
+    },
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      then: jest.fn(() => Promise.resolve({ data: [], error: null })),
+    })),
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(),
+      unsubscribe: jest.fn(),
+    })),
+  },
+}));
+
+// Mock NotificationService
+jest.mock('../../services/NotificationService', () => ({
+  __esModule: true,
+  default: {
+    getNotificationsForUser: jest.fn(),
+    markAsRead: jest.fn(),
+    deleteNotification: jest.fn(),
+    clearAllNotifications: jest.fn(),
+  },
+}));
 
 describe('NotificationContext', () => {
   const mockNotifications = [
@@ -18,7 +55,7 @@ describe('NotificationContext', () => {
       title: 'New Task Assigned',
       message: 'Partner assigned you a task',
       userId: 'user1',
-      isRead: false,
+      read: false,
       createdAt: '2023-01-01T00:00:00Z',
     },
     {
@@ -27,7 +64,7 @@ describe('NotificationContext', () => {
       title: 'Task Completed',
       message: 'Partner completed a task',
       userId: 'user1',
-      isRead: true,
+      read: true,
       createdAt: '2023-01-02T00:00:00Z',
     },
     {
@@ -36,7 +73,7 @@ describe('NotificationContext', () => {
       title: 'Task Reminder',
       message: 'Task is due soon',
       userId: 'user1',
-      isRead: false,
+      read: false,
       createdAt: '2023-01-03T00:00:00Z',
     },
   ];
@@ -46,6 +83,12 @@ describe('NotificationContext', () => {
     AsyncStorage.getItem.mockResolvedValue(JSON.stringify(mockNotifications));
     AsyncStorage.setItem.mockResolvedValue(undefined);
     AsyncStorage.removeItem.mockResolvedValue(undefined);
+
+    // Set up NotificationService mocks
+    NotificationService.getNotificationsForUser.mockResolvedValue(mockNotifications);
+    NotificationService.markAsRead.mockResolvedValue(true);
+    NotificationService.deleteNotification.mockResolvedValue(true);
+    NotificationService.clearAllNotifications.mockResolvedValue(true);
   });
 
   afterEach(async () => {
