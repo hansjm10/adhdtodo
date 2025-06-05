@@ -369,7 +369,7 @@ class SupabasePartnershipService implements IPartnershipService {
   }
 
   // Database transformation methods
-  private transformToDatabase(partnership: Partnership): any {
+  private transformToDatabase(partnership: Partnership): Record<string, unknown> {
     return {
       id: partnership.id,
       adhd_user_id: partnership.adhdUserId,
@@ -386,24 +386,26 @@ class SupabasePartnershipService implements IPartnershipService {
     };
   }
 
-  private transformDatabasePartnership(dbPartnership: any): Partnership {
+  private transformDatabasePartnership(dbPartnership: Record<string, unknown>): Partnership {
     return {
-      id: dbPartnership.id,
-      adhdUserId: dbPartnership.adhd_user_id,
-      partnerId: dbPartnership.partner_id,
+      id: dbPartnership.id as string,
+      adhdUserId: dbPartnership.adhd_user_id as string | null,
+      partnerId: dbPartnership.partner_id as string | null,
       status: dbPartnership.status as PartnershipStatus,
-      inviteCode: dbPartnership.invite_code,
-      inviteSentBy: dbPartnership.invite_sent_by,
+      inviteCode: dbPartnership.invite_code as string,
+      inviteSentBy: dbPartnership.invite_sent_by as string | null,
       settings: dbPartnership.settings as PartnershipSettings,
       stats: dbPartnership.stats as PartnershipStats,
-      createdAt: new Date(dbPartnership.created_at),
-      updatedAt: new Date(dbPartnership.updated_at),
-      acceptedAt: dbPartnership.accepted_at ? new Date(dbPartnership.accepted_at) : null,
-      terminatedAt: dbPartnership.terminated_at ? new Date(dbPartnership.terminated_at) : null,
+      createdAt: new Date(dbPartnership.created_at as string),
+      updatedAt: new Date(dbPartnership.updated_at as string),
+      acceptedAt: dbPartnership.accepted_at ? new Date(dbPartnership.accepted_at as string) : null,
+      terminatedAt: dbPartnership.terminated_at
+        ? new Date(dbPartnership.terminated_at as string)
+        : null,
     };
   }
 
-  private transformDatabasePartnerships(dbPartnerships: any[]): Partnership[] {
+  private transformDatabasePartnerships(dbPartnerships: Record<string, unknown>[]): Partnership[] {
     return dbPartnerships.map((dbPartnership) => this.transformDatabasePartnership(dbPartnership));
   }
 }

@@ -1,13 +1,13 @@
 // ABOUTME: Conflict resolution system for handling data conflicts during sync
 // Provides strategies for resolving conflicts between local and remote data
 
-export interface ConflictResolution<T = any> {
+export interface ConflictResolution<T = unknown> {
   strategy: 'client-wins' | 'server-wins' | 'merge' | 'manual';
   resolver?: (local: T, remote: T) => T;
   fieldResolvers?: Record<string, (localValue: any, remoteValue: any) => any>;
 }
 
-export interface ConflictInfo<T = any> {
+export interface ConflictInfo<T = unknown> {
   entity: string;
   entityId: string;
   localData: T;
@@ -16,7 +16,7 @@ export interface ConflictInfo<T = any> {
   timestamp: Date;
 }
 
-export interface ResolvedConflict<T = any> {
+export interface ResolvedConflict<T = unknown> {
   resolvedData: T;
   strategy: string;
   fieldResolutions: Record<string, 'local' | 'remote' | 'merged'>;
@@ -35,7 +35,7 @@ class ConflictResolver {
   /**
    * Resolve conflict between local and remote data
    */
-  async resolveConflict<T extends Record<string, any>>(
+  async resolveConflict<T extends Record<string, unknown>>(
     conflict: ConflictInfo<T>,
     customResolution?: ConflictResolution<T>,
   ): Promise<ResolvedConflict<T>> {
@@ -93,7 +93,7 @@ class ConflictResolver {
   /**
    * Detect conflicts between local and remote data
    */
-  detectConflicts<T extends Record<string, any>>(
+  detectConflicts<T extends Record<string, unknown>>(
     local: T,
     remote: T,
     entityType: string,
@@ -144,7 +144,7 @@ class ConflictResolver {
   /**
    * Smart merge data with field-level resolution
    */
-  private mergeData<T extends Record<string, any>>(
+  private mergeData<T extends Record<string, unknown>>(
     conflict: ConflictInfo<T>,
     resolution: ConflictResolution<T>,
   ): ResolvedConflict<T> {
@@ -182,10 +182,10 @@ class ConflictResolver {
    * Intelligent field-level merge logic
    */
   private intelligentFieldMerge(
-    localValue: any,
-    remoteValue: any,
+    localValue: unknown,
+    remoteValue: unknown,
     fieldName: string,
-  ): { value: any; source: 'local' | 'remote' | 'merged' } {
+  ): { value: unknown; source: 'local' | 'remote' | 'merged' } {
     // Handle null/undefined values
     if (localValue == null && remoteValue != null) {
       return { value: remoteValue, source: 'remote' };
@@ -248,7 +248,7 @@ class ConflictResolver {
   /**
    * Analyze how fields were resolved in manual resolution
    */
-  private analyzeFieldResolutions<T extends Record<string, any>>(
+  private analyzeFieldResolutions<T extends Record<string, unknown>>(
     local: T,
     remote: T,
     resolved: T,
@@ -315,7 +315,7 @@ class ConflictResolver {
         totalXP: (local: number, remote: number) => Math.max(local || 0, remote || 0),
 
         // Preferences: prefer local (user settings)
-        notificationPreferences: (local: any, remote: any) => local || remote,
+        notificationPreferences: (local: unknown, remote: unknown) => local || remote,
         theme: (local: string, remote: string) => local || remote,
 
         // Name/email: prefer local

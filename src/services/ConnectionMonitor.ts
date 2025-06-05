@@ -4,10 +4,22 @@
 // import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { supabase } from './SupabaseService';
 
+interface NetInfoState {
+  isConnected: boolean | null;
+  type: string;
+  isInternetReachable: boolean | null;
+  details?: {
+    strength?: number;
+    ssid?: string;
+    frequency?: number;
+    ipAddress?: string;
+  };
+}
+
 // Note: NetInfo would need to be installed: npm install @react-native-community/netinfo
 // For now, we'll create a mock implementation
 const NetInfo = {
-  addEventListener: (callback: (state: any) => void) => {
+  addEventListener: (callback: (state: NetInfoState) => void) => {
     // Mock implementation - always return online
     setTimeout(() => callback({ isConnected: true, type: 'wifi', isInternetReachable: true }), 100);
     return () => {}; // unsubscribe function
@@ -30,7 +42,7 @@ export interface ConnectionEvent {
   type: 'connected' | 'disconnected' | 'error' | 'slow' | 'restored';
   timestamp: Date;
   connectionState: ConnectionState;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 type ConnectionCallback = (event: ConnectionEvent) => void;
@@ -214,7 +226,7 @@ class ConnectionMonitor {
   /**
    * Handle network state changes
    */
-  private handleNetworkStateChange(state: any): void {
+  private handleNetworkStateChange(state: NetInfoState): void {
     const previousState = this.currentState;
 
     this.currentState = {
