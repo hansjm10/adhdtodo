@@ -184,7 +184,11 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               onTaskUpdate({ ...localTask, [field]: newText });
             }
           })
-          .catch(() => {});
+          .catch((error) => {
+            if (global.__DEV__) {
+              console.error('Failed to apply text operation:', error);
+            }
+          });
       }
     }, 500);
   };
@@ -210,8 +214,13 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
 
   const handleCursorPositionChange = (field: string, position: number): void => {
     // updateCursor is fire-and-forget for cursor position updates
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises, no-void
-    void updateCursor(field, position);
+    // No error handling needed for cursor updates as they're non-critical
+    updateCursor(field, position).catch((error) => {
+      // Cursor updates are best-effort, failures don't impact functionality
+      if (global.__DEV__) {
+        console.info('Cursor update failed (non-critical):', error);
+      }
+    });
   };
 
   const handleToggleLock = async () => {
@@ -254,7 +263,11 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => {
-                handleStartEditing().catch(() => {});
+                handleStartEditing().catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to start editing:', error);
+                  }
+                });
               }}
               disabled={isReadOnly}
             >
@@ -265,7 +278,11 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             <TouchableOpacity
               style={styles.doneButton}
               onPress={() => {
-                handleStopEditing().catch(() => {});
+                handleStopEditing().catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to stop editing:', error);
+                  }
+                });
               }}
             >
               <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
@@ -372,12 +389,17 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             style={[styles.statusButton, { backgroundColor: getStatusColor(localTask.status) }]}
             onPress={() => {
               if (isEditing && (!locked || lockOwner === 'current')) {
-                const newStatus = (() => {
-                  if (localTask.status === TaskStatus.PENDING) return TaskStatus.IN_PROGRESS;
-                  if (localTask.status === TaskStatus.IN_PROGRESS) return TaskStatus.COMPLETED;
-                  return TaskStatus.PENDING;
-                })();
-                handleFieldChange('status', newStatus).catch(() => {});
+                const statusFlow: Record<TaskStatus, TaskStatus> = {
+                  [TaskStatus.PENDING]: TaskStatus.IN_PROGRESS,
+                  [TaskStatus.IN_PROGRESS]: TaskStatus.COMPLETED,
+                  [TaskStatus.COMPLETED]: TaskStatus.PENDING,
+                };
+                const newStatus = statusFlow[localTask.status] ?? TaskStatus.PENDING;
+                handleFieldChange('status', newStatus).catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to update status:', error);
+                  }
+                });
               }
             }}
             disabled={!isEditing || (locked && lockOwner !== 'current')}
@@ -395,12 +417,17 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             ]}
             onPress={() => {
               if (isEditing && (!locked || lockOwner === 'current')) {
-                const newPriority = (() => {
-                  if (localTask.priority === TaskPriority.LOW) return TaskPriority.MEDIUM;
-                  if (localTask.priority === TaskPriority.MEDIUM) return TaskPriority.HIGH;
-                  return TaskPriority.LOW;
-                })();
-                handleFieldChange('priority', newPriority).catch(() => {});
+                const priorityFlow: Record<TaskPriority, TaskPriority> = {
+                  [TaskPriority.LOW]: TaskPriority.MEDIUM,
+                  [TaskPriority.MEDIUM]: TaskPriority.HIGH,
+                  [TaskPriority.HIGH]: TaskPriority.LOW,
+                };
+                const newPriority = priorityFlow[localTask.priority] ?? TaskPriority.LOW;
+                handleFieldChange('priority', newPriority).catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to update priority:', error);
+                  }
+                });
               }
             }}
             disabled={!isEditing || (locked && lockOwner !== 'current')}

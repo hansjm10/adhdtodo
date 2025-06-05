@@ -45,6 +45,7 @@ const ProfileIcon = (props: TabBarIconProps) => (
 
 const useNotificationHeaderButton = (unreadCount: number) => {
   const router = useRouter();
+  // eslint-disable-next-line react/display-name
   return () => (
     <NotificationBadge
       count={unreadCount}
@@ -56,9 +57,8 @@ const useNotificationHeaderButton = (unreadCount: number) => {
 };
 
 export default function TabLayout() {
-  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const NotificationHeaderButton = useNotificationHeaderButton(unreadCount);
 
   const loadUnreadCount = useCallback(async (): Promise<void> => {
@@ -78,10 +78,18 @@ export default function TabLayout() {
   }, []);
 
   useEffect(() => {
-    loadUnreadCount().catch(() => {});
+    loadUnreadCount().catch((error) => {
+      if (global.__DEV__) {
+        console.error('Failed to load unread count:', error);
+      }
+    });
     // Set up interval to check for new notifications
     const interval = setInterval(() => {
-      loadUnreadCount().catch(() => {});
+      loadUnreadCount().catch((error) => {
+        if (global.__DEV__) {
+          console.error('Failed to load unread count:', error);
+        }
+      });
     }, 10000); // Check every 10 seconds
     return () => {
       clearInterval(interval);

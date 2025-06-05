@@ -209,15 +209,17 @@ const SignInScreen = () => {
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={() => {
-              handleAuth().catch(() => {});
+              handleAuth().catch((error) => {
+                // Error is already handled in handleAuth
+                if (global.__DEV__) {
+                  console.info('Auth error handled internally:', error);
+                }
+              });
             }}
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {(() => {
-                if (loading) return 'Please wait...';
-                return isLogin ? 'Login' : 'Sign Up';
-              })()}
+              {loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
             </Text>
           </TouchableOpacity>
 

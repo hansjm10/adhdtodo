@@ -52,19 +52,18 @@ const ProfileScreen = () => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: (): void => {
+        onPress: async (): Promise<void> => {
           setLoading(true);
-          AuthService.logout()
-            .then((result) => {
-              if (!result.success) {
-                Alert.alert('Error', 'Failed to logout. Please try again.');
-                setLoading(false);
-              }
-            })
-            .catch(() => {
+          try {
+            const result = await AuthService.logout();
+            if (!result.success) {
               Alert.alert('Error', 'Failed to logout. Please try again.');
               setLoading(false);
-            });
+            }
+          } catch (error) {
+            Alert.alert('Error', 'Failed to logout. Please try again.');
+            setLoading(false);
+          }
         },
       },
     ]);
