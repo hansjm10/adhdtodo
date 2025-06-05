@@ -90,7 +90,7 @@ class ValidationService implements IValidationService {
     if (task.description !== undefined && task.description !== null) {
       if (typeof task.description !== 'string') {
         errors.push('Task description must be a string');
-      } else if ((task.description).length > this.MAX_DESCRIPTION_LENGTH) {
+      } else if (task.description.length > this.MAX_DESCRIPTION_LENGTH) {
         errors.push(`Task description must not exceed ${this.MAX_DESCRIPTION_LENGTH} characters`);
       }
     }

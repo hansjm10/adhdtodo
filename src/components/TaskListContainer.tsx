@@ -66,7 +66,9 @@ export const TaskListContainer: React.FC = () => {
       refreshing={refreshing}
       onTaskPress={handleTaskPress}
       onAddPress={handleAddPress}
-      onRefresh={handleRefresh}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
       onCategorySelect={setSelectedCategory}
       onToggleAssigned={setShowAssignedOnly}
     />

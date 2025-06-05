@@ -80,7 +80,7 @@ class CollaborativeEditingService {
     session.editors.set(userId, cursor);
 
     // Set up real-time channel
-    await this.setupRealtimeChannel(taskId);
+    this.setupRealtimeChannel(taskId);
 
     // Broadcast join event
     await this.broadcastEvent(taskId, 'user_joined', { userId, cursor });
@@ -244,7 +244,7 @@ class CollaborativeEditingService {
   /**
    * Set up real-time channel for collaborative editing
    */
-  private async setupRealtimeChannel(taskId: string): Promise<void> {
+  private setupRealtimeChannel(taskId: string): void {
     if (this.channels.has(taskId)) return;
 
     const channel = supabase
@@ -302,30 +302,32 @@ class CollaborativeEditingService {
   /**
    * Transform operation to resolve conflicts with concurrent edits
    */
-  private async transformOperation(
+  private transformOperation(
     operation: EditOperation,
     session: TaskEditSession,
   ): Promise<EditOperation> {
-    // Find concurrent operations that might conflict
-    const concurrentOps = session.operations.filter(
-      (op) =>
-        op.id !== operation.id &&
-        op.field === operation.field &&
-        Math.abs(op.timestamp.getTime() - operation.timestamp.getTime()) < 5000, // Within 5 seconds
-    );
+    return Promise.resolve().then(() => {
+      // Find concurrent operations that might conflict
+      const concurrentOps = session.operations.filter(
+        (op) =>
+          op.id !== operation.id &&
+          op.field === operation.field &&
+          Math.abs(op.timestamp.getTime() - operation.timestamp.getTime()) < 5000, // Within 5 seconds
+      );
 
-    if (concurrentOps.length === 0) {
-      return operation; // No conflicts
-    }
+      if (concurrentOps.length === 0) {
+        return operation; // No conflicts
+      }
 
-    // Apply operational transform based on operation type
-    let transformedOp = { ...operation };
+      // Apply operational transform based on operation type
+      let transformedOp = { ...operation };
 
-    for (const concurrentOp of concurrentOps) {
-      transformedOp = this.transformAgainstOperation(transformedOp, concurrentOp);
-    }
+      for (const concurrentOp of concurrentOps) {
+        transformedOp = this.transformAgainstOperation(transformedOp, concurrentOp);
+      }
 
-    return transformedOp;
+      return transformedOp;
+    });
   }
 
   /**
@@ -524,7 +526,7 @@ class CollaborativeEditingService {
   private async getUserName(userId: string): Promise<string> {
     try {
       const { data } = await supabase.from('users').select('name').eq('id', userId).single();
-      return data?.name || 'Unknown User';
+      return (data?.name ?? 'Unknown User') as string;
     } catch {
       return 'Unknown User';
     }
@@ -552,7 +554,7 @@ class CollaborativeEditingService {
     length?: number,
   ): EditOperation {
     return {
-      id: `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       taskId,
       userId,
       timestamp: new Date(),
@@ -575,7 +577,7 @@ class CollaborativeEditingService {
         .from('tasks')
         .select('*')
         .eq('id', taskId)
-        .single();
+        .single<Record<string, unknown>>();
 
       if (!currentTask) return null;
 
@@ -583,8 +585,8 @@ class CollaborativeEditingService {
       const conflictInfo = {
         entity: 'task',
         entityId: taskId,
-        localData: currentTask as Task, // Use full task as local data
-        remoteData: currentTask as Task, // Use full task as remote data
+        localData: currentTask as unknown as Task, // Use full task as local data
+        remoteData: currentTask as unknown as Task, // Use full task as remote data
         conflictFields: [field],
         timestamp: new Date(),
       };

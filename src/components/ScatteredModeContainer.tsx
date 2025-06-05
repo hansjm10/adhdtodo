@@ -28,7 +28,14 @@ export const ScatteredModeContainer: React.FC = () => {
       Alert.alert(
         'No Quick Tasks Available',
         'Add some tasks with 5-15 minute time estimates to use Scattered Mode.',
-        [{ text: 'OK', onPress: () => { router.back(); } }],
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.back();
+            },
+          },
+        ],
       );
     }
   }, [quickTasks.length, router]);
@@ -58,7 +65,14 @@ export const ScatteredModeContainer: React.FC = () => {
         Alert.alert(
           'Great Job! 🎉',
           `You completed ${completedCount + 1} tasks and earned ${totalXP + xp} XP!`,
-          [{ text: 'Awesome!', onPress: () => { router.back(); } }],
+          [
+            {
+              text: 'Awesome!',
+              onPress: () => {
+                router.back();
+              },
+            },
+          ],
         );
       }
     } catch (error) {
@@ -82,7 +96,12 @@ export const ScatteredModeContainer: React.FC = () => {
         `You've completed ${completedCount} tasks. Your progress will be saved.`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Exit', onPress: () => { router.back(); } },
+          {
+            text: 'Exit',
+            onPress: () => {
+              router.back();
+            },
+          },
         ],
       );
     } else {
@@ -99,7 +118,9 @@ export const ScatteredModeContainer: React.FC = () => {
       totalTasks={quickTasks.length}
       completedCount={completedCount}
       totalXP={totalXP}
-      onCompleteTask={handleCompleteTask}
+      onCompleteTask={() => {
+        void handleCompleteTask();
+      }}
       onSkipTask={handleSkipTask}
       onExit={handleExit}
     />

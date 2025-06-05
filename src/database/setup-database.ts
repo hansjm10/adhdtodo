@@ -23,7 +23,7 @@ import { resolve } from 'path';
  * or using the service role key.
  */
 
-async function setupDatabase() {
+function setupDatabase() {
   console.log('Database Setup Instructions:');
   console.log('============================');
   console.log('');

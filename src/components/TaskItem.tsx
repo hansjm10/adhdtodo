@@ -2,16 +2,8 @@
 // Provides checkbox for completion and visual feedback for task states
 
 import React, { useRef, useEffect, useState } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TASK_CATEGORIES, TASK_PRIORITY } from '../constants/TaskConstants';
 import { completeTask, updateTask, startTask, markPartnerNotified } from '../utils/TaskModel';
@@ -19,7 +11,7 @@ import TaskStorageService from '../services/TaskStorageService';
 import RewardService from '../services/RewardService';
 import NotificationService from '../services/NotificationService';
 import PartnershipService from '../services/PartnershipService';
-import type { Task} from '../types/task.types';
+import type { Task } from '../types/task.types';
 import { TaskStatus } from '../types/task.types';
 import type { User } from '../types/user.types';
 import { animationHelpers, duration, easing } from '../styles/animations';
@@ -167,11 +159,12 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
     }
   };
 
-  const taskStatus = task.completed
-    ? 'completed'
-    : task.status === 'in_progress'
-      ? 'in progress'
-      : 'pending';
+  const getTaskStatus = (): string => {
+    if (task.completed) return 'completed';
+    if (task.status === 'in_progress') return 'in progress';
+    return 'pending';
+  };
+  const taskStatus = getTaskStatus();
   const taskAccessibilityLabel = `${task.title}, ${taskStatus}${category ? `, category: ${category.label}` : ''}${task.priority && task.priority !== TASK_PRIORITY.MEDIUM ? `, priority: ${task.priority}` : ''}${task.dueDate ? `, due: ${new Date(task.dueDate).toLocaleDateString()}` : ''}`;
 
   return (
@@ -190,7 +183,9 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
           <TouchableOpacity
             testID="task-checkbox"
             style={[styles.checkbox, task.completed && styles.checkboxCompleted]}
-            onPress={handleToggleComplete}
+            onPress={() => {
+              void handleToggleComplete();
+            }}
             accessible
             accessibilityLabel={
               task.completed ? 'Mark task as incomplete' : 'Mark task as complete'
@@ -242,7 +237,9 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
                 <View style={styles.assignedBadge}>
                   <Ionicons name="person-circle-outline" size={14} color="#3498DB" />
                   <Text style={styles.assignedText}>
-                    {task.assignedBy === currentUser?.id ? 'Assigned' : partner?.name || 'Partner'}
+                    {task.assignedBy === currentUser?.id
+                      ? 'Assigned'
+                      : (partner?.name ?? 'Partner')}
                   </Text>
                 </View>
               )}
@@ -277,7 +274,9 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
           {!task.completed && task.assignedBy && (
             <TouchableOpacity
               style={styles.startButton}
-              onPress={handleStartTask}
+              onPress={() => {
+                void handleStartTask();
+              }}
               disabled={task.status === 'in_progress'}
               accessible
               accessibilityLabel={task.status === 'in_progress' ? 'Task in progress' : 'Start task'}
@@ -298,7 +297,13 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
           )}
         </TouchableOpacity>
       </Animated.View>
-      <RewardAnimation visible={showReward} type="emoji" onComplete={() => { setShowReward(false); }} />
+      <RewardAnimation
+        visible={showReward}
+        type="emoji"
+        onComplete={() => {
+          setShowReward(false);
+        }}
+      />
     </>
   );
 };

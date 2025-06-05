@@ -28,7 +28,7 @@ class FeatureFlagService {
     try {
       const stored = await AsyncStorage.getItem(FeatureFlagService.STORAGE_KEY);
       if (stored) {
-        this.flags = { ...DEFAULT_FLAGS, ...JSON.parse(stored) };
+        this.flags = { ...DEFAULT_FLAGS, ...(JSON.parse(stored) as Partial<FeatureFlags>) };
       }
       this.initialized = true;
     } catch (error) {
@@ -73,7 +73,7 @@ class FeatureFlagService {
     return this.getFlag('useSupabaseAuth');
   }
 
-  async isDataMigrationEnabled(): Promise<boolean> {
+  isDataMigrationEnabled(): boolean {
     // Migration is no longer supported - always return false
     return false;
   }

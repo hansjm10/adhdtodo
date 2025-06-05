@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import NotificationBadge from '../../src/components/NotificationBadge';
 import UserStorageService from '../../src/services/UserStorageService';
 import NotificationService from '../../src/services/NotificationService';
-import type { User } from '../../src/types/user.types';
 
 // Tab bar icon type
 type TabBarIconProps = {
@@ -58,14 +57,12 @@ const useNotificationHeaderButton = (unreadCount: number) => {
 
 export default function TabLayout() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [_currentUser, setCurrentUser] = useState<User | null>(null);
   const NotificationHeaderButton = useNotificationHeaderButton(unreadCount);
 
   const loadUnreadCount = useCallback(async (): Promise<void> => {
     try {
       const user = await UserStorageService.getCurrentUser();
       if (user) {
-        setCurrentUser(user);
         const notifications = await NotificationService.getNotificationsForUser(user.id);
         const unread = notifications.filter((n) => !n.read).length;
         setUnreadCount(unread);

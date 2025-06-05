@@ -2,9 +2,7 @@
 // Touch ID, fingerprint authentication with PIN fallback option
 
 import React, { useState, useEffect } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -14,14 +12,10 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
-import type {
-  BiometricSupport,
-  SecuritySettings} from '../services/BiometricAuthService';
-import {
-  BiometricAuthService
-} from '../services/BiometricAuthService';
+import type { BiometricSupport, SecuritySettings } from '../services/BiometricAuthService';
+import { BiometricAuthService } from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 
 interface BiometricAuthScreenProps {
@@ -41,7 +35,11 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings | null>(null);
 
   useEffect(() => {
-    checkAuthMethods();
+    checkAuthMethods().catch((error) => {
+      if (global.__DEV__) {
+        console.error('Failed to check auth methods:', error);
+      }
+    });
   }, []);
 
   const checkAuthMethods = async () => {
@@ -73,8 +71,22 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         onSuccess();
       } else {
         Alert.alert('Authentication Failed', 'Please try again or use PIN', [
-          { text: 'Try Again', onPress: handleBiometricAuth },
-          { text: 'Use PIN', onPress: () => { setShowPIN(true); } },
+          {
+            text: 'Try Again',
+            onPress: (): void => {
+              handleBiometricAuth().catch((error) => {
+                if (global.__DEV__) {
+                  console.error('Failed biometric auth:', error);
+                }
+              });
+            },
+          },
+          {
+            text: 'Use PIN',
+            onPress: () => {
+              setShowPIN(true);
+            },
+          },
         ]);
       }
     } catch (error) {
@@ -98,7 +110,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         onSuccess();
       } else {
         const attempts = await PINAuthService.recordFailedPINAttempt();
-        const maxAttempts = securitySettings?.maxFailedAttempts || 5;
+        const maxAttempts = securitySettings?.maxFailedAttempts ?? 5;
         const remaining = maxAttempts - attempts;
 
         if (attempts >= maxAttempts) {
@@ -185,7 +197,13 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
 
           <TouchableOpacity
             style={[styles.button, styles.primaryButton, loading && styles.buttonDisabled]}
-            onPress={handlePINSubmit}
+            onPress={() => {
+              handlePINSubmit().catch((error) => {
+                if (global.__DEV__) {
+                  console.error('Failed to submit PIN:', error);
+                }
+              });
+            }}
             disabled={loading || pin.length === 0}
           >
             {loading ? (
@@ -221,7 +239,13 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
 
         <TouchableOpacity
           style={[styles.button, styles.primaryButton, loading && styles.buttonDisabled]}
-          onPress={handleBiometricAuth}
+          onPress={() => {
+            handleBiometricAuth().catch((error) => {
+              if (global.__DEV__) {
+                console.error('Failed biometric auth:', error);
+              }
+            });
+          }}
           disabled={loading}
           accessibilityLabel={`Authenticate with ${getBiometricTitle()}`}
         >
@@ -235,7 +259,9 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         {isPINEnabled && (
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => { setShowPIN(true); }}
+            onPress={() => {
+              setShowPIN(true);
+            }}
             disabled={loading}
             accessibilityLabel="Use PIN authentication instead"
           >

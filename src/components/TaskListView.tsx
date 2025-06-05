@@ -2,17 +2,8 @@
 // Receives tasks as props, making it easily testable
 
 import React, { useState, useEffect } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  RefreshControl
-} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import TaskItem from './TaskItem';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
@@ -34,6 +25,152 @@ interface TaskListViewProps {
   onToggleAssigned: (show: boolean) => void;
 }
 
+// Empty state component
+const EmptyState: React.FC = () => (
+  <View style={styles.emptyContainer}>
+    <Text style={styles.emptyTitle}>No tasks yet</Text>
+    <Text style={styles.emptySubtitle}>Tap the + button to create your first task</Text>
+  </View>
+);
+
+// Category filter component
+interface CategoryFilterProps {
+  partner: User | null | undefined;
+  showAssignedOnly: boolean;
+  selectedCategory: string | null;
+  onToggleAssigned: (show: boolean) => void;
+  onCategorySelect: (categoryId: string | null) => void;
+}
+
+const CategoryFilter: React.FC<CategoryFilterProps> = ({
+  partner,
+  showAssignedOnly,
+  selectedCategory,
+  onToggleAssigned,
+  onCategorySelect,
+}) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    style={styles.categoryFilter}
+    contentContainerStyle={styles.categoryFilterContent}
+  >
+    {partner && (
+      <TouchableOpacity
+        style={[styles.categoryChip, showAssignedOnly && styles.categoryChipActive]}
+        onPress={() => {
+          onToggleAssigned(true);
+          onCategorySelect(null);
+        }}
+        accessible
+        accessibilityLabel={`Show tasks from ${partner.name}`}
+        accessibilityHint="Double tap to filter tasks assigned by your partner"
+        accessibilityRole="button"
+        accessibilityState={{ selected: showAssignedOnly }}
+      >
+        <Text style={[styles.categoryChipText, showAssignedOnly && styles.categoryChipTextActive]}>
+          Assigned
+        </Text>
+      </TouchableOpacity>
+    )}
+
+    <TouchableOpacity
+      style={[
+        styles.categoryChip,
+        !selectedCategory && !showAssignedOnly && styles.categoryChipActive,
+      ]}
+      onPress={() => {
+        onCategorySelect(null);
+        onToggleAssigned(false);
+      }}
+      accessible
+      accessibilityLabel="Show all tasks"
+      accessibilityHint="Double tap to show all tasks"
+      accessibilityRole="button"
+      accessibilityState={{ selected: !selectedCategory && !showAssignedOnly }}
+    >
+      <Text
+        style={[
+          styles.categoryChipText,
+          !selectedCategory && !showAssignedOnly && styles.categoryChipTextActive,
+        ]}
+      >
+        All Tasks
+      </Text>
+    </TouchableOpacity>
+
+    {!showAssignedOnly &&
+      Object.values(TASK_CATEGORIES).map((category: TaskCategory) => (
+        <TouchableOpacity
+          key={category.id}
+          style={[
+            styles.categoryChip,
+            selectedCategory === category.id && styles.categoryChipActive,
+          ]}
+          onPress={() => {
+            onCategorySelect(category.id);
+          }}
+          accessible
+          accessibilityLabel={`Filter by ${category.label} category`}
+          accessibilityHint={`Double tap to show only ${category.label} tasks`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: selectedCategory === category.id }}
+        >
+          <Text style={styles.categoryIcon}>{category.icon}</Text>
+          <Text
+            style={[
+              styles.categoryChipText,
+              selectedCategory === category.id && styles.categoryChipTextActive,
+            ]}
+          >
+            {category.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+  </ScrollView>
+);
+
+// Show more button component
+interface ShowMoreButtonProps {
+  hasMoreTasks: boolean;
+  visibleTasksCount: number;
+  totalTasksCount: number;
+  showAll: boolean;
+  onToggle: () => void;
+}
+
+const ShowMoreButton: React.FC<ShowMoreButtonProps> = ({
+  hasMoreTasks,
+  visibleTasksCount,
+  totalTasksCount,
+  showAll,
+  onToggle,
+}) => {
+  if (!hasMoreTasks) return null;
+
+  return (
+    <View style={styles.showMoreContainer}>
+      <Text style={styles.taskCountText}>
+        Showing {visibleTasksCount} of {totalTasksCount} tasks
+      </Text>
+      <TouchableOpacity
+        style={styles.showMoreButton}
+        onPress={onToggle}
+        accessible
+        accessibilityLabel={showAll ? 'Show fewer tasks' : `Show all ${totalTasksCount} tasks`}
+        accessibilityHint={
+          showAll ? 'Double tap to limit visible tasks' : 'Double tap to show all tasks'
+        }
+        accessibilityRole="button"
+      >
+        <Text style={styles.showMoreText}>
+          {showAll ? 'Show Less' : `Show All (${totalTasksCount - visibleTasksCount} more)`}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 interface Styles {
   container: ViewStyle;
   emptyContainer: ViewStyle;
@@ -50,12 +187,12 @@ interface Styles {
   categoryChipTextActive: TextStyle;
   categoryIcon: TextStyle;
   showMoreContainer: ViewStyle;
+  taskCountText: TextStyle;
   showMoreButton: ViewStyle;
   showMoreText: TextStyle;
-  taskCountText: TextStyle;
 }
 
-export const TaskListView: React.FC<TaskListViewProps> = ({
+const TaskListView: React.FC<TaskListViewProps> = ({
   tasks,
   currentUser,
   partner,
@@ -68,16 +205,15 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
   onCategorySelect,
   onToggleAssigned,
 }) => {
-  const [taskLimit, setTaskLimit] = useState(5);
+  const [taskLimit, setTaskLimit] = useState(10);
   const [showAll, setShowAll] = useState(false);
 
-  // Load task limit from settings
   useEffect(() => {
     const loadSettings = async () => {
       const settings = await settingsService.loadSettings();
       setTaskLimit(settings.taskLimit);
     };
-    loadSettings();
+    void loadSettings();
   }, []);
 
   // Calculate visible tasks based on limit
@@ -87,154 +223,53 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
   const renderTask = ({ item }: { item: Task }) => (
     <TaskItem
       task={item}
-      onPress={() => { onTaskPress(item); }}
+      onPress={() => {
+        onTaskPress(item);
+      }}
       currentUser={currentUser}
       partner={partner}
     />
   );
 
-  const EmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>No tasks yet</Text>
-      <Text style={styles.emptySubtitle}>Tap the + button to create your first task</Text>
-    </View>
-  );
-
-  const CategoryFilter = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.categoryFilter}
-      contentContainerStyle={styles.categoryFilterContent}
-    >
-      {partner && (
-        <TouchableOpacity
-          style={[styles.categoryChip, showAssignedOnly && styles.categoryChipActive]}
-          onPress={() => {
-            onToggleAssigned(true);
-            onCategorySelect(null);
-          }}
-          accessible
-          accessibilityLabel={`Show tasks from ${partner.name}`}
-          accessibilityHint="Double tap to filter tasks assigned by your partner"
-          accessibilityRole="button"
-          accessibilityState={{ selected: showAssignedOnly }}
-        >
-          <Text
-            style={[styles.categoryChipText, showAssignedOnly && styles.categoryChipTextActive]}
-          >
-            Assigned
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity
-        style={[
-          styles.categoryChip,
-          !selectedCategory && !showAssignedOnly && styles.categoryChipActive,
-        ]}
-        onPress={() => {
-          onCategorySelect(null);
-          onToggleAssigned(false);
-        }}
-        accessible
-        accessibilityLabel="Show all tasks"
-        accessibilityHint="Double tap to show all tasks"
-        accessibilityRole="button"
-        accessibilityState={{ selected: !selectedCategory && !showAssignedOnly }}
-      >
-        <Text
-          style={[
-            styles.categoryChipText,
-            !selectedCategory && !showAssignedOnly && styles.categoryChipTextActive,
-          ]}
-        >
-          All Tasks
-        </Text>
-      </TouchableOpacity>
-
-      {!showAssignedOnly &&
-        Object.values(TASK_CATEGORIES).map((category: TaskCategory) => (
-          <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryChip,
-              selectedCategory === category.id && styles.categoryChipActive,
-            ]}
-            onPress={() => { onCategorySelect(category.id); }}
-            accessible
-            accessibilityLabel={`Filter by ${category.label} category`}
-            accessibilityHint={`Double tap to show only ${category.label} tasks`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: selectedCategory === category.id }}
-          >
-            <Text style={styles.categoryIcon}>{category.icon}</Text>
-            <Text
-              style={[
-                styles.categoryChipText,
-                selectedCategory === category.id && styles.categoryChipTextActive,
-              ]}
-            >
-              {category.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-    </ScrollView>
-  );
-
-  const ShowMoreButton = () => {
-    if (!hasMoreTasks) return null;
-
-    return (
-      <View style={styles.showMoreContainer}>
-        <Text style={styles.taskCountText}>
-          Showing {visibleTasks.length} of {tasks.length} tasks
-        </Text>
-        <TouchableOpacity
-          style={styles.showMoreButton}
-          onPress={() => { setShowAll(!showAll); }}
-          accessible
-          accessibilityLabel={showAll ? 'Show fewer tasks' : `Show all ${tasks.length} tasks`}
-          accessibilityHint={
-            showAll ? 'Double tap to limit visible tasks' : 'Double tap to show all tasks'
-          }
-          accessibilityRole="button"
-        >
-          <Text style={styles.showMoreText}>
-            {showAll ? 'Show Less' : `Show All (${tasks.length - visibleTasks.length} more)`}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   return (
-    <View style={styles.container}>
-      <CategoryFilter />
+    <View style={styles.container} testID="task-list-view">
+      <CategoryFilter
+        partner={partner}
+        showAssignedOnly={showAssignedOnly}
+        selectedCategory={selectedCategory}
+        onToggleAssigned={onToggleAssigned}
+        onCategorySelect={onCategorySelect}
+      />
 
       {tasks.length === 0 ? (
-        <ScrollView
-          testID="task-list"
-          contentContainerStyle={styles.emptyList}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
+        <View style={styles.emptyList}>
           <EmptyState />
-        </ScrollView>
+        </View>
       ) : (
-        <FlashList<Task>
-            testID="task-list"
+        <>
+          <FlashList
             data={visibleTasks}
             renderItem={renderTask}
-            keyExtractor={(item: Task) => item.id}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            keyExtractor={(item) => item.id}
             estimatedItemSize={100}
-            drawDistance={200}
-            ListFooterComponent={ShowMoreButton}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            ListEmptyComponent={EmptyState}
+            contentContainerStyle={styles.emptyContainer}
+            testID="task-list"
           />
+          <ShowMoreButton
+            hasMoreTasks={hasMoreTasks}
+            visibleTasksCount={visibleTasks.length}
+            totalTasksCount={tasks.length}
+            showAll={showAll}
+            onToggle={() => {
+              setShowAll(!showAll);
+            }}
+          />
+        </>
       )}
 
       <TouchableOpacity
-        testID="add-task-button"
         style={styles.addButton}
         onPress={onAddPress}
         accessible
@@ -254,13 +289,12 @@ const styles = StyleSheet.create<Styles>({
     backgroundColor: '#f5f5f5',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingTop: 20,
   },
   emptyList: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyTitle: {
     fontSize: 24,
@@ -271,39 +305,37 @@ const styles = StyleSheet.create<Styles>({
   emptySubtitle: {
     fontSize: 16,
     color: '#666',
-    textAlign: 'center',
   },
   addButton: {
     position: 'absolute',
     bottom: 20,
     right: 20,
-    width: 56,
-    height: 56,
-    backgroundColor: '#4A90E2',
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#4ECDC4',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: 4,
+    elevation: 5,
   },
   addButtonText: {
-    fontSize: 28,
+    fontSize: 32,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '300',
   },
   categoryFilter: {
     backgroundColor: '#fff',
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#eee',
   },
   categoryFilterContent: {
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
   },
   categoryChip: {
     flexDirection: 'row',
@@ -311,50 +343,46 @@ const styles = StyleSheet.create<Styles>({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    backgroundColor: '#f0f0f0',
     marginRight: 8,
-    backgroundColor: '#fff',
+    gap: 4,
   },
   categoryChipActive: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#4A90E2',
+    backgroundColor: '#4ECDC4',
   },
   categoryChipText: {
     fontSize: 14,
     color: '#666',
   },
   categoryChipTextActive: {
-    color: '#4A90E2',
+    color: '#fff',
     fontWeight: '600',
   },
   categoryIcon: {
     fontSize: 16,
-    marginRight: 4,
   },
   showMoreContainer: {
-    padding: 16,
     alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    marginBottom: 80, // Space for FAB
-  },
-  showMoreButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#E3F2FD',
-    borderRadius: 24,
-    marginTop: 8,
-  },
-  showMoreText: {
-    fontSize: 16,
-    color: '#4A90E2',
-    fontWeight: '600',
+    borderTopColor: '#eee',
   },
   taskCountText: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
+  },
+  showMoreButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+  },
+  showMoreText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
   },
 });
 

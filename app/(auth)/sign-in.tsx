@@ -215,7 +215,10 @@ const SignInScreen = () => {
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
+              {(() => {
+                if (loading) return 'Please wait...';
+                return isLogin ? 'Login' : 'Sign Up';
+              })()}
             </Text>
           </TouchableOpacity>
 

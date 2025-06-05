@@ -2,9 +2,7 @@
 // Displays current partnership status, allows invite creation, and partnership settings
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -13,7 +11,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Share
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -88,12 +86,19 @@ const PartnershipScreen = () => {
                 [
                   {
                     text: 'OK',
-                    onPress: async () => {
+                    onPress: (): void => {
                       if (activePartnership) {
                         const updatedPartnership = terminatePartnership(activePartnership);
-                        await PartnershipService.updatePartnership(updatedPartnership);
-                        setPartnership(null);
-                        setPartner(null);
+                        PartnershipService.updatePartnership(updatedPartnership)
+                          .then(() => {
+                            setPartnership(null);
+                            setPartner(null);
+                          })
+                          .catch((error) => {
+                            if (global.__DEV__) {
+                              console.error('Failed to terminate partnership:', error);
+                            }
+                          });
                       }
                     },
                   },
@@ -154,7 +159,7 @@ const PartnershipScreen = () => {
     router.push('/profile/partnership/invite');
   }, [router]);
 
-  const endPartnership = useCallback(async (): Promise<void> => {
+  const endPartnership = useCallback((): void => {
     if (!partnership) return;
 
     Alert.alert(
@@ -165,17 +170,21 @@ const PartnershipScreen = () => {
         {
           text: 'End Partnership',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const updatedPartnership = terminatePartnership(partnership);
-              const success = await PartnershipService.updatePartnership(updatedPartnership);
-              if (success) {
-                await loadPartnershipData();
+          onPress: (): void => {
+            const updatedPartnership = terminatePartnership(partnership);
+            PartnershipService.updatePartnership(updatedPartnership)
+              .then((success) => {
+                if (success) {
+                  return loadPartnershipData();
+                }
+                return Promise.resolve();
+              })
+              .then(() => {
                 Alert.alert('Partnership Ended', 'The partnership has been terminated.');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to end partnership');
-            }
+              })
+              .catch(() => {
+                Alert.alert('Error', 'Failed to end partnership');
+              });
           },
         },
       ],
@@ -183,7 +192,11 @@ const PartnershipScreen = () => {
   }, [partnership, loadPartnershipData]);
 
   useEffect(() => {
-    loadPartnershipData();
+    loadPartnershipData().catch((error) => {
+      if (global.__DEV__) {
+        console.error('Failed to load partnership data:', error);
+      }
+    });
   }, [loadPartnershipData]);
 
   if (loading) {
@@ -204,7 +217,16 @@ const PartnershipScreen = () => {
           : 'Connect with someone who needs your support to stay organized!'}
       </Text>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={createInvite}>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => {
+          createInvite().catch((error) => {
+            if (global.__DEV__) {
+              console.error('Failed to create invite:', error);
+            }
+          });
+        }}
+      >
         <Text style={styles.primaryButtonText}>Create Invite Code</Text>
       </TouchableOpacity>
 
@@ -216,7 +238,16 @@ const PartnershipScreen = () => {
         <View style={styles.inviteCodeContainer}>
           <Text style={styles.inviteCodeLabel}>Your Invite Code:</Text>
           <Text style={styles.inviteCode}>{inviteCode}</Text>
-          <TouchableOpacity style={styles.shareButton} onPress={shareInviteCode}>
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={() => {
+              shareInviteCode().catch((error) => {
+                if (global.__DEV__) {
+                  console.error('Failed to share invite code:', error);
+                }
+              });
+            }}
+          >
             <Ionicons name="share-outline" size={20} color="#3498DB" />
             <Text style={styles.shareButtonText}>Share Code</Text>
           </TouchableOpacity>
@@ -231,7 +262,7 @@ const PartnershipScreen = () => {
         <View style={styles.partnerHeader}>
           <Ionicons name="person-circle-outline" size={60} color="#3498DB" />
           <View style={styles.partnerInfo}>
-            <Text style={styles.partnerName}>{partner?.name || 'Partner'}</Text>
+            <Text style={styles.partnerName}>{partner?.name ?? 'Partner'}</Text>
             <Text style={styles.partnerRole}>
               {partnership?.adhdUserId === currentUser?.id
                 ? 'Your Accountability Partner'
@@ -242,15 +273,15 @@ const PartnershipScreen = () => {
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{partnership?.stats?.tasksAssigned || 0}</Text>
+            <Text style={styles.statValue}>{partnership?.stats?.tasksAssigned ?? 0}</Text>
             <Text style={styles.statLabel}>Tasks Assigned</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{partnership?.stats?.tasksCompleted || 0}</Text>
+            <Text style={styles.statValue}>{partnership?.stats?.tasksCompleted ?? 0}</Text>
             <Text style={styles.statLabel}>Completed</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{partnership?.stats?.encouragementsSent || 0}</Text>
+            <Text style={styles.statValue}>{partnership?.stats?.encouragementsSent ?? 0}</Text>
             <Text style={styles.statLabel}>Encouragements</Text>
           </View>
         </View>
@@ -260,9 +291,9 @@ const PartnershipScreen = () => {
         {currentUser?.role !== USER_ROLE.ADHD_USER && (
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() =>
-              { router.push({ pathname: '/profile/partnership/assign', params: { taskId: '' } }); }
-            }
+            onPress={() => {
+              router.push({ pathname: '/profile/partnership/assign', params: { taskId: '' } });
+            }}
           >
             <Ionicons name="add-circle-outline" size={24} color="#3498DB" />
             <Text style={styles.actionButtonText}>Assign Task</Text>
@@ -271,7 +302,9 @@ const PartnershipScreen = () => {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => { router.push('/profile/partnership/dashboard'); }}
+          onPress={() => {
+            router.push('/profile/partnership/dashboard');
+          }}
         >
           <Ionicons name="bar-chart-outline" size={24} color="#3498DB" />
           <Text style={styles.actionButtonText}>View Progress</Text>
@@ -279,9 +312,12 @@ const PartnershipScreen = () => {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() =>
-            { Alert.alert('Coming Soon', 'Partnership settings will be available in the next update.'); }
-          }
+          onPress={() => {
+            Alert.alert(
+              'Coming Soon',
+              'Partnership settings will be available in the next update.',
+            );
+          }}
         >
           <Ionicons name="settings-outline" size={24} color="#3498DB" />
           <Text style={styles.actionButtonText}>Settings</Text>

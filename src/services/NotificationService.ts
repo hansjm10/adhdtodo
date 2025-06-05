@@ -61,11 +61,11 @@ export class NotificationService implements INotificationService {
       type: dbNotif.type as NotificationTypes,
       title: dbNotif.title,
       message: dbNotif.message,
-      data: dbNotif.data || {},
-      priority: (dbNotif.priority as NotificationPriority) || 'medium',
-      read: dbNotif.read || false,
-      createdAt: new Date(dbNotif.created_at || Date.now()),
-      timestamp: new Date(dbNotif.created_at || Date.now()),
+      data: dbNotif.data ?? {},
+      priority: (dbNotif.priority as NotificationPriority) ?? 'medium',
+      read: dbNotif.read ?? false,
+      createdAt: new Date(dbNotif.created_at ?? Date.now()),
+      timestamp: new Date(dbNotif.created_at ?? Date.now()),
     };
   }
 
@@ -91,8 +91,8 @@ export class NotificationService implements INotificationService {
   }
 
   private generateMessage(type: NotificationTypes, data: Record<string, unknown>): string {
-    const fromUserName = data.fromUserName || 'Your partner';
-    const taskTitle = data.taskTitle || 'a task';
+    const fromUserName = data.fromUserName ?? 'Your partner';
+    const taskTitle = data.taskTitle ?? 'a task';
 
     switch (type) {
       case NOTIFICATION_TYPES.TASK_ASSIGNED:
@@ -104,9 +104,9 @@ export class NotificationService implements INotificationService {
       case NOTIFICATION_TYPES.TASK_OVERDUE:
         return `"${taskTitle}" is overdue`;
       case NOTIFICATION_TYPES.ENCOURAGEMENT:
-        return (data.message as string) || `${fromUserName} sent you encouragement`;
+        return (data.message as string) ?? `${fromUserName} sent you encouragement`;
       case NOTIFICATION_TYPES.CHECK_IN:
-        return (data.message as string) || `${fromUserName} is checking in on you`;
+        return (data.message as string) ?? `${fromUserName} is checking in on you`;
       case NOTIFICATION_TYPES.DEADLINE_CHANGE_REQUEST:
         return `${fromUserName} requested a deadline change for "${taskTitle}"`;
       default:
@@ -296,7 +296,7 @@ export class NotificationService implements INotificationService {
         return 0;
       }
 
-      return data?.length || 0;
+      return data?.length ?? 0;
     } catch (error) {
       SecureLogger.error('Failed to get unread count', {
         code: 'NOTIF_006',
@@ -417,7 +417,7 @@ export class NotificationService implements INotificationService {
     return () => {
       const sub = this.subscriptions.get(userId);
       if (sub) {
-        sub.unsubscribe();
+        void sub.unsubscribe();
         this.subscriptions.delete(userId);
       }
     };

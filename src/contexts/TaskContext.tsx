@@ -1,8 +1,7 @@
 // ABOUTME: TaskContext provides centralized task state management with real-time updates
 // Integrates with Supabase-based TaskStorageService for live synchronization
 
-import type {
-  ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import React, {
   createContext,
   useState,
@@ -10,10 +9,10 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useRef
+  useRef,
 } from 'react';
 import TaskStorageService from '../services/TaskStorageService';
-import type { Task} from '../types/task.types';
+import type { Task } from '../types/task.types';
 import { TaskStatus, TaskPriority } from '../types/task.types';
 import { supabase } from '../services/SupabaseService';
 
@@ -58,11 +57,11 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       setCurrentUser(user);
     };
 
-    checkUser();
+    void checkUser();
 
     // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(session?.user || null);
+      setCurrentUser(session?.user ?? null);
     });
 
     return () => {
@@ -95,10 +94,10 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) return undefined;
 
     // Load initial tasks
-    loadTasks();
+    void loadTasks();
 
     // Subscribe to real-time updates
     const unsubscribe = TaskStorageService.subscribeToTaskUpdates(
@@ -187,31 +186,31 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
         const newTask: Task = {
           id: `task-${Date.now()}`,
-          title: taskData.title || '',
-          description: taskData.description || '',
-          category: taskData.category || null,
-          status: taskData.status || TaskStatus.PENDING,
-          priority: taskData.priority || TaskPriority.MEDIUM,
-          timeEstimate: taskData.timeEstimate || null,
-          timeSpent: taskData.timeSpent || 0,
-          completed: taskData.completed || false,
-          completedAt: taskData.completedAt || null,
-          createdAt: taskData.createdAt || new Date(),
-          updatedAt: taskData.updatedAt || new Date(),
-          xpEarned: taskData.xpEarned || 0,
-          streakContribution: taskData.streakContribution || false,
-          assignedBy: taskData.assignedBy || null,
-          assignedTo: taskData.assignedTo || null,
-          dueDate: taskData.dueDate || null,
-          preferredStartTime: taskData.preferredStartTime || null,
-          startedAt: taskData.startedAt || null,
-          partnerNotified: taskData.partnerNotified || {
+          title: taskData.title ?? '',
+          description: taskData.description ?? '',
+          category: taskData.category ?? null,
+          status: taskData.status ?? TaskStatus.PENDING,
+          priority: taskData.priority ?? TaskPriority.MEDIUM,
+          timeEstimate: taskData.timeEstimate ?? null,
+          timeSpent: taskData.timeSpent ?? 0,
+          completed: taskData.completed ?? false,
+          completedAt: taskData.completedAt ?? null,
+          createdAt: taskData.createdAt ?? new Date(),
+          updatedAt: taskData.updatedAt ?? new Date(),
+          xpEarned: taskData.xpEarned ?? 0,
+          streakContribution: taskData.streakContribution ?? false,
+          assignedBy: taskData.assignedBy ?? null,
+          assignedTo: taskData.assignedTo ?? null,
+          dueDate: taskData.dueDate ?? null,
+          preferredStartTime: taskData.preferredStartTime ?? null,
+          startedAt: taskData.startedAt ?? null,
+          partnerNotified: taskData.partnerNotified ?? {
             onStart: false,
             onComplete: false,
             onOverdue: false,
           },
-          encouragementReceived: taskData.encouragementReceived || [],
-          userId: taskData.userId || currentUser?.id || null,
+          encouragementReceived: taskData.encouragementReceived ?? [],
+          userId: taskData.userId ?? currentUser?.id ?? null,
         };
 
         await TaskStorageService.saveTask(newTask);

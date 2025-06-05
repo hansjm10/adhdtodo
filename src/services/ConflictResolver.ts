@@ -1,7 +1,7 @@
 // ABOUTME: Conflict resolution system for handling data conflicts during sync
 // Provides strategies for resolving conflicts between local and remote data
 
-import type { Task} from '../types/task.types';
+import type { Task } from '../types/task.types';
 import { TaskStatus } from '../types/task.types';
 import type { User, Partnership, Notification } from '../types';
 
@@ -50,45 +50,45 @@ class ConflictResolver {
   /**
    * Resolve conflict between local and remote data
    */
-  async resolveConflict<T>(
+  resolveConflict<T>(
     conflict: ConflictInfo<T>,
     customResolution?: ConflictResolution<T>,
   ): Promise<ResolvedConflict<T>> {
     const resolution =
-      customResolution ||
+      customResolution ??
       (this.defaultResolutions.get(conflict.entity) as ConflictResolution<T> | undefined);
 
     if (!resolution) {
       // Default to server-wins strategy if no resolution defined
-      return {
+      return Promise.resolve({
         resolvedData: conflict.remoteData,
         strategy: 'server-wins',
         fieldResolutions: this.createFieldResolutions(conflict.conflictFields, 'remote'),
-      };
+      });
     }
 
     switch (resolution.strategy) {
       case 'client-wins':
-        return {
+        return Promise.resolve({
           resolvedData: conflict.localData,
           strategy: 'client-wins',
           fieldResolutions: this.createFieldResolutions(conflict.conflictFields, 'local'),
-        };
+        });
 
       case 'server-wins':
-        return {
+        return Promise.resolve({
           resolvedData: conflict.remoteData,
           strategy: 'server-wins',
           fieldResolutions: this.createFieldResolutions(conflict.conflictFields, 'remote'),
-        };
+        });
 
       case 'merge':
-        return this.mergeData(conflict, resolution);
+        return Promise.resolve(this.mergeData(conflict, resolution));
 
       case 'manual':
         if (resolution.resolver) {
           const resolvedData = resolution.resolver(conflict.localData, conflict.remoteData);
-          return {
+          return Promise.resolve({
             resolvedData,
             strategy: 'manual',
             fieldResolutions: this.analyzeFieldResolutions(
@@ -97,10 +97,9 @@ class ConflictResolver {
               resolvedData,
               conflict.conflictFields,
             ),
-          };
-        } 
-          throw new Error('Manual resolution strategy requires a resolver function');
-        
+          });
+        }
+        throw new Error('Manual resolution strategy requires a resolver function');
 
       default:
         throw new Error(`Unknown resolution strategy: ${resolution.strategy}`);
@@ -218,7 +217,7 @@ class ConflictResolver {
 
     // Handle arrays (merge unique values)
     if (Array.isArray(localValue) && Array.isArray(remoteValue)) {
-      const merged = [...new Set([...localValue, ...remoteValue])];
+      const merged = [...new Set([...(localValue as unknown[]), ...(remoteValue as unknown[])])];
       return { value: merged, source: 'merged' };
     }
 
@@ -352,12 +351,12 @@ class ConflictResolver {
         }),
 
         // Preferences: prefer local (user settings)
-        notificationPreferences: (local, remote) => local || remote,
-        theme: (local, remote) => local || remote,
+        notificationPreferences: (local, remote) => local ?? remote,
+        theme: (local, remote) => local ?? remote,
 
         // Name/email: prefer local
-        name: (local, remote) => local || remote,
-        email: (local, remote) => local || remote,
+        name: (local, remote) => local ?? remote,
+        email: (local, remote) => local ?? remote,
       },
     });
   }

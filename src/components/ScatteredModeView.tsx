@@ -103,7 +103,7 @@ export const ScatteredModeView: React.FC<ScatteredModeViewProps> = ({
 
       <View style={styles.cardContainer}>
         <View style={styles.taskCard}>
-          <Text style={styles.taskTime}>{currentTask.timeEstimate || 0} minutes</Text>
+          <Text style={styles.taskTime}>{currentTask.timeEstimate ?? 0} minutes</Text>
           <Text style={styles.taskTitle}>{currentTask.title}</Text>
           {currentTask.description && (
             <Text style={styles.taskDescription}>{currentTask.description}</Text>

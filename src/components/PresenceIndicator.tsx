@@ -86,11 +86,21 @@ const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
       />
       {size !== 'small' && (
         <View style={styles.textContainer}>
-          <Text style={[styles.statusText, { fontSize: size === 'large' ? 14 : 12 }]}>
+          <Text
+            style={[
+              styles.statusText,
+              size === 'large' ? styles.statusTextLarge : styles.statusTextMedium,
+            ]}
+          >
             {getStatusText(presence.status)}
           </Text>
           {activity && presence.status !== 'offline' && (
-            <Text style={[styles.activityText, { fontSize: size === 'large' ? 12 : 10 }]}>
+            <Text
+              style={[
+                styles.activityText,
+                size === 'large' ? styles.activityTextLarge : styles.activityTextMedium,
+              ]}
+            >
               {activity}
             </Text>
           )}
@@ -190,7 +200,7 @@ export const TaskPresenceIndicator: React.FC<TaskPresenceIndicatorProps> = ({
             key={presence.userId}
             userId={presence.userId}
             size={16}
-            style={[styles.editorBadge, { marginLeft: index > 0 ? -6 : 0 }]}
+            style={[styles.editorBadge, index > 0 && styles.editorBadgeOverlap]}
           />
         ))}
         {taskEditors.length > 3 && (
@@ -243,7 +253,6 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               width: size,
               height: size,
               borderRadius: size / 2,
-              marginLeft: index > 0 ? -size * 0.3 : 0,
               zIndex: displayCollaborators.length - index,
             },
           ]}
@@ -305,6 +314,18 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 1,
   },
+  statusTextLarge: {
+    fontSize: 14,
+  },
+  statusTextMedium: {
+    fontSize: 12,
+  },
+  activityTextLarge: {
+    fontSize: 12,
+  },
+  activityTextMedium: {
+    fontSize: 10,
+  },
   badge: {
     borderWidth: 2,
     borderColor: '#fff',
@@ -343,6 +364,9 @@ const styles = StyleSheet.create({
   editorBadge: {
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  editorBadgeOverlap: {
+    marginLeft: -6,
   },
   overflowBadge: {
     width: 16,

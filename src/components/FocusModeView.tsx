@@ -2,16 +2,8 @@
 // Displays mode options and task selection without data dependencies
 
 import React from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView
-} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { FlashList } from '@shopify/flash-list';
@@ -72,7 +64,9 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
       <TouchableOpacity
         testID={`task-${item.id}`}
         style={[styles.taskCard, isSelected && styles.taskCardSelected]}
-        onPress={() => { onTaskSelect(item); }}
+        onPress={() => {
+          onTaskSelect(item);
+        }}
       >
         <Text style={styles.taskTitle} numberOfLines={1}>
           {item.title}
@@ -82,7 +76,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
     );
   };
 
-  const EmptyTaskList = () => (
+  const renderEmptyTaskList = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyText}>No tasks available</Text>
     </View>
@@ -100,7 +94,9 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
           <TouchableOpacity
             testID="hyperfocus-mode"
             style={[styles.modeCard, selectedMode === 'hyperfocus' && styles.modeCardSelected]}
-            onPress={() => { onModeSelect('hyperfocus'); }}
+            onPress={() => {
+              onModeSelect('hyperfocus');
+            }}
           >
             <Text style={styles.modeIcon}>🎯</Text>
             <Text style={styles.modeTitle}>Hyperfocus Mode</Text>
@@ -117,7 +113,9 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
           <TouchableOpacity
             testID="scattered-mode"
             style={[styles.modeCard, selectedMode === 'scattered' && styles.modeCardSelected]}
-            onPress={() => { onModeSelect('scattered'); }}
+            onPress={() => {
+              onModeSelect('scattered');
+            }}
           >
             <Text style={styles.modeIcon}>⚡</Text>
             <Text style={styles.modeTitle}>Scattered Mode</Text>
@@ -143,7 +141,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
                 data={selectedMode === 'scattered' ? quickTasks : tasks}
                 renderItem={renderTask}
                 keyExtractor={(item) => item.id}
-                ListEmptyComponent={EmptyTaskList}
+                ListEmptyComponent={renderEmptyTaskList}
                 scrollEnabled={false}
                 estimatedItemSize={60}
               />

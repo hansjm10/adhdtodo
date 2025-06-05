@@ -21,7 +21,9 @@ interface NetInfoState {
 const NetInfo = {
   addEventListener: (callback: (state: NetInfoState) => void) => {
     // Mock implementation - always return online
-    setTimeout(() => { callback({ isConnected: true, type: 'wifi', isInternetReachable: true }); }, 100);
+    setTimeout(() => {
+      callback({ isConnected: true, type: 'wifi', isInternetReachable: true });
+    }, 100);
     return () => {}; // unsubscribe function
   },
 };
@@ -134,7 +136,7 @@ class ConnectionMonitor {
    * Check if currently connected
    */
   isConnected(): boolean {
-    return this.currentState?.isConnected || false;
+    return this.currentState?.isConnected ?? false;
   }
 
   /**
@@ -198,7 +200,7 @@ class ConnectionMonitor {
       throw new Error('Circuit breaker is open - connection unavailable');
     }
 
-    let lastError: Error;
+    let lastError: Error = new Error('Operation failed');
     let delay = initialDelay;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -215,12 +217,14 @@ class ConnectionMonitor {
         }
 
         // Wait before retry
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, delay);
+        });
         delay *= backoffMultiplier;
       }
     }
 
-    throw lastError!;
+    throw lastError;
   }
 
   /**
@@ -230,7 +234,7 @@ class ConnectionMonitor {
     const previousState = this.currentState;
 
     this.currentState = {
-      isConnected: state.isConnected || false,
+      isConnected: state.isConnected ?? false,
       connectionType: state.type,
       isInternetReachable: state.isInternetReachable,
       details: {
@@ -278,18 +282,18 @@ class ConnectionMonitor {
       return;
     }
 
-    this.healthCheckInterval = setInterval(async () => {
+    this.healthCheckInterval = setInterval(() => {
       if (this.isConnected()) {
-        const result = await this.testConnection();
-
-        if (result.success && result.latency && result.latency > this.SLOW_CONNECTION_THRESHOLD) {
-          this.emitEvent({
-            type: 'slow',
-            timestamp: new Date(),
-            connectionState: this.currentState!,
-            metadata: { latency: result.latency },
-          });
-        }
+        void this.testConnection().then((result) => {
+          if (result.success && result.latency && result.latency > this.SLOW_CONNECTION_THRESHOLD) {
+            this.emitEvent({
+              type: 'slow',
+              timestamp: new Date(),
+              connectionState: this.currentState!,
+              metadata: { latency: result.latency },
+            });
+          }
+        });
       }
     }, this.HEALTH_CHECK_INTERVAL);
   }

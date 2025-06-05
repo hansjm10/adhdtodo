@@ -27,7 +27,11 @@ const SettingsScreen = () => {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    loadSettings();
+    loadSettings().catch((error) => {
+      if (global.__DEV__) {
+        console.error('Failed to load settings:', error);
+      }
+    });
   }, []);
 
   const loadSettings = async () => {
@@ -48,7 +52,7 @@ const SettingsScreen = () => {
   };
 
   const updatePomodoroDuration = (field: keyof AppSettings['pomodoro'], value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = parseInt(value, 10) || 0;
 
     // Validate based on field
     let isValid = true;
@@ -89,12 +93,25 @@ const SettingsScreen = () => {
   const handleBack = () => {
     if (hasChanges) {
       Alert.alert('Unsaved Changes', 'You have unsaved changes. Do you want to save them?', [
-        { text: 'Discard', style: 'destructive', onPress: () => { router.back(); } },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            router.back();
+          },
+        },
         {
           text: 'Save',
-          onPress: async () => {
-            await handleSave();
-            router.back();
+          onPress: (): void => {
+            handleSave()
+              .then(() => {
+                router.back();
+              })
+              .catch((error) => {
+                if (global.__DEV__) {
+                  console.error('Failed to save settings:', error);
+                }
+              });
           },
         },
       ]);
@@ -125,7 +142,13 @@ const SettingsScreen = () => {
           </TouchableOpacity>
           <Text style={styles.title}>Settings</Text>
           <TouchableOpacity
-            onPress={handleSave}
+            onPress={() => {
+              handleSave().catch((error) => {
+                if (global.__DEV__) {
+                  console.error('Failed to save settings:', error);
+                }
+              });
+            }}
             style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
             disabled={!hasChanges}
           >
@@ -145,7 +168,9 @@ const SettingsScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={settings.pomodoro.workDuration.toString()}
-                  onChangeText={(value) => { updatePomodoroDuration('workDuration', value); }}
+                  onChangeText={(value) => {
+                    updatePomodoroDuration('workDuration', value);
+                  }}
                   keyboardType="numeric"
                   maxLength={2}
                 />
@@ -160,7 +185,9 @@ const SettingsScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={settings.pomodoro.breakDuration.toString()}
-                  onChangeText={(value) => { updatePomodoroDuration('breakDuration', value); }}
+                  onChangeText={(value) => {
+                    updatePomodoroDuration('breakDuration', value);
+                  }}
                   keyboardType="numeric"
                   maxLength={2}
                 />
@@ -175,7 +202,9 @@ const SettingsScreen = () => {
                 <TextInput
                   style={styles.input}
                   value={settings.pomodoro.longBreakDuration.toString()}
-                  onChangeText={(value) => { updatePomodoroDuration('longBreakDuration', value); }}
+                  onChangeText={(value) => {
+                    updatePomodoroDuration('longBreakDuration', value);
+                  }}
                   keyboardType="numeric"
                   maxLength={2}
                 />
@@ -191,7 +220,7 @@ const SettingsScreen = () => {
                   style={styles.input}
                   value={settings.pomodoro.longBreakAfter.toString()}
                   onChangeText={(value) => {
-                    const num = parseInt(value) || 0;
+                    const num = parseInt(value, 10) || 0;
                     if ((num >= 1 && num <= 10) || value === '') {
                       setSettings({
                         ...settings,
@@ -219,7 +248,9 @@ const SettingsScreen = () => {
               <Text style={styles.settingLabel}>Sound Effects</Text>
               <Switch
                 value={settings.soundEnabled}
-                onValueChange={() => { toggleSetting('soundEnabled'); }}
+                onValueChange={() => {
+                  toggleSetting('soundEnabled');
+                }}
                 trackColor={{ false: colors.border, true: colors.semantic.success }}
                 thumbColor={settings.soundEnabled ? colors.background : '#f4f3f4'}
               />
@@ -229,7 +260,9 @@ const SettingsScreen = () => {
               <Text style={styles.settingLabel}>Haptic Feedback</Text>
               <Switch
                 value={settings.hapticEnabled}
-                onValueChange={() => { toggleSetting('hapticEnabled'); }}
+                onValueChange={() => {
+                  toggleSetting('hapticEnabled');
+                }}
                 trackColor={{ false: colors.border, true: colors.semantic.success }}
                 thumbColor={settings.hapticEnabled ? colors.background : '#f4f3f4'}
               />
@@ -239,7 +272,9 @@ const SettingsScreen = () => {
               <Text style={styles.settingLabel}>Celebration Animations</Text>
               <Switch
                 value={settings.celebrationAnimations}
-                onValueChange={() => { toggleSetting('celebrationAnimations'); }}
+                onValueChange={() => {
+                  toggleSetting('celebrationAnimations');
+                }}
                 trackColor={{ false: colors.border, true: colors.semantic.success }}
                 thumbColor={settings.celebrationAnimations ? colors.background : '#f4f3f4'}
               />
@@ -252,7 +287,7 @@ const SettingsScreen = () => {
                   style={styles.input}
                   value={settings.taskLimit.toString()}
                   onChangeText={(value) => {
-                    const num = parseInt(value) || 0;
+                    const num = parseInt(value, 10) || 0;
                     if (SettingsService.validateTaskLimit(num) || value === '') {
                       setSettings({
                         ...settings,
@@ -281,11 +316,20 @@ const SettingsScreen = () => {
                   {
                     text: 'Reset',
                     style: 'destructive',
-                    onPress: async () => {
-                      await settingsService.resetToDefaults();
-                      await loadSettings();
-                      setHasChanges(false);
-                      Alert.alert('Success', 'Settings reset to defaults');
+                    onPress: (): void => {
+                      settingsService
+                        .resetToDefaults()
+                        .then(() => loadSettings())
+                        .then(() => {
+                          setHasChanges(false);
+                          Alert.alert('Success', 'Settings reset to defaults');
+                        })
+                        .catch((error) => {
+                          if (global.__DEV__) {
+                            console.error('Failed to reset settings:', error);
+                          }
+                          Alert.alert('Error', 'Failed to reset settings');
+                        });
                     },
                   },
                 ],

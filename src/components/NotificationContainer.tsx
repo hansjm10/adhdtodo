@@ -50,11 +50,12 @@ const NotificationContainer = () => {
       // Filter for new notifications since last check
       const newNotifications = allNotifications.filter((n) => {
         // Handle both timestamp and createdAt properties
-        const notificationTime = n.timestamp
-          ? typeof n.timestamp === 'string'
-            ? new Date(n.timestamp)
-            : n.timestamp
-          : n.createdAt;
+        const notificationTime = (() => {
+          if (n.timestamp) {
+            return typeof n.timestamp === 'string' ? new Date(n.timestamp) : n.timestamp;
+          }
+          return n.createdAt;
+        })();
         return !n.read && notificationTime && notificationTime > lastCheckRef.current;
       }) as NotificationWithData[];
 
@@ -92,7 +93,11 @@ const NotificationContainer = () => {
   }, [currentNotification, router]);
 
   useEffect(() => {
-    void loadCurrentUser();
+    loadCurrentUser().catch((error) => {
+      if (global.__DEV__) {
+        console.error('Failed to load current user:', error);
+      }
+    });
     return () => {
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
@@ -103,11 +108,19 @@ const NotificationContainer = () => {
   useEffect(() => {
     if (currentUser) {
       // Check for new notifications immediately
-      void checkForNewNotifications();
+      checkForNewNotifications().catch((error) => {
+        if (global.__DEV__) {
+          console.error('Failed to check notifications:', error);
+        }
+      });
 
       // Set up polling interval
       checkIntervalRef.current = setInterval(() => {
-        void checkForNewNotifications();
+        checkForNewNotifications().catch((error) => {
+          if (global.__DEV__) {
+            console.error('Failed to check notifications:', error);
+          }
+        });
       }, 5000); // Check every 5 seconds
     }
   }, [currentUser, checkForNewNotifications]);

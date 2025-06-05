@@ -64,11 +64,13 @@ export const createTestNotifications = async (): Promise<void> => {
     // Send notifications with slight delays to demonstrate queuing
     for (let i = 0; i < notifications.length; i++) {
       setTimeout(() => {
-        NotificationService.sendNotification(
+        void NotificationService.sendNotification(
           currentUser.id,
           notifications[i].type,
           notifications[i].data,
-        );
+        ).catch((error) => {
+          console.error('Error sending test notification:', error);
+        });
       }, i * 2000); // 2 second delay between each
     }
 

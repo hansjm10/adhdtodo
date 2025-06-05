@@ -6,7 +6,8 @@ import type {
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
   ViewStyle,
-  TextStyle} from 'react-native';
+  TextStyle,
+} from 'react-native';
 import {
   View,
   Text,
@@ -16,7 +17,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -104,11 +105,13 @@ const PartnerInviteScreen = () => {
         Alert.alert('Success!', 'Partnership established successfully!', [
           {
             text: 'OK',
-            onPress: () => { router.replace('/profile/partnership'); },
+            onPress: () => {
+              router.replace('/profile/partnership');
+            },
           },
         ]);
       } else {
-        Alert.alert('Error', result.error || 'Failed to accept invite');
+        Alert.alert('Error', result.error ?? 'Failed to accept invite');
       }
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -124,7 +127,12 @@ const PartnerInviteScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <TouchableOpacity style={styles.backButton} onPress={() => { router.back(); }}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          router.back();
+        }}
+      >
         <Ionicons name="arrow-back" size={24} color="#2C3E50" />
       </TouchableOpacity>
 
@@ -139,14 +147,18 @@ const PartnerInviteScreen = () => {
         <View style={styles.codeContainer}>
           {inviteCode.map((char, index) => (
             <TextInput
-              key={index}
+              key={`code-input-${index.toString()}`}
               ref={(ref) => {
                 inputRefs.current[index] = ref;
               }}
               style={[styles.codeInput, char && styles.codeInputFilled]}
               value={char}
-              onChangeText={(value) => { handleCodeChange(value, index); }}
-              onKeyPress={(e) => { handleKeyPress(e, index); }}
+              onChangeText={(value) => {
+                handleCodeChange(value, index);
+              }}
+              onKeyPress={(e) => {
+                handleKeyPress(e, index);
+              }}
               maxLength={1}
               autoCapitalize="characters"
               keyboardType="default"
@@ -157,7 +169,13 @@ const PartnerInviteScreen = () => {
 
         <TouchableOpacity
           style={[styles.acceptButton, (!isCodeComplete || loading) && styles.acceptButtonDisabled]}
-          onPress={handleAcceptInvite}
+          onPress={() => {
+            handleAcceptInvite().catch((error) => {
+              if (global.__DEV__) {
+                console.error('Failed to accept invite:', error);
+              }
+            });
+          }}
           disabled={!isCodeComplete || loading}
         >
           {loading ? (

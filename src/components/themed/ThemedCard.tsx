@@ -2,7 +2,7 @@
 // Provides consistent card styling with proper spacing and shadows
 
 import React from 'react';
-import type { ViewStyle} from 'react-native';
+import type { ViewStyle } from 'react-native';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing, borderRadius, shadows } from '../../styles/theme';
 
@@ -55,6 +55,7 @@ export const ThemedCard = ({
   );
 };
 
+/* eslint-disable react-native/no-unused-styles */
 const styles = StyleSheet.create({
   // Base styles
   base: {
@@ -91,3 +92,4 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   } as ViewStyle,
 });
+/* eslint-enable react-native/no-unused-styles */

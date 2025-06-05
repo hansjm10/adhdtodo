@@ -9,7 +9,7 @@ import SecureLogger from './SecureLogger';
 import type { IRateLimiter } from './RateLimiter';
 import RateLimiter from './RateLimiter';
 import ValidationService from './ValidationService';
-import type { User, UserRole, SecureToken} from '../types/user.types';
+import type { User, UserRole, SecureToken } from '../types/user.types';
 import { NotificationPreference } from '../types/user.types';
 import type { IAuthService } from './AuthService';
 import * as SecureStore from 'expo-secure-store';
@@ -69,7 +69,7 @@ export class SupabaseAuthService implements IAuthService {
   private setupAuthListener() {
     if (!supabase?.auth) return;
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         // Handle sign in
         SecureLogger.info('User signed in via Supabase', {
@@ -190,10 +190,10 @@ export class SupabaseAuthService implements IAuthService {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
+      const token = session?.access_token ?? '';
 
       // Transform to match original User type
-      const user = await this.transformSupabaseUser(authData.user, { name, role });
+      const user = this.transformSupabaseUser(authData.user, { name, role });
 
       return {
         success: true,
@@ -264,7 +264,7 @@ export class SupabaseAuthService implements IAuthService {
 
       // Get user profile with role
       const profile = await this.getUserProfile(data.user.id);
-      const user = await this.transformSupabaseUser(data.user, profile);
+      const user = this.transformSupabaseUser(data.user, profile);
 
       return {
         success: true,
@@ -330,7 +330,7 @@ export class SupabaseAuthService implements IAuthService {
 
       // Get user profile
       const profile = await this.getUserProfile(session.user.id);
-      const user = await this.transformSupabaseUser(session.user, profile);
+      const user = this.transformSupabaseUser(session.user, profile);
 
       return {
         isValid: true,
@@ -430,6 +430,7 @@ export class SupabaseAuthService implements IAuthService {
   }
 
   // Reset password (for forgot password flow)
+  // eslint-disable-next-line @typescript-eslint/require-await
   async resetPassword(_email: string, _newPassword: string): Promise<PasswordResetResult> {
     try {
       // In a real implementation, this would send a reset email
@@ -564,7 +565,22 @@ export class SupabaseAuthService implements IAuthService {
   async rotateToken(userId: string): Promise<string> {
     const newToken = await this.createSecureToken(userId);
     await this.storeSecureToken(userId, newToken);
-    await this.invalidateOtherSessions(userId);
+
+    // Fire and forget - we don't need to wait for this
+    // Start the invalidation process but don't wait for it
+    const startInvalidation = async () => {
+      try {
+        await this.invalidateOtherSessions(userId);
+      } catch (err: unknown) {
+        if (global.__DEV__ && err) {
+          console.error('Failed to invalidate other sessions:', String(err));
+        }
+      }
+    };
+
+    // Execute without waiting
+    void startInvalidation();
+
     return newToken.encryptedToken;
   }
 
@@ -640,6 +656,7 @@ export class SupabaseAuthService implements IAuthService {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async invalidateOtherSessions(_userId: string): Promise<void> {
     // In Supabase, this would be handled by the refresh token rotation
     SecureLogger.info('Token rotation initiated', {
@@ -664,7 +681,12 @@ export class SupabaseAuthService implements IAuthService {
   // Helper methods
 
   private async getUserProfile(userId: string): Promise<Partial<User>> {
-    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single<{
+      name?: string;
+      current_streak?: number;
+      longest_streak?: number;
+      xp_total?: number;
+    }>();
 
     if (error || !data) {
       SecureLogger.error('Failed to fetch user profile', {
@@ -674,19 +696,19 @@ export class SupabaseAuthService implements IAuthService {
     }
 
     return {
-      name: data.name,
+      name: data.name ?? 'User',
       role: 'user' as UserRole, // Default role, would be stored in metadata
       stats: {
         tasksAssigned: 0,
         tasksCompleted: 0,
-        currentStreak: data.current_streak || 0,
-        longestStreak: data.longest_streak || 0,
-        totalXP: data.xp_total || 0,
+        currentStreak: data.current_streak ?? 0,
+        longestStreak: data.longest_streak ?? 0,
+        totalXP: data.xp_total ?? 0,
       },
     };
   }
 
-  private async transformSupabaseUser(
+  private transformSupabaseUser(
     authUser: {
       id: string;
       email?: string;
@@ -695,14 +717,14 @@ export class SupabaseAuthService implements IAuthService {
       user_metadata?: { name?: string; role?: string };
     },
     profile?: Partial<User>,
-  ): Promise<User> {
+  ): User {
     return {
       id: authUser.id,
       email: authUser.email!,
-      name: profile?.name || authUser.user_metadata?.name || 'User',
-      role: profile?.role || (authUser.user_metadata?.role as UserRole) || 'user',
+      name: profile?.name ?? authUser.user_metadata?.name ?? 'User',
+      role: profile?.role ?? (authUser.user_metadata?.role as UserRole) ?? 'user',
       createdAt: new Date(authUser.created_at),
-      updatedAt: new Date(authUser.updated_at || authUser.created_at),
+      updatedAt: new Date(authUser.updated_at ?? authUser.created_at),
       lastLoginAt: new Date(),
       lastActiveAt: new Date(),
       sessionToken: null,
@@ -718,7 +740,7 @@ export class SupabaseAuthService implements IAuthService {
         checkIn: true,
       },
       encouragementMessages: [],
-      stats: profile?.stats || {
+      stats: profile?.stats ?? {
         tasksAssigned: 0,
         tasksCompleted: 0,
         currentStreak: 0,
@@ -743,7 +765,7 @@ export class SupabaseAuthService implements IAuthService {
 
       // Check for local user data
       const localUser = await UserStorageService.getCurrentUser();
-      if (localUser && localUser.email) {
+      if (localUser?.email) {
         SecureLogger.info('Attempting data migration for user', {
           code: 'SUPABASE_MIGRATE_001',
         });

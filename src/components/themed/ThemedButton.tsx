@@ -2,16 +2,8 @@
 // Demonstrates proper use of theme values, accessibility, and haptic feedback
 
 import React from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Animated,
-} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 
@@ -60,7 +52,7 @@ export const ThemedButton = ({
 
   const handlePress = () => {
     if (haptic && !disabled && !loading) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     onPress();
   };
@@ -112,6 +104,7 @@ export const ThemedButton = ({
   );
 };
 
+/* eslint-disable react-native/no-unused-styles */
 const styles = StyleSheet.create({
   // Base styles
   base: {
@@ -203,3 +196,4 @@ const styles = StyleSheet.create({
     width: '100%',
   } as ViewStyle,
 });
+/* eslint-enable react-native/no-unused-styles */

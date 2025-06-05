@@ -2,10 +2,7 @@
 // Provides quick encouragement options and custom message input
 
 import React, { useState } from 'react';
-import type {
-  ViewStyle,
-  TextStyle,
-  ModalProps} from 'react-native';
+import type { ViewStyle, TextStyle, ModalProps } from 'react-native';
 import {
   Modal,
   View,
@@ -15,7 +12,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DEFAULT_ENCOURAGEMENT_MESSAGES } from '../constants/UserConstants';
@@ -79,8 +76,9 @@ const EncouragementModal = ({
     setSelectedMessage(null);
   };
 
-  const QuickMessage = ({ message }: { message: string }) => (
+  const renderQuickMessage = (message: string, index: number) => (
     <TouchableOpacity
+      key={`encouragement-${index}`}
       style={[
         styles.quickMessageButton,
         selectedMessage === message && styles.quickMessageButtonSelected,
@@ -130,9 +128,9 @@ const EncouragementModal = ({
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.sectionTitle}>Quick Messages</Text>
             <View style={styles.quickMessagesContainer}>
-              {DEFAULT_ENCOURAGEMENT_MESSAGES.map((message, index) => (
-                <QuickMessage key={index} message={message} />
-              ))}
+              {DEFAULT_ENCOURAGEMENT_MESSAGES.map((message, index) =>
+                renderQuickMessage(message, index),
+              )}
             </View>
 
             <Text style={styles.sectionTitle}>Or write your own</Text>
@@ -159,7 +157,13 @@ const EncouragementModal = ({
                 styles.sendButton,
                 ((!customMessage && !selectedMessage) || sending) && styles.sendButtonDisabled,
               ]}
-              onPress={handleSendEncouragement}
+              onPress={() => {
+                handleSendEncouragement().catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to send encouragement:', error);
+                  }
+                });
+              }}
               disabled={(!customMessage && !selectedMessage) || sending}
             >
               <Ionicons

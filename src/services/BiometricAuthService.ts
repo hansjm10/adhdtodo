@@ -56,7 +56,7 @@ export class BiometricAuthService {
   static async authenticate(reason?: string): Promise<AuthResult> {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: reason || 'Authenticate to access your ADHD Todo data',
+        promptMessage: reason ?? 'Authenticate to access your ADHD Todo data',
         cancelLabel: 'Cancel',
         fallbackLabel: 'Use PIN',
         disableDeviceFallback: false,
@@ -101,14 +101,14 @@ export class BiometricAuthService {
    */
   static async getSecuritySettings(): Promise<SecuritySettings> {
     const settings = await SecureStorageService.getSecure<SecuritySettings>('SECURITY_SETTINGS');
-    return settings || DEFAULT_SECURITY_SETTINGS;
+    return settings ?? DEFAULT_SECURITY_SETTINGS;
   }
 
   /**
    * Record a failed authentication attempt
    */
   static async recordFailedAttempt(): Promise<number> {
-    const attempts = (await SecureStorageService.getSecure<number>('FAILED_AUTH_ATTEMPTS')) || 0;
+    const attempts = (await SecureStorageService.getSecure<number>('FAILED_AUTH_ATTEMPTS')) ?? 0;
     const newCount = attempts + 1;
     await SecureStorageService.saveSecure('FAILED_AUTH_ATTEMPTS', newCount);
     return newCount;
@@ -125,7 +125,7 @@ export class BiometricAuthService {
    * Check if authentication is locked due to too many failed attempts
    */
   static async checkIfLocked(): Promise<boolean> {
-    const attempts = (await SecureStorageService.getSecure<number>('FAILED_AUTH_ATTEMPTS')) || 0;
+    const attempts = (await SecureStorageService.getSecure<number>('FAILED_AUTH_ATTEMPTS')) ?? 0;
     const settings = await this.getSecuritySettings();
     return attempts >= settings.maxFailedAttempts;
   }

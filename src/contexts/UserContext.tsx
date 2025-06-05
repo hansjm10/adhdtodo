@@ -1,8 +1,7 @@
 // ABOUTME: UserContext provides centralized user, partner, and partnership state management
 // Integrates with real-time user updates from Supabase for live synchronization
 
-import type {
-  ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import React, {
   createContext,
   useState,
@@ -10,7 +9,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useRef
+  useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
@@ -37,7 +36,7 @@ interface UserProviderProps {
 }
 
 export const UserProvider = ({ children }: UserProviderProps) => {
-  const [user, setUserState] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [partner, setPartner] = useState<User | null>(null);
   const [partnership, setPartnership] = useState<Partnership | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -55,7 +54,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       const sessionResult = await AuthService.verifySession();
 
       if (sessionResult.isValid && sessionResult.user) {
-        setUserState(sessionResult.user as User);
+        setUser(sessionResult.user as User);
 
         // If user has a partner, load partner and partnership data
         if (sessionResult.user.partnerId) {
@@ -65,15 +64,15 @@ export const UserProvider = ({ children }: UserProviderProps) => {
           ]);
 
           if (partnershipData) {
-            setPartnership(JSON.parse(partnershipData));
+            setPartnership(JSON.parse(partnershipData) as Partnership);
           }
           if (partnerData) {
-            setPartner(JSON.parse(partnerData));
+            setPartner(JSON.parse(partnerData) as User);
           }
         }
       } else {
         // Session is invalid or expired
-        setUserState(null);
+        setUser(null);
         setPartner(null);
         setPartnership(null);
       }
@@ -87,7 +86,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
   // Load user data on mount and set up real-time subscriptions
   useEffect(() => {
-    loadUserData();
+    void loadUserData();
   }, [loadUserData]);
 
   // Set up real-time user subscription
@@ -98,7 +97,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      return;
+      return undefined;
     }
 
     // Subscribe to real-time user updates
@@ -106,13 +105,13 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       const unsubscribe = await UserStorageService.subscribeToUserUpdates(
         user.id,
         (updatedUser) => {
-          setUserState(updatedUser);
+          setUser(updatedUser);
         },
       );
       unsubscribeRef.current = unsubscribe;
     };
 
-    setupSubscription();
+    void setupSubscription();
 
     // Cleanup on unmount or user change
     return () => {
@@ -131,7 +130,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         partnerUnsubscribeRef.current();
         partnerUnsubscribeRef.current = null;
       }
-      return;
+      return undefined;
     }
 
     // Subscribe to real-time partner updates
@@ -145,7 +144,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       partnerUnsubscribeRef.current = unsubscribe;
     };
 
-    setupPartnerSubscription();
+    void setupPartnerSubscription();
 
     // Cleanup on unmount or partner change
     return () => {
@@ -157,9 +156,9 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   }, [partner?.id]);
 
   // Update user and persist to storage
-  const setUser = useCallback(async (newUser: User | null): Promise<void> => {
+  const updateUser = useCallback(async (newUser: User | null): Promise<void> => {
     try {
-      setUserState(newUser);
+      setUser(newUser);
       if (newUser) {
         await UserStorageService.setCurrentUser(newUser);
       } else {
@@ -224,7 +223,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       }
 
       await AuthService.logout();
-      setUserState(null);
+      setUser(null);
       setPartner(null);
       setPartnership(null);
     } catch (err) {
@@ -240,7 +239,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       partnership,
       loading,
       error,
-      setUser,
+      setUser: updateUser,
       setPartner: setPartnerData,
       setPartnership: setPartnershipData,
       refreshUserData,
@@ -252,7 +251,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       partnership,
       loading,
       error,
-      setUser,
+      updateUser,
       setPartnerData,
       setPartnershipData,
       refreshUserData,

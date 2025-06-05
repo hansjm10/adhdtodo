@@ -1,24 +1,12 @@
 // ABOUTME: Authentication context providing app-wide authentication state and methods
 // including biometric auth, PIN fallback, auto-lock, and sensitive data protection
 
-import type {
-  ReactNode} from 'react';
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  useCallback
-} from 'react';
+import type { ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import type { AppStateStatus } from 'react-native';
 import { Alert, AppState } from 'react-native';
-import type {
-  AuthResult,
-  SecuritySettings} from '../services/BiometricAuthService';
-import {
-  BiometricAuthService
-} from '../services/BiometricAuthService';
+import type { AuthResult, SecuritySettings } from '../services/BiometricAuthService';
+import { BiometricAuthService } from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 import SecureLogger from '../services/SecureLogger';
 
@@ -51,7 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check authentication requirement on mount
   useEffect(() => {
-    checkAuthRequirement();
+    void checkAuthRequirement();
   }, []);
 
   // Handle app state changes for auto-lock
@@ -86,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!result.success) {
           SecureLogger.warn('Initial authentication failed', {
             code: 'AUTH_BIOMETRIC_001',
-            context: result.error || 'Unknown reason',
+            context: result.error ?? 'Unknown reason',
           });
 
           // Offer alternative authentication methods
@@ -96,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             [
               {
                 text: 'Use PIN',
-                onPress: async () => {
+                onPress: () => {
                   // Navigate to PIN authentication
                   // This would be implemented based on your navigation setup
                   setIsAuthenticated(false);
@@ -113,7 +101,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 },
                 style: 'cancel',
               },
-              { text: 'Try Again', onPress: checkAuthRequirement },
+              {
+                text: 'Try Again',
+                onPress: () => {
+                  void checkAuthRequirement();
+                },
+              },
             ],
           );
         }
@@ -241,7 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         SecureLogger.warn('Unlock authentication failed', {
           code: 'AUTH_UNLOCK_001',
-          context: result.error || 'Unknown reason',
+          context: result.error ?? 'Unknown reason',
         });
       }
     } catch (error) {
@@ -264,18 +257,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthSettings(settings);
   }, []);
 
-  const value: AuthContextType = {
-    isAuthenticated,
-    isLocked,
-    authSettings,
-    authenticateWithBiometric,
-    authenticateWithPIN,
-    protectSensitiveAction,
-    lock,
-    unlock,
-    recordActivity,
-    updateSecuritySettings,
-  };
+  const value: AuthContextType = React.useMemo(
+    () => ({
+      isAuthenticated,
+      isLocked,
+      authSettings,
+      authenticateWithBiometric,
+      authenticateWithPIN,
+      protectSensitiveAction,
+      lock,
+      unlock,
+      recordActivity,
+      updateSecuritySettings,
+    }),
+    [
+      isAuthenticated,
+      isLocked,
+      authSettings,
+      authenticateWithBiometric,
+      authenticateWithPIN,
+      protectSensitiveAction,
+      lock,
+      unlock,
+      recordActivity,
+      updateSecuritySettings,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

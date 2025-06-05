@@ -1,8 +1,7 @@
 // ABOUTME: NotificationContext provides centralized notification state management with real-time updates
 // Integrates with Supabase-based NotificationService for live synchronization
 
-import type {
-  ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import React, {
   createContext,
   useState,
@@ -10,7 +9,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useRef
+  useRef,
 } from 'react';
 import NotificationService from '../services/NotificationService';
 import type { Notification } from '../types/notification.types';
@@ -59,11 +58,11 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
       setCurrentUser(user);
     };
 
-    checkUser();
+    void checkUser();
 
     // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(session?.user || null);
+      setCurrentUser(session?.user ?? null);
     });
 
     return () => {
@@ -102,10 +101,10 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) return undefined;
 
     // Load initial notifications
-    loadNotifications();
+    void loadNotifications();
 
     // Subscribe to real-time updates
     const unsubscribe = NotificationService.subscribeToNotifications(
@@ -151,8 +150,8 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
         // Send notification through the service
         await NotificationService.sendNotification(
           currentUser.id,
-          (notificationData.type as NotificationTypes) || NotificationTypes.TASK_ASSIGNED,
-          notificationData.data || {},
+          (notificationData.type as NotificationTypes) ?? NotificationTypes.TASK_ASSIGNED,
+          notificationData.data ?? {},
         );
 
         // Real-time subscription will handle adding to state
@@ -204,18 +203,20 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
   }, [currentUser?.id]);
 
   // Delete a notification
-  const deleteNotification = useCallback(async (notificationId: string): Promise<void> => {
-    try {
-      setError(null);
+  const deleteNotification = useCallback((notificationId: string): Promise<void> => {
+    return Promise.resolve().then(() => {
+      try {
+        setError(null);
 
-      // For now, we'll just remove it from local state
-      // In the future, we might want to add a delete method to NotificationService
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-    } catch (err) {
-      setError((err as Error).message);
-      console.error('Error deleting notification:', err);
-      throw err;
-    }
+        // For now, we'll just remove it from local state
+        // In the future, we might want to add a delete method to NotificationService
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      } catch (err) {
+        setError((err as Error).message);
+        console.error('Error deleting notification:', err);
+        throw err;
+      }
+    });
   }, []);
 
   // Clear all notifications

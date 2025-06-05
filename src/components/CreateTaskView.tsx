@@ -2,9 +2,7 @@
 // Displays form inputs without business logic or data dependencies
 
 import React from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -13,7 +11,7 @@ import {
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
 import { TASK_CATEGORIES, TIME_PRESETS } from '../constants/TaskConstants';
 import type { TaskCategory, TimePreset } from '../types/task.types';
@@ -51,9 +49,6 @@ interface Styles {
   timeButtonSelected: ViewStyle;
   timeText: TextStyle;
   timeTextSelected: TextStyle;
-  customTimeContainer: ViewStyle;
-  customTimeInput: TextStyle;
-  customTimeLabel: TextStyle;
   actions: ViewStyle;
   actionButton: ViewStyle;
   cancelButton: ViewStyle;
@@ -125,7 +120,9 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
                     selectedCategory === category.id && styles.categoryButtonSelected,
                     { borderColor: category.color },
                   ]}
-                  onPress={() => { onCategorySelect(category.id); }}
+                  onPress={() => {
+                    onCategorySelect(category.id);
+                  }}
                   accessible
                   accessibilityLabel={`${category.label} category`}
                   accessibilityHint={`Select ${category.label} as the task category`}
@@ -151,13 +148,15 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
             <View style={styles.timeGrid}>
               {TIME_PRESETS.map((preset: TimePreset) => (
                 <TouchableOpacity
-                  key={preset.minutes || 'custom'}
-                  testID={`time-preset-${preset.minutes || 'custom'}`}
+                  key={preset.minutes ?? 'custom'}
+                  testID={`time-preset-${preset.minutes ?? 'custom'}`}
                   style={[
                     styles.timeButton,
                     selectedTimePreset === preset.minutes && styles.timeButtonSelected,
                   ]}
-                  onPress={() => { onTimePresetSelect(preset.minutes); }}
+                  onPress={() => {
+                    onTimePresetSelect(preset.minutes);
+                  }}
                   accessible
                   accessibilityLabel={`${preset.label} time estimate`}
                   accessibilityHint={`Set time estimate to ${preset.label}`}
@@ -308,25 +307,6 @@ const styles = StyleSheet.create<Styles>({
   timeTextSelected: {
     color: '#4A90E2',
     fontWeight: '600',
-  },
-  customTimeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  customTimeInput: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginRight: 8,
-  },
-  customTimeLabel: {
-    fontSize: 14,
-    color: '#666',
   },
   actions: {
     flexDirection: 'row',
