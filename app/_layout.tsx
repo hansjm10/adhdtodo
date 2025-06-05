@@ -2,7 +2,7 @@
 // Sets up the navigation structure and wraps the app with necessary contexts
 
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AppProvider } from '../src/contexts/AppProvider';
 import { useUser } from '../src/contexts/UserContext';
@@ -11,10 +11,17 @@ import NotificationContainer from '../src/components/NotificationContainer';
 import BiometricAuthScreen from '../src/components/BiometricAuthScreen';
 
 // Loading Screen Component
+const loadingScreenStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+});
+
 const LoadingScreen = () => (
-  <View
-    style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}
-  >
+  <View style={loadingScreenStyles.container}>
     <ActivityIndicator size="large" color="#3498DB" />
   </View>
 );
@@ -49,9 +56,9 @@ function RootLayoutNav() {
   if (user && (!isAuthenticated || isLocked)) {
     return (
       <BiometricAuthScreen
-        onSuccess={async () => {
+        onSuccess={() => {
           if (isLocked) {
-            await unlock();
+            unlock().catch(() => {});
           }
         }}
         reason="Unlock to access your ADHD Todo data"
@@ -60,7 +67,7 @@ function RootLayoutNav() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={rootStyles.container}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
@@ -97,6 +104,12 @@ function RootLayoutNav() {
     </View>
   );
 }
+
+const rootStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
 
 export default function RootLayout() {
   return (

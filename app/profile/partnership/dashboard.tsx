@@ -2,9 +2,7 @@
 // Shows task completion stats, overdue tasks, and progress visualization
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -13,7 +11,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -46,7 +44,23 @@ interface TabButtonProps {
   tab: string;
   label: string;
   count: number;
+  isActive: boolean;
+  onPress: () => void;
 }
+
+const TabButton = ({ tab, label, count, isActive, onPress }: TabButtonProps) => (
+  <TouchableOpacity
+    style={[styles.tabButton, isActive && styles.tabButtonActive]}
+    onPress={onPress}
+  >
+    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
+    {count > 0 && (
+      <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+        <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>{count}</Text>
+      </View>
+    )}
+  </TouchableOpacity>
+);
 
 interface Styles {
   container: ViewStyle;
@@ -68,6 +82,12 @@ interface Styles {
   statItem: ViewStyle;
   statItemValue: TextStyle;
   statItemLabel: TextStyle;
+  statItemActive: ViewStyle;
+  statItemCompleted: ViewStyle;
+  statItemOverdue: ViewStyle;
+  statItemValueActive: TextStyle;
+  statItemValueCompleted: TextStyle;
+  statItemValueOverdue: TextStyle;
   tabContainer: ViewStyle;
   tabButton: ViewStyle;
   tabButtonActive: ViewStyle;
@@ -179,13 +199,13 @@ const PartnerDashboardScreen = () => {
   }, [loadTasks]);
 
   useEffect(() => {
-    loadInitialData();
+    loadInitialData().catch(() => {});
   }, [loadInitialData]);
 
   useFocusEffect(
     React.useCallback(() => {
       if (currentUser) {
-        loadTasks();
+        loadTasks().catch(() => {});
       }
     }, [currentUser, selectedTab, loadTasks]),
   );
@@ -242,30 +262,15 @@ const PartnerDashboardScreen = () => {
   const getStatusIcon = (task: Task): StatusIcon => {
     if (task.completed) {
       return { name: 'checkmark-circle', color: '#27AE60' };
-    } if (task.status === TASK_STATUS.IN_PROGRESS) {
+    }
+    if (task.status === TASK_STATUS.IN_PROGRESS) {
       return { name: 'play-circle', color: '#3498DB' };
-    } if (isOverdue(task)) {
+    }
+    if (isOverdue(task)) {
       return { name: 'alert-circle', color: '#E74C3C' };
-    } 
-      return { name: 'time-outline', color: '#7F8C8D' };
-    
+    }
+    return { name: 'time-outline', color: '#7F8C8D' };
   };
-
-  const TabButton = ({ tab, label, count }: TabButtonProps) => (
-    <TouchableOpacity
-      style={[styles.tabButton, selectedTab === tab && styles.tabButtonActive]}
-      onPress={() => { setSelectedTab(tab); }}
-    >
-      <Text style={[styles.tabLabel, selectedTab === tab && styles.tabLabelActive]}>{label}</Text>
-      {count > 0 && (
-        <View style={[styles.tabBadge, selectedTab === tab && styles.tabBadgeActive]}>
-          <Text style={[styles.tabBadgeText, selectedTab === tab && styles.tabBadgeTextActive]}>
-            {count}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
 
   const renderTaskItem: ListRenderItem<Task> = ({ item: task }) => {
     const statusIcon = getStatusIcon(task);
@@ -308,7 +313,12 @@ const PartnerDashboardScreen = () => {
         </View>
 
         {!task.completed && (
-          <TouchableOpacity style={styles.encourageButton} onPress={() => sendEncouragement(task)}>
+          <TouchableOpacity
+            style={styles.encourageButton}
+            onPress={() => {
+              sendEncouragement(task).catch(() => {});
+            }}
+          >
             <Ionicons name="heart-outline" size={20} color="#E74C3C" />
             <Text style={styles.encourageButtonText}>Encourage</Text>
           </TouchableOpacity>
@@ -338,7 +348,9 @@ const PartnerDashboardScreen = () => {
         <Text style={styles.emptyText}>No active partnership</Text>
         <TouchableOpacity
           style={styles.goToPartnershipButton}
-          onPress={() => { router.push('/profile/partnership'); }}
+          onPress={() => {
+            router.push('/profile/partnership');
+          }}
         >
           <Text style={styles.goToPartnershipText}>Set up Partnership</Text>
         </TouchableOpacity>
@@ -368,29 +380,63 @@ const PartnerDashboardScreen = () => {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={[styles.statItem, { backgroundColor: '#EBF5FB' }]}>
+          <View style={[styles.statItem, styles.statItemActive]}>
             <Ionicons name="time-outline" size={24} color="#3498DB" />
-            <Text style={[styles.statItemValue, { color: '#3498DB' }]}>{stats.active}</Text>
+            <Text style={[styles.statItemValue, styles.statItemValueActive]}>{stats.active}</Text>
             <Text style={styles.statItemLabel}>Active</Text>
           </View>
-          <View style={[styles.statItem, { backgroundColor: '#D5F4E6' }]}>
+          <View style={[styles.statItem, styles.statItemCompleted]}>
             <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
-            <Text style={[styles.statItemValue, { color: '#27AE60' }]}>{stats.completed}</Text>
+            <Text style={[styles.statItemValue, styles.statItemValueCompleted]}>
+              {stats.completed}
+            </Text>
             <Text style={styles.statItemLabel}>Completed</Text>
           </View>
-          <View style={[styles.statItem, { backgroundColor: '#FADBD8' }]}>
+          <View style={[styles.statItem, styles.statItemOverdue]}>
             <Ionicons name="alert-circle" size={24} color="#E74C3C" />
-            <Text style={[styles.statItemValue, { color: '#E74C3C' }]}>{stats.overdue}</Text>
+            <Text style={[styles.statItemValue, styles.statItemValueOverdue]}>{stats.overdue}</Text>
             <Text style={styles.statItemLabel}>Overdue</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.tabContainer}>
-        <TabButton tab="all" label="All Tasks" count={0} />
-        <TabButton tab="active" label="Active" count={stats.active} />
-        <TabButton tab="completed" label="Completed" count={stats.completed} />
-        <TabButton tab="overdue" label="Overdue" count={stats.overdue} />
+        <TabButton
+          tab="all"
+          label="All Tasks"
+          count={0}
+          isActive={selectedTab === 'all'}
+          onPress={() => {
+            setSelectedTab('all');
+          }}
+        />
+        <TabButton
+          tab="active"
+          label="Active"
+          count={stats.active}
+          isActive={selectedTab === 'active'}
+          onPress={() => {
+            setSelectedTab('active');
+          }}
+        />
+        <TabButton
+          tab="completed"
+          label="Completed"
+          count={stats.completed}
+          isActive={selectedTab === 'completed'}
+          onPress={() => {
+            setSelectedTab('completed');
+          }}
+        />
+        <TabButton
+          tab="overdue"
+          label="Overdue"
+          count={stats.overdue}
+          isActive={selectedTab === 'overdue'}
+          onPress={() => {
+            setSelectedTab('overdue');
+          }}
+        />
       </View>
 
       <FlashList
@@ -411,7 +457,9 @@ const PartnerDashboardScreen = () => {
 
       <TouchableOpacity
         style={styles.assignButton}
-        onPress={() => { router.push('/profile/partnership/assign'); }}
+        onPress={() => {
+          router.push('/profile/partnership/assign');
+        }}
       >
         <Ionicons name="add-circle" size={24} color="white" />
         <Text style={styles.assignButtonText}>Assign New Task</Text>
@@ -664,6 +712,24 @@ const styles = StyleSheet.create<Styles>({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  statItemActive: {
+    backgroundColor: '#EBF5FB',
+  },
+  statItemCompleted: {
+    backgroundColor: '#D5F4E6',
+  },
+  statItemOverdue: {
+    backgroundColor: '#FADBD8',
+  },
+  statItemValueActive: {
+    color: '#3498DB',
+  },
+  statItemValueCompleted: {
+    color: '#27AE60',
+  },
+  statItemValueOverdue: {
+    color: '#E74C3C',
   },
 });
 

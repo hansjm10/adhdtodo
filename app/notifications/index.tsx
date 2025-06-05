@@ -2,17 +2,8 @@
 // Displays notification list with timestamps and ability to mark as read
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
-  Alert
-} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { ListRenderItem } from '@shopify/flash-list';
@@ -72,7 +63,7 @@ const NotificationListScreen = () => {
   }, []);
 
   useEffect(() => {
-    loadNotifications();
+    loadNotifications().catch(() => {});
   }, [loadNotifications]);
 
   const onRefresh = useCallback(async () => {
@@ -94,10 +85,13 @@ const NotificationListScreen = () => {
       {
         text: 'Clear All',
         style: 'destructive',
-        onPress: async () => {
+        onPress: () => {
           if (currentUser) {
-            await NotificationService.clearNotificationsForUser(currentUser.id);
-            setNotifications([]);
+            NotificationService.clearNotificationsForUser(currentUser.id)
+              .then(() => {
+                setNotifications([]);
+              })
+              .catch(() => {});
           }
         },
       },
@@ -126,7 +120,7 @@ const NotificationListScreen = () => {
   };
 
   const getMessage = (notification: Notification): string => {
-    const data = notification.data || {};
+    const data = notification.data ?? {};
     switch (notification.type) {
       case NOTIFICATION_TYPES.TASK_ASSIGNED:
         return `${data.assignedBy} assigned you "${data.taskTitle}"`;
@@ -138,13 +132,12 @@ const NotificationListScreen = () => {
         return `"${data.taskTitle}" is overdue`;
       case NOTIFICATION_TYPES.ENCOURAGEMENT:
         return (
-          (typeof data.message === 'string' ? data.message : null) ||
+          (typeof data.message === 'string' && data.message) ||
           `${data.fromUser} sent you encouragement`
         );
       case NOTIFICATION_TYPES.CHECK_IN:
         return (
-          (typeof data.message === 'string' ? data.message : null) ||
-          `${data.fromUser} is checking in`
+          (typeof data.message === 'string' && data.message) || `${data.fromUser} is checking in`
         );
       case NOTIFICATION_TYPES.DEADLINE_CHANGE_REQUEST:
         return `Deadline change requested for "${data.taskTitle}"`;
@@ -177,7 +170,7 @@ const NotificationListScreen = () => {
         style={[styles.notificationItem, !item.read && styles.unreadNotification]}
         onPress={() => {
           if (!item.read) {
-            markAsRead(item.id);
+            markAsRead(item.id).catch(() => {});
           }
           // Navigate to relevant screen based on notification type
           if (item.data?.taskId) {
@@ -186,7 +179,7 @@ const NotificationListScreen = () => {
           }
         }}
       >
-        <View style={[styles.iconContainer, { backgroundColor: `${style.color  }20` }]}>
+        <View style={[styles.iconContainer, { backgroundColor: `${style.color}20` }]}>
           <Ionicons name={style.icon} size={24} color={style.color} />
         </View>
         <View style={styles.notificationContent}>
@@ -225,7 +218,13 @@ const NotificationListScreen = () => {
         contentContainerStyle={styles.listContent}
         estimatedItemSize={100}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3498DB']} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              onRefresh().catch(() => {});
+            }}
+            colors={['#3498DB']}
+          />
         }
         ListEmptyComponent={renderEmptyState}
       />

@@ -6,7 +6,7 @@ import { TaskStatus, TaskPriority } from '../types/task.types';
 import type { ValidationResult } from './UserModel';
 
 export const generateTaskId = (): string => {
-  return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 };
 
 export const createTask = (taskData: Partial<Task> = {}): Task => {
@@ -14,12 +14,12 @@ export const createTask = (taskData: Partial<Task> = {}): Task => {
 
   return {
     id: generateTaskId(),
-    title: taskData.title || '',
-    description: taskData.description || '',
-    category: taskData.category || null,
-    status: taskData.status || TaskStatus.PENDING,
-    priority: taskData.priority || TaskPriority.MEDIUM,
-    timeEstimate: taskData.timeEstimate || null,
+    title: taskData.title ?? '',
+    description: taskData.description ?? '',
+    category: taskData.category ?? null,
+    status: taskData.status ?? TaskStatus.PENDING,
+    priority: taskData.priority ?? TaskPriority.MEDIUM,
+    timeEstimate: taskData.timeEstimate ?? null,
     timeSpent: 0,
     completed: false,
     completedAt: null,
@@ -28,10 +28,10 @@ export const createTask = (taskData: Partial<Task> = {}): Task => {
     xpEarned: 0,
     streakContribution: false,
     // Accountability partner fields
-    assignedBy: taskData.assignedBy || null, // User ID of partner who assigned
-    assignedTo: taskData.assignedTo || null, // User ID of ADHD user
-    dueDate: taskData.dueDate || null,
-    preferredStartTime: taskData.preferredStartTime || null,
+    assignedBy: taskData.assignedBy ?? null, // User ID of partner who assigned
+    assignedTo: taskData.assignedTo ?? null, // User ID of ADHD user
+    dueDate: taskData.dueDate ?? null,
+    preferredStartTime: taskData.preferredStartTime ?? null,
     startedAt: null,
     partnerNotified: {
       onStart: false,
@@ -39,7 +39,7 @@ export const createTask = (taskData: Partial<Task> = {}): Task => {
       onOverdue: false,
     },
     encouragementReceived: [],
-    userId: taskData.userId || null, // User ID who owns the task
+    userId: taskData.userId ?? null, // User ID who owns the task
   };
 };
 

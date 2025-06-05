@@ -2,17 +2,8 @@
 // This is the actual profile screen, not a redirect
 
 import React, { useState } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert
-} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -27,14 +18,32 @@ interface MenuItemProps {
   onPress: () => void;
   color?: string;
   showArrow?: boolean;
+  disabled?: boolean;
 }
+
+const MenuItem = ({
+  icon,
+  label,
+  onPress,
+  color = '#333',
+  showArrow = true,
+  disabled = false,
+}: MenuItemProps) => (
+  <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={disabled}>
+    <View style={styles.menuItemContent}>
+      <Ionicons name={icon} size={24} color={color} style={styles.menuIcon} />
+      <Text style={[styles.menuLabel, { color }]}>{label}</Text>
+    </View>
+    {showArrow && <Ionicons name="chevron-forward" size={20} color="#999" />}
+  </TouchableOpacity>
+);
 
 const ProfileScreen = () => {
   const router = useRouter();
   const { user: currentUser } = useUser();
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleLogout = async (): Promise<void> => {
+  const handleLogout = (): void => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {
         text: 'Cancel',
@@ -45,11 +54,13 @@ const ProfileScreen = () => {
         style: 'destructive',
         onPress: async (): Promise<void> => {
           setLoading(true);
-          const result = await AuthService.logout();
-          if (result.success) {
-            // Navigation will be handled automatically by the root layout
-            // when the user context is cleared
-          } else {
+          try {
+            const result = await AuthService.logout();
+            if (!result.success) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+              setLoading(false);
+            }
+          } catch (error) {
             Alert.alert('Error', 'Failed to logout. Please try again.');
             setLoading(false);
           }
@@ -86,16 +97,6 @@ const ProfileScreen = () => {
     );
   }
 
-  const MenuItem = ({ icon, label, onPress, color = '#333', showArrow = true }: MenuItemProps) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={loading}>
-      <View style={styles.menuItemContent}>
-        <Ionicons name={icon} size={24} color={color} style={styles.menuIcon} />
-        <Text style={[styles.menuLabel, { color }]}>{label}</Text>
-      </View>
-      {showArrow && <Ionicons name="chevron-forward" size={20} color="#999" />}
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -117,27 +118,42 @@ const ProfileScreen = () => {
           <MenuItem
             icon="people-outline"
             label="Partnership"
-            onPress={() => { router.push('/profile/partnership'); }}
+            onPress={() => {
+              router.push('/profile/partnership');
+            }}
+            disabled={loading}
           />
           <MenuItem
             icon="key-outline"
             label="Change Password"
-            onPress={() => { Alert.alert('Coming Soon', 'Password change feature coming soon!'); }}
+            onPress={() => {
+              Alert.alert('Coming Soon', 'Password change feature coming soon!');
+            }}
+            disabled={loading}
           />
           <MenuItem
             icon="mail-outline"
             label="Email Preferences"
-            onPress={() => { Alert.alert('Coming Soon', 'Email preferences coming soon!'); }}
+            onPress={() => {
+              Alert.alert('Coming Soon', 'Email preferences coming soon!');
+            }}
+            disabled={loading}
           />
           <MenuItem
             icon="settings-outline"
             label="App Settings"
-            onPress={() => { router.push('/settings'); }}
+            onPress={() => {
+              router.push('/settings');
+            }}
+            disabled={loading}
           />
           <MenuItem
             icon="notifications-outline"
             label="Notification Settings"
-            onPress={() => { Alert.alert('Coming Soon', 'Notification settings coming soon!'); }}
+            onPress={() => {
+              Alert.alert('Coming Soon', 'Notification settings coming soon!');
+            }}
+            disabled={loading}
           />
         </View>
 
@@ -182,6 +198,7 @@ const ProfileScreen = () => {
             onPress={handleLogout}
             color="#E74C3C"
             showArrow={false}
+            disabled={loading}
           />
         </View>
 

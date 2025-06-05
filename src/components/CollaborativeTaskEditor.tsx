@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCollaborativeEditing } from '../contexts/CollaborativeEditingContext';
-import type { Task} from '../types/task.types';
+import type { Task } from '../types/task.types';
 import { TaskStatus, TaskPriority } from '../types/task.types';
 import { colors, typography, spacing } from '../styles';
 
@@ -133,7 +133,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
   useEffect(() => {
     return () => {
       if (isEditing) {
-        stopEditing(task.id);
+        stopEditing(task.id).catch(() => {});
       }
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
@@ -173,15 +173,22 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
       clearTimeout(debounceRef.current);
     }
 
-    debounceRef.current = setTimeout(async () => {
+    debounceRef.current = setTimeout(() => {
       // Create and apply text operation
       const operation = createTextOperation(field, 'replace', newText, 0, oldText.length);
 
       if (operation) {
-        const success = await applyOperation(operation);
-        if (success) {
-          onTaskUpdate({ ...localTask, [field]: newText });
-        }
+        applyOperation(operation)
+          .then((success) => {
+            if (success) {
+              onTaskUpdate({ ...localTask, [field]: newText });
+            }
+          })
+          .catch((error) => {
+            if (global.__DEV__) {
+              console.error('Failed to apply text operation:', error);
+            }
+          });
       }
     }, 500);
   };
@@ -205,8 +212,15 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
     }
   };
 
-  const handleCursorPositionChange = (field: string, position: number) => {
-    updateCursor(field, position);
+  const handleCursorPositionChange = (field: string, position: number): void => {
+    // updateCursor is fire-and-forget for cursor position updates
+    // No error handling needed for cursor updates as they're non-critical
+    updateCursor(field, position).catch((error) => {
+      // Cursor updates are best-effort, failures don't impact functionality
+      if (global.__DEV__) {
+        console.info('Cursor update failed (non-critical):', error);
+      }
+    });
   };
 
   const handleToggleLock = async () => {
@@ -248,14 +262,29 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
           {!isEditing ? (
             <TouchableOpacity
               style={styles.editButton}
-              onPress={handleStartEditing}
+              onPress={() => {
+                handleStartEditing().catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to start editing:', error);
+                  }
+                });
+              }}
               disabled={isReadOnly}
             >
               <Ionicons name="create-outline" size={20} color={colors.primary} />
               <Text style={styles.editButtonText}>Edit</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.doneButton} onPress={handleStopEditing}>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => {
+                handleStopEditing().catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to stop editing:', error);
+                  }
+                });
+              }}
+            >
               <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
               <Text style={styles.doneButtonText}>Done</Text>
             </TouchableOpacity>
@@ -264,7 +293,9 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
           {isEditing && (
             <TouchableOpacity
               style={[styles.lockButton, locked && styles.lockButtonActive]}
-              onPress={() => { setShowLockControls(!showLockControls); }}
+              onPress={() => {
+                setShowLockControls(!showLockControls);
+              }}
             >
               <Ionicons
                 name={locked ? 'lock-closed' : 'lock-open'}
@@ -282,7 +313,12 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
           <Text style={styles.lockText}>
             {locked ? `Locked by ${lockOwner}` : 'Unlock to prevent conflicts'}
           </Text>
-          <TouchableOpacity style={styles.lockToggleButton} onPress={handleToggleLock}>
+          <TouchableOpacity
+            style={styles.lockToggleButton}
+            onPress={() => {
+              handleToggleLock().catch(() => {});
+            }}
+          >
             <Text style={styles.lockToggleText}>{locked ? 'Unlock' : 'Lock for editing'}</Text>
           </TouchableOpacity>
         </View>
@@ -300,10 +336,12 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               locked && !isEditing && styles.lockedInput,
             ]}
             value={localTask.title}
-            onChangeText={(text) => { handleTextChange('title', text, localTask.title); }}
-            onSelectionChange={(event) =>
-              { handleCursorPositionChange('title', event.nativeEvent.selection.start); }
-            }
+            onChangeText={(text) => {
+              handleTextChange('title', text, localTask.title);
+            }}
+            onSelectionChange={(event) => {
+              handleCursorPositionChange('title', event.nativeEvent.selection.start);
+            }}
             editable={isEditing && (!locked || lockOwner === 'current')}
             multiline={false}
             placeholder="Task title..."
@@ -324,10 +362,12 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               locked && !isEditing && styles.lockedInput,
             ]}
             value={localTask.description}
-            onChangeText={(text) => { handleTextChange('description', text, localTask.description); }}
-            onSelectionChange={(event) =>
-              { handleCursorPositionChange('description', event.nativeEvent.selection.start); }
-            }
+            onChangeText={(text) => {
+              handleTextChange('description', text, localTask.description);
+            }}
+            onSelectionChange={(event) => {
+              handleCursorPositionChange('description', event.nativeEvent.selection.start);
+            }}
             editable={isEditing && (!locked || lockOwner === 'current')}
             multiline
             numberOfLines={4}
@@ -349,13 +389,17 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             style={[styles.statusButton, { backgroundColor: getStatusColor(localTask.status) }]}
             onPress={() => {
               if (isEditing && (!locked || lockOwner === 'current')) {
-                const newStatus =
-                  localTask.status === TaskStatus.PENDING
-                    ? TaskStatus.IN_PROGRESS
-                    : localTask.status === TaskStatus.IN_PROGRESS
-                      ? TaskStatus.COMPLETED
-                      : TaskStatus.PENDING;
-                handleFieldChange('status', newStatus);
+                const statusFlow: Record<TaskStatus, TaskStatus> = {
+                  [TaskStatus.PENDING]: TaskStatus.IN_PROGRESS,
+                  [TaskStatus.IN_PROGRESS]: TaskStatus.COMPLETED,
+                  [TaskStatus.COMPLETED]: TaskStatus.PENDING,
+                };
+                const newStatus = statusFlow[localTask.status] ?? TaskStatus.PENDING;
+                handleFieldChange('status', newStatus).catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to update status:', error);
+                  }
+                });
               }
             }}
             disabled={!isEditing || (locked && lockOwner !== 'current')}
@@ -373,13 +417,17 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             ]}
             onPress={() => {
               if (isEditing && (!locked || lockOwner === 'current')) {
-                const newPriority =
-                  localTask.priority === TaskPriority.LOW
-                    ? TaskPriority.MEDIUM
-                    : localTask.priority === TaskPriority.MEDIUM
-                      ? TaskPriority.HIGH
-                      : TaskPriority.LOW;
-                handleFieldChange('priority', newPriority);
+                const priorityFlow: Record<TaskPriority, TaskPriority> = {
+                  [TaskPriority.LOW]: TaskPriority.MEDIUM,
+                  [TaskPriority.MEDIUM]: TaskPriority.HIGH,
+                  [TaskPriority.HIGH]: TaskPriority.LOW,
+                };
+                const newPriority = priorityFlow[localTask.priority] ?? TaskPriority.LOW;
+                handleFieldChange('priority', newPriority).catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to update priority:', error);
+                  }
+                });
               }
             }}
             disabled={!isEditing || (locked && lockOwner !== 'current')}

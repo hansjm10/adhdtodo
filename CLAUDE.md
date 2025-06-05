@@ -442,6 +442,189 @@ The project uses Husky and lint-staged for automated code quality checks:
 - Prettier formats all staged files
 - Commits are blocked if linting fails
 
+## ESLint Patterns and Best Practices
+
+### Common ESLint Rules and Solutions
+
+#### 1. Arrow Function Patterns
+
+```typescript
+// ❌ BAD: ESLint may complain about void expressions
+onPress={() => setShowPassword(!showPassword)}
+
+// ✅ GOOD: Add braces for void expressions
+onPress={() => {
+  setShowPassword(!showPassword);
+}}
+
+// ❌ BAD: Floating promises
+onPress={() => {
+  handleAuth().catch(() => {});
+}}
+
+// ✅ GOOD: Proper error handling
+onPress={() => {
+  handleAuth().catch((error) => {
+    if (__DEV__) {
+      console.error('Auth failed:', error);
+    }
+  });
+}}
+```
+
+#### 2. Async/Await vs Promises
+
+```typescript
+// ❌ BAD: Converting async/await to promises
+onPress: (): void => {
+  AuthService.logout()
+    .then((result) => {
+      /* ... */
+    })
+    .catch(() => {
+      /* ... */
+    });
+};
+
+// ✅ GOOD: Keep async/await for clarity
+onPress: async (): Promise<void> => {
+  try {
+    const result = await AuthService.logout();
+    // handle result
+  } catch (error) {
+    // handle error
+  }
+};
+```
+
+#### 3. Nested Ternaries and Complex Logic
+
+```typescript
+// ❌ BAD: IIFE for simple logic
+const newStatus = (() => {
+  if (status === 'pending') return 'active';
+  if (status === 'active') return 'done';
+  return 'pending';
+})();
+
+// ✅ GOOD: Use object maps
+const statusFlow: Record<Status, Status> = {
+  pending: 'active',
+  active: 'done',
+  done: 'pending',
+};
+const newStatus = statusFlow[status] ?? 'pending';
+
+// ❌ BAD: Nested ternaries
+{
+  loading ? 'Wait...' : isLogin ? 'Login' : 'Sign Up';
+}
+
+// ✅ GOOD: Add parentheses for clarity
+{
+  loading ? 'Wait...' : isLogin ? 'Login' : 'Sign Up';
+}
+```
+
+#### 4. Global Variables
+
+```typescript
+// ❌ BAD: Direct use of __DEV__
+if (__DEV__) {
+  console.log('Debug info');
+}
+
+// ✅ GOOD: Use global prefix
+if (global.__DEV__) {
+  console.log('Debug info');
+}
+```
+
+#### 5. Console Methods
+
+```typescript
+// ❌ BAD: console.debug is not allowed
+console.debug('Debug message');
+
+// ✅ GOOD: Use allowed methods
+console.info('Info message'); // For general info
+console.warn('Warning'); // For warnings
+console.error('Error:', error); // For errors
+```
+
+#### 6. Unused Variables and Props
+
+```typescript
+// ❌ BAD: Unused variable
+const [currentUser, setCurrentUser] = useState(null);
+
+// ✅ GOOD: Prefix with underscore
+const [_currentUser, setCurrentUser] = useState(null);
+
+// ❌ BAD: Unused prop in interface
+interface Props {
+  value: string; // Not used in component
+  label: string;
+}
+
+// ✅ GOOD: Remove unused props
+interface Props {
+  label: string;
+}
+```
+
+#### 7. Type Safety with Object Access
+
+```typescript
+// ❌ BAD: TypeScript can't infer types
+const map = {
+  low: 'medium',
+  medium: 'high',
+};
+const next = map[current]; // Type error possible
+
+// ✅ GOOD: Use Record type
+const map: Record<Priority, Priority> = {
+  low: 'medium',
+  medium: 'high',
+  high: 'low',
+};
+const next = map[current] ?? 'low';
+```
+
+#### 8. React Display Names
+
+```typescript
+// ❌ BAD: Anonymous component
+const Header = () => (
+  <NotificationBadge />
+);
+
+// ✅ GOOD: Add display name comment
+// eslint-disable-next-line react/display-name
+const Header = () => (
+  <NotificationBadge />
+);
+```
+
+### When to Use ESLint Disable Comments
+
+**Use sparingly and document why:**
+
+```typescript
+// eslint-disable-next-line no-console
+console.log('Necessary for debugging production issue #123');
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+void updateCursor(position); // Fire-and-forget, non-critical operation
+```
+
+### Pre-push vs Pre-commit
+
+- **Pre-commit**: Runs on staged files only, fast
+- **Pre-push**: Runs on entire codebase, comprehensive
+- If pre-push fails with many errors unrelated to your changes, use `--no-verify` ONLY after ensuring your changes pass linting
+
 ## Debugging Guidelines
 
 ### TypeScript Errors

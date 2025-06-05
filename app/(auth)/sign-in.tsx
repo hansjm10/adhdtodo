@@ -2,9 +2,7 @@
 // Handles user registration, login, and role selection for accountability partnerships
 
 import React, { useState } from 'react';
-import type {
-  ViewStyle,
-  TextStyle} from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
   Text,
@@ -14,18 +12,33 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert
+  Alert,
 } from 'react-native';
 import AuthService from '../../src/services/AuthService';
 import { useUser } from '../../src/contexts/UserContext';
-import type { User} from '../../src/types/user.types';
+import type { User } from '../../src/types/user.types';
 import { UserRole } from '../../src/types/user.types';
 
 interface RoleButtonProps {
-  roleValue: UserRole;
   label: string;
   description: string;
+  isActive: boolean;
+  onPress: () => void;
+  disabled: boolean;
 }
+
+const RoleButton = ({ label, description, isActive, onPress, disabled }: RoleButtonProps) => (
+  <TouchableOpacity
+    style={[styles.roleButton, isActive && styles.roleButtonActive]}
+    onPress={onPress}
+    disabled={disabled}
+  >
+    <Text style={[styles.roleLabel, isActive && styles.roleLabelActive]}>{label}</Text>
+    <Text style={[styles.roleDescription, isActive && styles.roleDescriptionActive]}>
+      {description}
+    </Text>
+  </TouchableOpacity>
+);
 
 const SignInScreen = () => {
   const { setUser } = useUser();
@@ -89,19 +102,6 @@ const SignInScreen = () => {
     setShowPassword(false);
   };
 
-  const RoleButton = ({ roleValue, label, description }: RoleButtonProps) => (
-    <TouchableOpacity
-      style={[styles.roleButton, role === roleValue && styles.roleButtonActive]}
-      onPress={() => { setRole(roleValue); }}
-      disabled={isLogin}
-    >
-      <Text style={[styles.roleLabel, role === roleValue && styles.roleLabelActive]}>{label}</Text>
-      <Text style={[styles.roleDescription, role === roleValue && styles.roleDescriptionActive]}>
-        {description}
-      </Text>
-    </TouchableOpacity>
-  );
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -142,7 +142,9 @@ const SignInScreen = () => {
             />
             <TouchableOpacity
               style={styles.passwordToggle}
-              onPress={() => { setShowPassword(!showPassword); }}
+              onPress={() => {
+                setShowPassword(!showPassword);
+              }}
               disabled={loading}
             >
               <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
@@ -170,19 +172,31 @@ const SignInScreen = () => {
               <View style={styles.roleSection}>
                 <Text style={styles.roleSectionTitle}>I am:</Text>
                 <RoleButton
-                  roleValue={UserRole.ADHD_USER}
                   label="Someone with ADHD"
                   description="I need help staying on track"
+                  isActive={role === UserRole.ADHD_USER}
+                  onPress={() => {
+                    setRole(UserRole.ADHD_USER);
+                  }}
+                  disabled={isLogin}
                 />
                 <RoleButton
-                  roleValue={UserRole.PARTNER}
                   label="An Accountability Partner"
                   description="I want to help someone stay organized"
+                  isActive={role === UserRole.PARTNER}
+                  onPress={() => {
+                    setRole(UserRole.PARTNER);
+                  }}
+                  disabled={isLogin}
                 />
                 <RoleButton
-                  roleValue={UserRole.BOTH}
                   label="Both"
                   description="I have ADHD and want to help others"
+                  isActive={role === UserRole.BOTH}
+                  onPress={() => {
+                    setRole(UserRole.BOTH);
+                  }}
+                  disabled={isLogin}
                 />
               </View>
             </>
@@ -190,7 +204,14 @@ const SignInScreen = () => {
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleAuth}
+            onPress={() => {
+              handleAuth().catch((error) => {
+                // Error is already handled in handleAuth
+                if (global.__DEV__) {
+                  console.info('Auth error handled internally:', error);
+                }
+              });
+            }}
             disabled={loading}
           >
             <Text style={styles.buttonText}>
