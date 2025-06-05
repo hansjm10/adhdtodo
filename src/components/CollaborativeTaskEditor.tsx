@@ -393,7 +393,9 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
         <View
           style={[
             styles.connectionIndicator,
-            { backgroundColor: state.isConnected ? colors.semantic.success : colors.semantic.error },
+            {
+              backgroundColor: state.isConnected ? colors.semantic.success : colors.semantic.error,
+            },
           ]}
         />
         <Text style={styles.statusText}>

@@ -63,7 +63,7 @@ describe('CollaborativeEditingContext', () => {
   const Wrapper = ({ children }) => (
     <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
   );
-  
+
   const wrapper = Wrapper;
 
   describe('startEditing', () => {
@@ -279,11 +279,11 @@ describe('CollaborativeEditingContext', () => {
     it('should return false without current task', async () => {
       // Ensure mockToggleTaskLock is cleared
       mockToggleTaskLock.mockClear();
-      
+
       const isolatedWrapper = ({ children }) => (
         <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
       );
-      
+
       const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: isolatedWrapper });
 
       let success;
@@ -337,11 +337,11 @@ describe('CollaborativeEditingContext', () => {
     it('should return null without current task', () => {
       // Ensure mockCreateOperation is cleared
       mockCreateOperation.mockClear();
-      
+
       const isolatedWrapper = ({ children }) => (
         <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
       );
-      
+
       const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: isolatedWrapper });
 
       // Verify initial state
@@ -376,7 +376,7 @@ describe('CollaborativeEditingContext', () => {
       };
       mockStartEditSession.mockResolvedValue(mockSession);
       mockGetCollaborators.mockReturnValue([]);
-      
+
       const mockOperation = {
         id: 'op-123',
         taskId: mockTaskId,
@@ -414,7 +414,7 @@ describe('CollaborativeEditingContext', () => {
   describe('getCurrentCollaborators', () => {
     it('should return collaborators excluding current user', async () => {
       jest.useFakeTimers();
-      
+
       const mockSession = {
         taskId: mockTaskId,
         editors: new Map(),
@@ -423,7 +423,7 @@ describe('CollaborativeEditingContext', () => {
         isLocked: false,
       };
       mockStartEditSession.mockResolvedValue(mockSession);
-      
+
       const mockCollaborators = [
         { userId: 'user-123', userName: 'Test User', color: '#FF6B6B' },
         { userId: 'user-456', userName: 'Other User', color: '#4ECDC4' },
@@ -436,7 +436,7 @@ describe('CollaborativeEditingContext', () => {
       await act(async () => {
         await result.current.startEditing(mockTaskId);
       });
-      
+
       // Wait for collaborator update interval to trigger
       await act(async () => {
         jest.advanceTimersByTime(2000);
@@ -446,7 +446,7 @@ describe('CollaborativeEditingContext', () => {
 
       expect(collaborators).toHaveLength(1);
       expect(collaborators[0].userId).toBe('user-456');
-      
+
       jest.useRealTimers();
     });
 
@@ -667,7 +667,7 @@ describe('CollaborativeEditingContext', () => {
       const isolatedWrapper = ({ children }) => (
         <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
       );
-      
+
       renderHook(() => useCollaborativeEditing(), { wrapper: isolatedWrapper });
 
       // Fast-forward time

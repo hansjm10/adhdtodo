@@ -39,7 +39,9 @@ class ConflictResolver {
     conflict: ConflictInfo<T>,
     customResolution?: ConflictResolution<T>,
   ): Promise<ResolvedConflict<T>> {
-    const resolution = customResolution || (this.defaultResolutions.get(conflict.entity) as ConflictResolution<T> | undefined);
+    const resolution =
+      customResolution ||
+      (this.defaultResolutions.get(conflict.entity) as ConflictResolution<T> | undefined);
 
     if (!resolution) {
       // Default to server-wins strategy if no resolution defined

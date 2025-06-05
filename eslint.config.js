@@ -172,10 +172,7 @@ module.exports = [
 
   // Files with intentional any usage
   {
-    files: [
-      'src/services/ConflictResolver.ts',
-      'src/services/CollaborativeEditingService.ts',
-    ],
+    files: ['src/services/ConflictResolver.ts', 'src/services/CollaborativeEditingService.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off', // Intentional for runtime flexibility
     },

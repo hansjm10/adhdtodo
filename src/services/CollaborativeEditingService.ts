@@ -255,10 +255,19 @@ class CollaborativeEditingService {
         this.handleUserLeft(taskId, payload as { userId: string });
       })
       .on('broadcast', { event: 'operation_applied' }, ({ payload }) => {
-        this.handleOperationReceived(taskId, payload as { operation: EditOperation; userId: string });
+        this.handleOperationReceived(
+          taskId,
+          payload as { operation: EditOperation; userId: string },
+        );
       })
       .on('broadcast', { event: 'cursor_updated' }, ({ payload }) => {
-        this.handleCursorUpdate(taskId, payload as { userId: string; cursor: { field: string; position: number; lastSeen: string } });
+        this.handleCursorUpdate(
+          taskId,
+          payload as {
+            userId: string;
+            cursor: { field: string; position: number; lastSeen: string };
+          },
+        );
       })
       .on('broadcast', { event: 'lock_changed' }, ({ payload }) => {
         this.handleLockChanged(taskId, payload as { isLocked: boolean; lockOwner?: string });
@@ -271,7 +280,11 @@ class CollaborativeEditingService {
   /**
    * Broadcast event to all collaborators
    */
-  private async broadcastEvent(taskId: string, event: string, payload: Record<string, any>): Promise<void> {
+  private async broadcastEvent(
+    taskId: string,
+    event: string,
+    payload: Record<string, any>,
+  ): Promise<void> {
     const channel = this.channels.get(taskId);
     if (channel) {
       await channel.send({
