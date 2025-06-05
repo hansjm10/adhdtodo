@@ -2,6 +2,16 @@
 
 This guide ensures all tests follow consistent patterns for mocking and setup.
 
+## ESLint Enforcement
+
+We have custom ESLint rules that automatically enforce these patterns:
+
+- **`enforce-mock-factories`** (Error): Prevents manual mock object creation
+- **`enforce-console-mocks`** (Warning): Enforces use of setupConsoleMocks()
+- **`enforce-test-data-factories`** (Warning): Enforces use of test data factories
+
+Run `npm run lint` to check for violations and auto-fix where possible.
+
 ## 1. Import Standard Mocks
 
 Always import from `standardMocks.js` for consistent behavior:
