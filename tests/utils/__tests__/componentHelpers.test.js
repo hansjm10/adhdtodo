@@ -11,6 +11,55 @@ import {
   getAllTextContent,
 } from '../componentHelpers';
 
+// Mock Supabase to prevent errors in providers
+jest.mock('../../../src/services/SupabaseService', () => ({
+  supabase: {
+    auth: {
+      getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      onAuthStateChange: jest
+        .fn()
+        .mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } }),
+    },
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+    }),
+    channel: jest.fn().mockReturnValue({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn().mockReturnThis(),
+      unsubscribe: jest.fn(),
+    }),
+  },
+}));
+
+// Mock OfflineQueueManager to prevent initialization logs
+jest.mock('../../../src/services/OfflineQueueManager', () => ({
+  __esModule: true,
+  default: class MockOfflineQueueManager {
+    constructor() {
+      this.operations = [];
+    }
+    initialize() {
+      return Promise.resolve();
+    }
+    enqueue() {
+      return Promise.resolve();
+    }
+    processQueue() {
+      return Promise.resolve();
+    }
+    getQueueSize() {
+      return 0;
+    }
+    clearQueue() {
+      return Promise.resolve();
+    }
+  },
+}));
+
 // Mock components for testing
 const LoadingComponent = ({ isLoading }) => (
   <View>

@@ -13,7 +13,7 @@ import { renderWithProviders } from './testUtils';
  * @returns {Promise<Object>} Render result
  */
 export const testLoadingState = async (Component, props = {}, options = {}) => {
-  const result = renderWithProviders(<Component {...props} isLoading={true} />, options);
+  const result = render(<Component {...props} isLoading={true} />, options);
 
   const { queryByTestId, queryByText, UNSAFE_queryAllByType } = result;
 
@@ -39,13 +39,17 @@ export const testLoadingState = async (Component, props = {}, options = {}) => {
 export const testErrorState = async (Component, props = {}, error = 'Test error', options = {}) => {
   const errorObj = error instanceof Error ? error : new Error(error);
 
-  const result = renderWithProviders(<Component {...props} error={errorObj} />, options);
+  const result = render(<Component {...props} error={errorObj} />, options);
 
   const { queryByText, queryByTestId } = result;
 
   // Check for error message
   const errorMessage =
     queryByText(/error/i) || queryByText(errorObj.message) || queryByTestId('error-message');
+
+  if (!errorMessage) {
+    throw new Error('No error message found in component');
+  }
 
   expect(errorMessage).toBeTruthy();
 
@@ -60,7 +64,7 @@ export const testErrorState = async (Component, props = {}, error = 'Test error'
  * @returns {Promise<Object>} Render result
  */
 export const testEmptyState = async (Component, props = {}, options = {}) => {
-  const result = renderWithProviders(<Component {...props} data={[]} items={[]} />, options);
+  const result = render(<Component {...props} data={[]} items={[]} />, options);
 
   const { queryByText, queryByTestId } = result;
 
@@ -90,7 +94,7 @@ export const testSnapshot = (
   snapshotName = 'Component Snapshot',
   options = {},
 ) => {
-  const result = renderWithProviders(<Component {...props} />, options);
+  const result = render(<Component {...props} />, options);
 
   const tree = result.toJSON();
   expect(tree).toMatchSnapshot(snapshotName);
@@ -251,9 +255,27 @@ export const testKeyboardInteraction = async (input, expectations) => {
  * @returns {Array<string>} Array of text content
  */
 export const getAllTextContent = (screen) => {
-  const { UNSAFE_queryAllByType } = screen;
-  const textElements = UNSAFE_queryAllByType('Text');
-  return textElements.map((el) => el.props.children).filter(Boolean);
+  // Try to get UNSAFE_queryAllByType from screen, fallback to alternative method
+  if (screen.UNSAFE_queryAllByType) {
+    const textElements = screen.UNSAFE_queryAllByType('Text');
+    return textElements.map((el) => el.props.children).filter(Boolean);
+  }
+
+  // Alternative: get all text elements using a different approach
+  const allText = [];
+
+  // If screen has root property, traverse it
+  if (screen.root) {
+    try {
+      const textElements = screen.root.findAll((el) => el.type === 'Text');
+      return textElements.map((el) => el.props.children).filter(Boolean);
+    } catch (error) {
+      // Fallback if findAll doesn't work
+      return [];
+    }
+  }
+
+  return allText;
 };
 
 /**
@@ -279,3 +301,6 @@ export const testComponentPerformance = (Component, props = {}, maxRenderTime = 
     result,
   };
 };
+
+// Export renderWithProviders for components that need it
+export { renderWithProviders } from './testUtils';
