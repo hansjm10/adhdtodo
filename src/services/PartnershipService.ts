@@ -1,10 +1,11 @@
 // ABOUTME: Supabase-based partnership service with real-time capabilities
 // Manages partnerships between ADHD users and accountability partners with live sync
 
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './SupabaseService';
 import UserStorageService from './UserStorageService';
-import { Partnership, PartnershipStatus, PartnershipStats, PartnershipSettings } from '../types';
+import type { Partnership, PartnershipStats, PartnershipSettings } from '../types';
+import { PartnershipStatus } from '../types';
 import { createPartnership, acceptPartnership } from '../utils/PartnershipModel';
 import { setUserPartner } from '../utils/UserModel';
 
@@ -405,7 +406,7 @@ class SupabasePartnershipService implements IPartnershipService {
     };
   }
 
-  private transformDatabasePartnerships(dbPartnerships: Record<string, unknown>[]): Partnership[] {
+  private transformDatabasePartnerships(dbPartnerships: Array<Record<string, unknown>>): Partnership[] {
     return dbPartnerships.map((dbPartnership) => this.transformDatabasePartnership(dbPartnership));
   }
 }

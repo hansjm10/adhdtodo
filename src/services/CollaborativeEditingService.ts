@@ -1,9 +1,9 @@
 // ABOUTME: Real-time collaborative task editing service with conflict resolution
 // Enables multiple users to edit tasks simultaneously with operational transform
 
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './SupabaseService';
-import { Task } from '../types/task.types';
+import type { Task } from '../types/task.types';
 import ConflictResolver from './ConflictResolver';
 import OfflineQueueManager from './OfflineQueueManager';
 

@@ -5,7 +5,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCollaborativeEditing } from '../contexts/CollaborativeEditingContext';
-import { Task, TaskStatus, TaskPriority } from '../types/task.types';
+import type { Task} from '../types/task.types';
+import { TaskStatus, TaskPriority } from '../types/task.types';
 import { colors, typography, spacing } from '../styles';
 
 interface CollaborativeTaskEditorProps {
@@ -263,7 +264,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
           {isEditing && (
             <TouchableOpacity
               style={[styles.lockButton, locked && styles.lockButtonActive]}
-              onPress={() => setShowLockControls(!showLockControls)}
+              onPress={() => { setShowLockControls(!showLockControls); }}
             >
               <Ionicons
                 name={locked ? 'lock-closed' : 'lock-open'}
@@ -299,9 +300,9 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               locked && !isEditing && styles.lockedInput,
             ]}
             value={localTask.title}
-            onChangeText={(text) => handleTextChange('title', text, localTask.title)}
+            onChangeText={(text) => { handleTextChange('title', text, localTask.title); }}
             onSelectionChange={(event) =>
-              handleCursorPositionChange('title', event.nativeEvent.selection.start)
+              { handleCursorPositionChange('title', event.nativeEvent.selection.start); }
             }
             editable={isEditing && (!locked || lockOwner === 'current')}
             multiline={false}
@@ -323,12 +324,12 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               locked && !isEditing && styles.lockedInput,
             ]}
             value={localTask.description}
-            onChangeText={(text) => handleTextChange('description', text, localTask.description)}
+            onChangeText={(text) => { handleTextChange('description', text, localTask.description); }}
             onSelectionChange={(event) =>
-              handleCursorPositionChange('description', event.nativeEvent.selection.start)
+              { handleCursorPositionChange('description', event.nativeEvent.selection.start); }
             }
             editable={isEditing && (!locked || lockOwner === 'current')}
-            multiline={true}
+            multiline
             numberOfLines={4}
             placeholder="Task description..."
           />

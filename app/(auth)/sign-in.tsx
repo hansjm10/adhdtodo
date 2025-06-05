@@ -2,6 +2,9 @@
 // Handles user registration, login, and role selection for accountability partnerships
 
 import React, { useState } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -11,13 +14,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
-  ViewStyle,
-  TextStyle,
+  Alert
 } from 'react-native';
 import AuthService from '../../src/services/AuthService';
 import { useUser } from '../../src/contexts/UserContext';
-import { User, UserRole } from '../../src/types/user.types';
+import type { User} from '../../src/types/user.types';
+import { UserRole } from '../../src/types/user.types';
 
 interface RoleButtonProps {
   roleValue: UserRole;
@@ -90,7 +92,7 @@ const SignInScreen = () => {
   const RoleButton = ({ roleValue, label, description }: RoleButtonProps) => (
     <TouchableOpacity
       style={[styles.roleButton, role === roleValue && styles.roleButtonActive]}
-      onPress={() => setRole(roleValue)}
+      onPress={() => { setRole(roleValue); }}
       disabled={isLogin}
     >
       <Text style={[styles.roleLabel, role === roleValue && styles.roleLabelActive]}>{label}</Text>
@@ -140,7 +142,7 @@ const SignInScreen = () => {
             />
             <TouchableOpacity
               style={styles.passwordToggle}
-              onPress={() => setShowPassword(!showPassword)}
+              onPress={() => { setShowPassword(!showPassword); }}
               disabled={loading}
             >
               <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>

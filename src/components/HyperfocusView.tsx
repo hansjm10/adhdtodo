@@ -2,9 +2,10 @@
 // Displays task, timer, and controls without business logic
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Task } from '../types/task.types';
+import type { Task } from '../types/task.types';
 import { getTimerSize, responsiveFontSize, responsivePadding } from '../utils/ResponsiveDimensions';
 
 interface HyperfocusViewProps {

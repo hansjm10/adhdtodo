@@ -5,7 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useUser, useTasks } from '../contexts';
 import TaskListView from './TaskListView';
-import { Task } from '../types/task.types';
+import type { Task } from '../types/task.types';
 
 export const TaskListContainer: React.FC = () => {
   const router = useRouter();

@@ -4,8 +4,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from './SupabaseService';
 import SecureLogger from './SecureLogger';
-import { User, UserRole, NotificationPreference } from '../types/user.types';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { User} from '../types/user.types';
+import { UserRole, NotificationPreference } from '../types/user.types';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export interface IUserStorageService {
   getCurrentUser(): Promise<User | null>;

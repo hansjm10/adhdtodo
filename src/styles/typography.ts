@@ -1,7 +1,7 @@
 // ABOUTME: Typography system for ADHD Todo app
 // Defines font sizes, weights, and line heights for consistent text hierarchy
 
-import { TextStyle } from 'react-native';
+import type { TextStyle } from 'react-native';
 
 // Font families
 export const fonts = {

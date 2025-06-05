@@ -2,21 +2,22 @@
 // Shows notifications at the top of the screen with auto-dismiss and swipe-to-dismiss
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type {
+  GestureResponderEvent,
+  PanResponderGestureState,
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
   TouchableOpacity,
-  PanResponder,
-  GestureResponderEvent,
-  PanResponderGestureState,
-  ViewStyle,
-  TextStyle,
+  PanResponder
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
-import { NotificationTypes } from '../types/user.types';
+import type { NotificationTypes } from '../types/user.types';
 
 // Screen width constant removed - using direct calculation in styles
 const BANNER_HEIGHT = 100;

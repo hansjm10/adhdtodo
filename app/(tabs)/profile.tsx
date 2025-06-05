@@ -2,15 +2,16 @@
 // This is the actual profile screen, not a redirect
 
 import React, { useState } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
-  ViewStyle,
-  TextStyle,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +19,7 @@ import { useRouter } from 'expo-router';
 import { useUser } from '../../src/contexts';
 import AuthService from '../../src/services/AuthService';
 import { USER_ROLE } from '../../src/constants/UserConstants';
-import { UserRole } from '../../src/types/user.types';
+import type { UserRole } from '../../src/types/user.types';
 
 interface MenuItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -116,27 +117,27 @@ const ProfileScreen = () => {
           <MenuItem
             icon="people-outline"
             label="Partnership"
-            onPress={() => router.push('/profile/partnership')}
+            onPress={() => { router.push('/profile/partnership'); }}
           />
           <MenuItem
             icon="key-outline"
             label="Change Password"
-            onPress={() => Alert.alert('Coming Soon', 'Password change feature coming soon!')}
+            onPress={() => { Alert.alert('Coming Soon', 'Password change feature coming soon!'); }}
           />
           <MenuItem
             icon="mail-outline"
             label="Email Preferences"
-            onPress={() => Alert.alert('Coming Soon', 'Email preferences coming soon!')}
+            onPress={() => { Alert.alert('Coming Soon', 'Email preferences coming soon!'); }}
           />
           <MenuItem
             icon="settings-outline"
             label="App Settings"
-            onPress={() => router.push('/settings')}
+            onPress={() => { router.push('/settings'); }}
           />
           <MenuItem
             icon="notifications-outline"
             label="Notification Settings"
-            onPress={() => Alert.alert('Coming Soon', 'Notification settings coming soon!')}
+            onPress={() => { Alert.alert('Coming Soon', 'Notification settings coming soon!'); }}
           />
         </View>
 

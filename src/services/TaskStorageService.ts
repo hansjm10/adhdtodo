@@ -3,8 +3,9 @@
 
 import { supabase } from './SupabaseService';
 import SecureLogger from './SecureLogger';
-import { Task, TaskStatus, TaskPriority, PartnerNotificationStatus } from '../types/task.types';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { Task, PartnerNotificationStatus } from '../types/task.types';
+import { TaskStatus, TaskPriority } from '../types/task.types';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface TaskStorageOptions {
   page?: number;

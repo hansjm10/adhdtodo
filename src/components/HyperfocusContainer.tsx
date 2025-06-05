@@ -84,7 +84,7 @@ export const HyperfocusContainer: React.FC = () => {
             setIsRunning(true);
           },
         },
-        { text: 'Exit', onPress: () => router.back() },
+        { text: 'Exit', onPress: () => { router.back(); } },
       ]);
     } else {
       setSessionCount((prev) => prev + 1);
@@ -103,8 +103,8 @@ export const HyperfocusContainer: React.FC = () => {
             setIsRunning(true);
           },
         },
-        { text: 'Skip Break', onPress: () => setTimeLeft(workDuration) },
-        { text: 'Exit', onPress: () => router.back() },
+        { text: 'Skip Break', onPress: () => { setTimeLeft(workDuration); } },
+        { text: 'Exit', onPress: () => { router.back(); } },
       ]);
     }
   }, [
@@ -160,7 +160,7 @@ export const HyperfocusContainer: React.FC = () => {
     if (isRunning) {
       Alert.alert('Exit Hyperfocus Mode?', 'Your progress will be saved.', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', onPress: () => router.back() },
+        { text: 'Exit', onPress: () => { router.back(); } },
       ]);
     } else {
       router.back();

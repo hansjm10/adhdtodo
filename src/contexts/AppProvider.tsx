@@ -1,7 +1,8 @@
 // ABOUTME: AppProvider combines all app contexts into single provider
 // Simplifies app setup by nesting all providers in correct order
 
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import React from 'react';
 import { UserProvider } from './UserContext';
 import { TaskProvider } from './TaskContext';
 import { NotificationProvider } from './NotificationContext';

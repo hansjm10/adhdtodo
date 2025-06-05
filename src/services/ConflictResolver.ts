@@ -1,8 +1,9 @@
 // ABOUTME: Conflict resolution system for handling data conflicts during sync
 // Provides strategies for resolving conflicts between local and remote data
 
-import { Task, TaskStatus } from '../types/task.types';
-import { User, Partnership, Notification } from '../types';
+import type { Task} from '../types/task.types';
+import { TaskStatus } from '../types/task.types';
+import type { User, Partnership, Notification } from '../types';
 
 // Type for field resolvers that preserves type safety
 type FieldResolver<T, K extends keyof T> = (localValue: T[K], remoteValue: T[K]) => T[K];
@@ -82,11 +83,11 @@ class ConflictResolver {
         };
 
       case 'merge':
-        return this.mergeData(conflict, resolution) as ResolvedConflict<T>;
+        return this.mergeData(conflict, resolution);
 
       case 'manual':
         if (resolution.resolver) {
-          const resolvedData = resolution.resolver(conflict.localData, conflict.remoteData) as T;
+          const resolvedData = resolution.resolver(conflict.localData, conflict.remoteData);
           return {
             resolvedData,
             strategy: 'manual',
@@ -97,9 +98,9 @@ class ConflictResolver {
               conflict.conflictFields,
             ),
           };
-        } else {
+        } 
           throw new Error('Manual resolution strategy requires a resolver function');
-        }
+        
 
       default:
         throw new Error(`Unknown resolution strategy: ${resolution.strategy}`);
@@ -167,7 +168,7 @@ class ConflictResolver {
     conflict: ConflictInfo<T>,
     resolution: ConflictResolution<T>,
   ): ResolvedConflict<T> {
-    const merged = { ...conflict.remoteData } as T; // Start with remote as base
+    const merged = { ...conflict.remoteData }; // Start with remote as base
     const fieldResolutions: Record<string, 'local' | 'remote' | 'merged'> = {};
 
     for (const field of conflict.conflictFields) {

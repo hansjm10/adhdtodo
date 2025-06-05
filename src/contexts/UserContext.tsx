@@ -1,6 +1,8 @@
 // ABOUTME: UserContext provides centralized user, partner, and partnership state management
 // Integrates with real-time user updates from Supabase for live synchronization
 
+import type {
+  ReactNode} from 'react';
 import React, {
   createContext,
   useState,
@@ -8,13 +10,12 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useRef,
-  ReactNode,
+  useRef
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
 import UserStorageService from '../services/UserStorageService';
-import { User, Partnership } from '../types/user.types';
+import type { User, Partnership } from '../types/user.types';
 
 interface UserContextValue {
   user: User | null;

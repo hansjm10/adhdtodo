@@ -2,6 +2,9 @@
 // Provides form inputs to modify task details and delete functionality
 
 import React, { useState, useEffect } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -12,17 +15,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
-  ViewStyle,
-  TextStyle,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  TASK_CATEGORIES,
-  TIME_PRESETS,
+import type {
   TaskCategory,
   TimePreset,
-  Task,
+  Task} from '../../src/types/task.types';
+import {
+  TASK_CATEGORIES,
+  TIME_PRESETS
 } from '../../src/types/task.types';
 import { useTasks } from '../../src/contexts';
 
@@ -187,7 +189,7 @@ const EditTaskScreen = () => {
                   { backgroundColor: category.color },
                   selectedCategory === category.id && styles.selectedCategory,
                 ]}
-                onPress={() => setSelectedCategory(category.id)}
+                onPress={() => { setSelectedCategory(category.id); }}
               >
                 <Text style={styles.categoryIcon}>{category.icon}</Text>
                 <Text style={styles.categoryText}>{category.label}</Text>
@@ -205,7 +207,7 @@ const EditTaskScreen = () => {
                   styles.timeButton,
                   selectedTimePreset === preset.minutes && styles.selectedTime,
                 ]}
-                onPress={() => setSelectedTimePreset(preset.minutes)}
+                onPress={() => { setSelectedTimePreset(preset.minutes); }}
               >
                 <Text style={styles.timeText}>{preset.label}</Text>
               </TouchableOpacity>

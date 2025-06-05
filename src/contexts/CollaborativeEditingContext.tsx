@@ -1,12 +1,14 @@
 // ABOUTME: Context for managing collaborative task editing state and operations
 // Provides real-time collaboration features with cursor tracking and conflict resolution
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import CollaborativeEditingService, {
+import type { ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import type {
   TaskEditSession,
   EditOperation,
   CollaboratorCursor,
 } from '../services/CollaborativeEditingService';
+import CollaborativeEditingService from '../services/CollaborativeEditingService';
 import { useUser } from './UserContext';
 
 interface CollaborativeEditingState {
@@ -168,7 +170,7 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
       });
     }, 2000); // Update every 2 seconds
 
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); };
   }, [state.currentTaskId]);
 
   const startEditing = async (taskId: string): Promise<void> => {

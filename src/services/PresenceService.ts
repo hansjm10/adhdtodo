@@ -1,10 +1,10 @@
 // ABOUTME: Real-time presence service for tracking user online/offline status
 // Shows when partners are online and what they're working on with live updates
 
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './SupabaseService';
 
-// Type for Supabase presence data
+// Type for Supabase presence data - represents the raw data from Supabase
 type PresenceData = Record<string, unknown>;
 
 export interface PresenceState {
@@ -244,7 +244,7 @@ class PresenceService {
 
     for (const [_userId, presences] of Object.entries(state)) {
       const latestPresence = presences[presences.length - 1] as Record<string, unknown>;
-      if (latestPresence && latestPresence.userId) {
+      if (latestPresence?.userId) {
         this.presenceState.set(latestPresence.userId as string, {
           userId: latestPresence.userId as string,
           status: (latestPresence.status as 'online' | 'away' | 'offline') || 'online',
@@ -268,7 +268,7 @@ class PresenceService {
       string,
       unknown
     >;
-    if (latestPresence && latestPresence.userId) {
+    if (latestPresence?.userId) {
       this.presenceState.set(latestPresence.userId as string, {
         userId: latestPresence.userId as string,
         status: (latestPresence.status as 'online' | 'away' | 'offline') || 'online',
@@ -287,7 +287,7 @@ class PresenceService {
   private handlePresenceLeave(key: string, leftPresences: PresenceData[]): void {
     for (const presence of leftPresences) {
       const presenceData = presence as unknown as Record<string, unknown>;
-      if (presenceData && presenceData.userId) {
+      if (presenceData?.userId) {
         // Mark as offline instead of removing
         this.presenceState.set(presenceData.userId as string, {
           userId: presenceData.userId as string,

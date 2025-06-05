@@ -2,6 +2,9 @@
 // Displays current partnership status, allows invite creation, and partnership settings
 
 import React, { useState, useEffect, useCallback } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -10,9 +13,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Share,
-  ViewStyle,
-  TextStyle,
+  Share
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,7 +21,7 @@ import UserStorageService from '../../../src/services/UserStorageService';
 import PartnershipService from '../../../src/services/PartnershipService';
 import { terminatePartnership } from '../../../src/utils/PartnershipModel';
 import { PARTNERSHIP_STATUS, USER_ROLE } from '../../../src/constants/UserConstants';
-import { User, Partnership, UserRole } from '../../../src/types/user.types';
+import type { User, Partnership, UserRole } from '../../../src/types/user.types';
 
 interface Styles {
   container: ViewStyle;
@@ -260,7 +261,7 @@ const PartnershipScreen = () => {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() =>
-              router.push({ pathname: '/profile/partnership/assign', params: { taskId: '' } })
+              { router.push({ pathname: '/profile/partnership/assign', params: { taskId: '' } }); }
             }
           >
             <Ionicons name="add-circle-outline" size={24} color="#3498DB" />
@@ -270,7 +271,7 @@ const PartnershipScreen = () => {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => router.push('/profile/partnership/dashboard')}
+          onPress={() => { router.push('/profile/partnership/dashboard'); }}
         >
           <Ionicons name="bar-chart-outline" size={24} color="#3498DB" />
           <Text style={styles.actionButtonText}>View Progress</Text>
@@ -279,7 +280,7 @@ const PartnershipScreen = () => {
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() =>
-            Alert.alert('Coming Soon', 'Partnership settings will be available in the next update.')
+            { Alert.alert('Coming Soon', 'Partnership settings will be available in the next update.'); }
           }
         >
           <Ionicons name="settings-outline" size={24} color="#3498DB" />

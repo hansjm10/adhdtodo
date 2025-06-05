@@ -1,6 +1,8 @@
 // ABOUTME: NotificationContext provides centralized notification state management with real-time updates
 // Integrates with Supabase-based NotificationService for live synchronization
 
+import type {
+  ReactNode} from 'react';
 import React, {
   createContext,
   useState,
@@ -8,11 +10,10 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useRef,
-  ReactNode,
+  useRef
 } from 'react';
 import NotificationService from '../services/NotificationService';
-import { Notification } from '../types/notification.types';
+import type { Notification } from '../types/notification.types';
 import { NotificationTypes } from '../types/user.types';
 import { supabase } from '../services/SupabaseService';
 

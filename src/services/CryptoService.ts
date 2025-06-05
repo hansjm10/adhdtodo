@@ -127,7 +127,7 @@ class CryptoService implements ICryptoService {
   // Check if a session token is expired (default 7 days for security)
   isTokenExpired(token: string, maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): boolean {
     const parsed = this.parseSessionToken(token);
-    if (!parsed || !parsed.isValid) {
+    if (!parsed?.isValid) {
       return true;
     }
 

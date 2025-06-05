@@ -108,7 +108,7 @@ class RateLimiter implements IRateLimiter {
 
   getLockoutEndTime(identifier: string): number | null {
     const attempts = this.loginAttempts.get(identifier);
-    if (!attempts || !attempts.lockedUntil) {
+    if (!attempts?.lockedUntil) {
       return null;
     }
 

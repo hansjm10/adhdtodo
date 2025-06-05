@@ -2,7 +2,8 @@
 // Provides consistent card styling with proper spacing and shadows
 
 import React from 'react';
-import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
+import type { ViewStyle} from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing, borderRadius, shadows } from '../../styles/theme';
 
 interface ThemedCardProps {

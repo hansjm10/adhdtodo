@@ -1,6 +1,8 @@
 // ABOUTME: TaskContext provides centralized task state management with real-time updates
 // Integrates with Supabase-based TaskStorageService for live synchronization
 
+import type {
+  ReactNode} from 'react';
 import React, {
   createContext,
   useState,
@@ -8,11 +10,11 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useRef,
-  ReactNode,
+  useRef
 } from 'react';
 import TaskStorageService from '../services/TaskStorageService';
-import { Task, TaskStatus, TaskPriority } from '../types/task.types';
+import type { Task} from '../types/task.types';
+import { TaskStatus, TaskPriority } from '../types/task.types';
 import { supabase } from '../services/SupabaseService';
 
 // Define the context value interface

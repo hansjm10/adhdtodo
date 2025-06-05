@@ -2,6 +2,10 @@
 // Provides quick encouragement options and custom message input
 
 import React, { useState } from 'react';
+import type {
+  ViewStyle,
+  TextStyle,
+  ModalProps} from 'react-native';
 import {
   Modal,
   View,
@@ -11,17 +15,14 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  ViewStyle,
-  TextStyle,
-  ModalProps,
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DEFAULT_ENCOURAGEMENT_MESSAGES } from '../constants/UserConstants';
 import NotificationService from '../services/NotificationService';
 import PartnershipService from '../services/PartnershipService';
-import { Task } from '../types/task.types';
-import { User, Partnership } from '../types/user.types';
+import type { Task } from '../types/task.types';
+import type { User, Partnership } from '../types/user.types';
 
 interface EncouragementModalProps extends Pick<ModalProps, 'visible'> {
   onClose: () => void;

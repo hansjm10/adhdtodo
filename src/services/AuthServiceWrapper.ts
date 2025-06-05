@@ -1,7 +1,7 @@
 // ABOUTME: Wrapper service that switches between local and Supabase auth based on feature flags
 // Provides seamless migration path from local to cloud authentication
 
-import { IAuthService } from './AuthService';
+import type { IAuthService } from './AuthService';
 import LocalAuthService from './AuthService';
 import SupabaseAuthService from './SupabaseAuthService';
 import FeatureFlags from './FeatureFlags';

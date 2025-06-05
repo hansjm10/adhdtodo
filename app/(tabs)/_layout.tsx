@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import NotificationBadge from '../../src/components/NotificationBadge';
 import UserStorageService from '../../src/services/UserStorageService';
 import NotificationService from '../../src/services/NotificationService';
-import { User } from '../../src/types/user.types';
+import type { User } from '../../src/types/user.types';
 
 // Tab bar icon type
 type TabBarIconProps = {
@@ -41,7 +41,7 @@ export default function TabLayout() {
     loadUnreadCount();
     // Set up interval to check for new notifications
     const interval = setInterval(loadUnreadCount, 10000); // Check every 10 seconds
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); };
   }, [loadUnreadCount]);
 
   return (
@@ -60,7 +60,7 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'checkbox' : 'checkbox-outline'} size={size} color={color} />
           ),
           headerRight: () => (
-            <NotificationBadge count={unreadCount} onPress={() => router.push('/notifications')} />
+            <NotificationBadge count={unreadCount} onPress={() => { router.push('/notifications'); }} />
           ),
         }}
       />

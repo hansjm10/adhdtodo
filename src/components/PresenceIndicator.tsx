@@ -2,15 +2,16 @@
 // Shows real-time status with visual indicators and activity descriptions
 
 import React from 'react';
+import type { ViewStyle } from 'react-native';
 import { View, Text, StyleSheet } from 'react-native';
 import { usePresence } from '../contexts/PresenceContext';
-import { PresenceState } from '../services/PresenceService';
+import type { PresenceState } from '../services/PresenceService';
 
 interface PresenceIndicatorProps {
   userId: string;
   showActivity?: boolean;
   size?: 'small' | 'medium' | 'large';
-  style?: object;
+  style?: ViewStyle;
 }
 
 const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({

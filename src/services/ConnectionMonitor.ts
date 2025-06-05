@@ -21,7 +21,7 @@ interface NetInfoState {
 const NetInfo = {
   addEventListener: (callback: (state: NetInfoState) => void) => {
     // Mock implementation - always return online
-    setTimeout(() => callback({ isConnected: true, type: 'wifi', isInternetReachable: true }), 100);
+    setTimeout(() => { callback({ isConnected: true, type: 'wifi', isInternetReachable: true }); }, 100);
     return () => {}; // unsubscribe function
   },
 };

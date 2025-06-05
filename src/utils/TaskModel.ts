@@ -1,8 +1,9 @@
 // ABOUTME: Task model utilities for creating and validating tasks
 // Provides functions to create tasks with proper structure and validate task data
 
-import { Task, TaskStatus, TaskPriority, TaskEncouragement } from '../types/task.types';
-import { ValidationResult } from './UserModel';
+import type { Task, TaskEncouragement } from '../types/task.types';
+import { TaskStatus, TaskPriority } from '../types/task.types';
+import type { ValidationResult } from './UserModel';
 
 export const generateTaskId = (): string => {
   return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

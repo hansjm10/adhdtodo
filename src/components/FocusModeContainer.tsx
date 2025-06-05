@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTasks } from '../contexts';
 import FocusModeView from './FocusModeView';
-import { Task } from '../types/task.types';
+import type { Task } from '../types/task.types';
 
 export const FocusModeContainer: React.FC = () => {
   const router = useRouter();

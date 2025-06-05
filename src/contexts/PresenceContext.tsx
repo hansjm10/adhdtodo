@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppState } from 'react-native';
-import PresenceService, { PresenceState } from '../services/PresenceService';
+import type { PresenceState } from '../services/PresenceService';
+import PresenceService from '../services/PresenceService';
 import { useUser } from './UserContext';
 
 interface PresenceContextType {
