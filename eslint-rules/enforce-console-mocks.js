@@ -20,16 +20,7 @@ module.exports = {
   },
 
   create(context) {
-    let hasSetupConsoleMocks = false;
-
     return {
-      // Check if setupConsoleMocks is imported/used
-      CallExpression(node) {
-        if (node.callee.name === 'setupConsoleMocks') {
-          hasSetupConsoleMocks = true;
-        }
-      },
-
       // Detect manual console mocking patterns
       AssignmentExpression(node) {
         const filename = context.getFilename();

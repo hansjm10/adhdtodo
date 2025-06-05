@@ -28,7 +28,6 @@ module.exports = {
   create(context) {
     // Track if standardMocks is imported
     let hasStandardMocksImport = false;
-    let standardMocksImportNode = null;
 
     // Common mock patterns to detect
     const channelMockPattern = /\bon:\s*:\s*jest\.fn\(\).*subscribe:\s*:\s*jest\.fn\(\)/s;
@@ -40,7 +39,6 @@ module.exports = {
       ImportDeclaration(node) {
         if (node.source.value.includes('standardMocks')) {
           hasStandardMocksImport = true;
-          standardMocksImportNode = node;
         }
       },
 
@@ -148,7 +146,8 @@ module.exports = {
               node: firstImport,
               messageId: 'useStandardMockImport',
               fix(fixer) {
-                const importStatement = `import { createSupabaseChannelMock, createSupabaseQueryBuilderMock, createAsyncStorageMock } from '../../../tests/utils/standardMocks';\n`;
+                const importStatement =
+                  "import { createSupabaseChannelMock, createSupabaseQueryBuilderMock, createAsyncStorageMock } from '../../../tests/utils/standardMocks';\n";
                 return fixer.insertTextBefore(firstImport, importStatement);
               },
             });
