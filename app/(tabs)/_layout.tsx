@@ -58,7 +58,7 @@ const useNotificationHeaderButton = (unreadCount: number) => {
 
 export default function TabLayout() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [_currentUser, setCurrentUser] = useState<User | null>(null);
   const NotificationHeaderButton = useNotificationHeaderButton(unreadCount);
 
   const loadUnreadCount = useCallback(async (): Promise<void> => {

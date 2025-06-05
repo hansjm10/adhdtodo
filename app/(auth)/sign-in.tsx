@@ -20,7 +20,6 @@ import type { User } from '../../src/types/user.types';
 import { UserRole } from '../../src/types/user.types';
 
 interface RoleButtonProps {
-  roleValue: UserRole;
   label: string;
   description: string;
   isActive: boolean;
@@ -173,7 +172,6 @@ const SignInScreen = () => {
               <View style={styles.roleSection}>
                 <Text style={styles.roleSectionTitle}>I am:</Text>
                 <RoleButton
-                  roleValue={UserRole.ADHD_USER}
                   label="Someone with ADHD"
                   description="I need help staying on track"
                   isActive={role === UserRole.ADHD_USER}
@@ -183,7 +181,6 @@ const SignInScreen = () => {
                   disabled={isLogin}
                 />
                 <RoleButton
-                  roleValue={UserRole.PARTNER}
                   label="An Accountability Partner"
                   description="I want to help someone stay organized"
                   isActive={role === UserRole.PARTNER}
@@ -193,7 +190,6 @@ const SignInScreen = () => {
                   disabled={isLogin}
                 />
                 <RoleButton
-                  roleValue={UserRole.BOTH}
                   label="Both"
                   description="I have ADHD and want to help others"
                   isActive={role === UserRole.BOTH}
