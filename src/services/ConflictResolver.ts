@@ -1,10 +1,21 @@
 // ABOUTME: Conflict resolution system for handling data conflicts during sync
 // Provides strategies for resolving conflicts between local and remote data
 
+import { Task, TaskStatus } from '../types/task.types';
+import { User, Partnership, Notification } from '../types';
+
+// Type for field resolvers that preserves type safety
+type FieldResolver<T, K extends keyof T> = (localValue: T[K], remoteValue: T[K]) => T[K];
+
+// Type-safe field resolvers mapping
+type FieldResolvers<T> = {
+  [K in keyof T]?: FieldResolver<T, K>;
+};
+
 export interface ConflictResolution<T = unknown> {
   strategy: 'client-wins' | 'server-wins' | 'merge' | 'manual';
   resolver?: (local: T, remote: T) => T;
-  fieldResolvers?: Record<string, (localValue: any, remoteValue: any) => any>;
+  fieldResolvers?: FieldResolvers<T>;
 }
 
 export interface ConflictInfo<T = unknown> {
@@ -22,20 +33,23 @@ export interface ResolvedConflict<T = unknown> {
   fieldResolutions: Record<string, 'local' | 'remote' | 'merged'>;
 }
 
+// Type for the storage map that preserves type information
+type ResolutionMap = Map<string, ConflictResolution<unknown>>;
+
 class ConflictResolver {
-  private defaultResolutions: Map<string, ConflictResolution<any>> = new Map();
+  private defaultResolutions: ResolutionMap = new Map();
 
   /**
    * Register default resolution strategy for an entity type
    */
   registerDefaultResolution<T>(entityType: string, resolution: ConflictResolution<T>): void {
-    this.defaultResolutions.set(entityType, resolution as ConflictResolution<any>);
+    this.defaultResolutions.set(entityType, resolution as ConflictResolution<unknown>);
   }
 
   /**
    * Resolve conflict between local and remote data
    */
-  async resolveConflict<T extends Record<string, unknown>>(
+  async resolveConflict<T>(
     conflict: ConflictInfo<T>,
     customResolution?: ConflictResolution<T>,
   ): Promise<ResolvedConflict<T>> {
@@ -95,7 +109,7 @@ class ConflictResolver {
   /**
    * Detect conflicts between local and remote data
    */
-  detectConflicts<T extends Record<string, unknown>>(
+  detectConflicts<T>(
     local: T,
     remote: T,
     entityType: string,
@@ -105,13 +119,16 @@ class ConflictResolver {
     const conflictFields: string[] = [];
 
     // Compare all fields except ignored ones
-    for (const key in local) {
+    const localObj = local as unknown as Record<string, unknown>;
+    const remoteObj = remote as unknown as Record<string, unknown>;
+
+    for (const key in localObj) {
       if (ignoredFields.includes(key)) continue;
 
-      if (local[key] !== remote[key]) {
+      if (localObj[key] !== remoteObj[key]) {
         // Deep comparison for objects and arrays
-        if (typeof local[key] === 'object' && typeof remote[key] === 'object') {
-          if (JSON.stringify(local[key]) !== JSON.stringify(remote[key])) {
+        if (typeof localObj[key] === 'object' && typeof remoteObj[key] === 'object') {
+          if (JSON.stringify(localObj[key]) !== JSON.stringify(remoteObj[key])) {
             conflictFields.push(key);
           }
         } else {
@@ -121,10 +138,10 @@ class ConflictResolver {
     }
 
     // Check for fields that exist in remote but not in local
-    for (const key in remote) {
+    for (const key in remoteObj) {
       if (ignoredFields.includes(key)) continue;
 
-      if (!(key in local)) {
+      if (!(key in localObj)) {
         conflictFields.push(key);
       }
     }
@@ -146,7 +163,7 @@ class ConflictResolver {
   /**
    * Smart merge data with field-level resolution
    */
-  private mergeData<T extends Record<string, unknown>>(
+  private mergeData<T>(
     conflict: ConflictInfo<T>,
     resolution: ConflictResolution<T>,
   ): ResolvedConflict<T> {
@@ -154,21 +171,23 @@ class ConflictResolver {
     const fieldResolutions: Record<string, 'local' | 'remote' | 'merged'> = {};
 
     for (const field of conflict.conflictFields) {
-      if (resolution.fieldResolvers && resolution.fieldResolvers[field]) {
-        // Use custom field resolver
-        (merged as any)[field] = resolution.fieldResolvers[field](
-          (conflict.localData as any)[field],
-          (conflict.remoteData as any)[field],
-        );
-        fieldResolutions[field] = 'merged';
+      const fieldKey = field as keyof T;
+
+      if (resolution.fieldResolvers && fieldKey in resolution.fieldResolvers) {
+        // Use custom field resolver with proper typing
+        const resolver = resolution.fieldResolvers[fieldKey];
+        if (resolver) {
+          merged[fieldKey] = resolver(conflict.localData[fieldKey], conflict.remoteData[fieldKey]);
+          fieldResolutions[field] = 'merged';
+        }
       } else {
         // Use intelligent merge logic
         const mergeResult = this.intelligentFieldMerge(
-          (conflict.localData as any)[field],
-          (conflict.remoteData as any)[field],
+          conflict.localData[fieldKey],
+          conflict.remoteData[fieldKey],
           field,
         );
-        (merged as any)[field] = mergeResult.value;
+        merged[fieldKey] = mergeResult.value as T[keyof T];
         fieldResolutions[field] = mergeResult.source;
       }
     }
@@ -250,7 +269,7 @@ class ConflictResolver {
   /**
    * Analyze how fields were resolved in manual resolution
    */
-  private analyzeFieldResolutions<T extends Record<string, unknown>>(
+  private analyzeFieldResolutions<T>(
     local: T,
     remote: T,
     resolved: T,
@@ -258,10 +277,14 @@ class ConflictResolver {
   ): Record<string, 'local' | 'remote' | 'merged'> {
     const resolutions: Record<string, 'local' | 'remote' | 'merged'> = {};
 
+    const localObj = local as unknown as Record<string, unknown>;
+    const remoteObj = remote as unknown as Record<string, unknown>;
+    const resolvedObj = resolved as unknown as Record<string, unknown>;
+
     for (const field of conflictFields) {
-      if (JSON.stringify(resolved[field]) === JSON.stringify(local[field])) {
+      if (JSON.stringify(resolvedObj[field]) === JSON.stringify(localObj[field])) {
         resolutions[field] = 'local';
-      } else if (JSON.stringify(resolved[field]) === JSON.stringify(remote[field])) {
+      } else if (JSON.stringify(resolvedObj[field]) === JSON.stringify(remoteObj[field])) {
         resolutions[field] = 'remote';
       } else {
         resolutions[field] = 'merged';
@@ -275,31 +298,35 @@ class ConflictResolver {
    * Register task-specific conflict resolution
    */
   setupTaskResolution(): void {
-    this.registerDefaultResolution<Record<string, any>>('task', {
+    this.registerDefaultResolution<Task>('task', {
       strategy: 'merge',
       fieldResolvers: {
         // Title: prefer local (user input)
-        title: (local: string, remote: string) => local || remote,
+        title: (local, remote) => local || remote,
 
         // Description: prefer non-empty, then local
-        description: (local: string, remote: string) => {
+        description: (local, remote) => {
           if (!local?.trim() && remote?.trim()) return remote;
           return local;
         },
 
         // Status: prefer more advanced status
-        status: (local: string, remote: string) => {
-          const statusOrder = ['pending', 'in_progress', 'completed'];
+        status: (local, remote) => {
+          const statusOrder: TaskStatus[] = [
+            TaskStatus.PENDING,
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.COMPLETED,
+          ];
           const localIndex = statusOrder.indexOf(local);
           const remoteIndex = statusOrder.indexOf(remote);
           return localIndex > remoteIndex ? local : remote;
         },
 
         // Time spent: sum them up
-        timeSpent: (local: number, remote: number) => (local || 0) + (remote || 0),
+        timeSpent: (local, remote) => (local || 0) + (remote || 0),
 
         // XP earned: use higher value
-        xpEarned: (local: number, remote: number) => Math.max(local || 0, remote || 0),
+        xpEarned: (local, remote) => Math.max(local || 0, remote || 0),
       },
     });
   }
@@ -308,21 +335,28 @@ class ConflictResolver {
    * Register user-specific conflict resolution
    */
   setupUserResolution(): void {
-    this.registerDefaultResolution<Record<string, any>>('user', {
+    this.registerDefaultResolution<User>('user', {
       strategy: 'merge',
       fieldResolvers: {
         // Stats: merge by taking higher values
-        currentStreak: (local: number, remote: number) => Math.max(local || 0, remote || 0),
-        longestStreak: (local: number, remote: number) => Math.max(local || 0, remote || 0),
-        totalXP: (local: number, remote: number) => Math.max(local || 0, remote || 0),
+        stats: (localStats, remoteStats) => ({
+          tasksAssigned: Math.max(localStats?.tasksAssigned || 0, remoteStats?.tasksAssigned || 0),
+          tasksCompleted: Math.max(
+            localStats?.tasksCompleted || 0,
+            remoteStats?.tasksCompleted || 0,
+          ),
+          currentStreak: Math.max(localStats?.currentStreak || 0, remoteStats?.currentStreak || 0),
+          longestStreak: Math.max(localStats?.longestStreak || 0, remoteStats?.longestStreak || 0),
+          totalXP: Math.max(localStats?.totalXP || 0, remoteStats?.totalXP || 0),
+        }),
 
         // Preferences: prefer local (user settings)
-        notificationPreferences: (local: unknown, remote: unknown) => local || remote,
-        theme: (local: string, remote: string) => local || remote,
+        notificationPreferences: (local, remote) => local || remote,
+        theme: (local, remote) => local || remote,
 
         // Name/email: prefer local
-        name: (local: string, remote: string) => local || remote,
-        email: (local: string, remote: string) => local || remote,
+        name: (local, remote) => local || remote,
+        email: (local, remote) => local || remote,
       },
     });
   }
@@ -335,12 +369,12 @@ class ConflictResolver {
     this.setupUserResolution();
 
     // Partnership resolution: prefer server (administrative data)
-    this.registerDefaultResolution<Record<string, any>>('partnership', {
+    this.registerDefaultResolution<Partnership>('partnership', {
       strategy: 'server-wins',
     });
 
     // Notification resolution: prefer server (authoritative)
-    this.registerDefaultResolution<Record<string, any>>('notification', {
+    this.registerDefaultResolution<Notification>('notification', {
       strategy: 'server-wins',
     });
   }

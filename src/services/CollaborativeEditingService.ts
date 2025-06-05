@@ -3,6 +3,7 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './SupabaseService';
+import { Task } from '../types/task.types';
 import ConflictResolver from './ConflictResolver';
 import OfflineQueueManager from './OfflineQueueManager';
 
@@ -283,7 +284,7 @@ class CollaborativeEditingService {
   private async broadcastEvent(
     taskId: string,
     event: string,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
   ): Promise<void> {
     const channel = this.channels.get(taskId);
     if (channel) {
@@ -376,7 +377,8 @@ class CollaborativeEditingService {
 
           if (!currentTask) return false;
 
-          let currentValue = (currentTask as any)[operation.field] || '';
+          const fieldValue = currentTask[operation.field as keyof typeof currentTask];
+          let currentValue = typeof fieldValue === 'string' ? fieldValue : '';
 
           if (operation.operation === 'insert') {
             currentValue =
@@ -581,14 +583,14 @@ class CollaborativeEditingService {
       const conflictInfo = {
         entity: 'task',
         entityId: taskId,
-        localData: currentTask, // Use full task as local data
-        remoteData: currentTask, // Use full task as remote data
+        localData: currentTask as Task, // Use full task as local data
+        remoteData: currentTask as Task, // Use full task as remote data
         conflictFields: [field],
         timestamp: new Date(),
       };
 
-      const resolution = await ConflictResolver.resolveConflict(conflictInfo);
-      return resolution.resolvedData[field];
+      const resolution = await ConflictResolver.resolveConflict<Task>(conflictInfo);
+      return resolution.resolvedData[field as keyof Task];
     } catch (error) {
       console.error('Error resolving conflict:', error);
       return null;
