@@ -451,7 +451,7 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should return empty array when no collaborators', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: Wrapper });
 
       const collaborators = result.current.getCurrentCollaborators();
 
@@ -483,7 +483,7 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should return false when no session', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: Wrapper });
 
       expect(result.current.isTaskLocked()).toBe(false);
     });
@@ -513,7 +513,7 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should return undefined when no session', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: Wrapper });
 
       expect(result.current.getLockOwner()).toBeUndefined();
     });
