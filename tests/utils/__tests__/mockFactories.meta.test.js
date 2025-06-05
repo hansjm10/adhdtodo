@@ -9,7 +9,6 @@ import {
 } from '../mockFactories';
 import {
   USER_ROLE,
-  TASK_PRIORITIES,
   NOTIFICATION_TYPES,
   PARTNERSHIP_STATUS,
 } from '../../../src/constants/UserConstants';

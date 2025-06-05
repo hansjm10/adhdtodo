@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Text, View, Button } from 'react-native';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import {
   testLoadingState,
   testErrorState,
