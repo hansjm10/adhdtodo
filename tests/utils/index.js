@@ -19,20 +19,26 @@ export {
   createMockNotificationData,
 } from './mockFactories';
 
-// Navigation helpers
+// Navigation helpers (Expo Router focused)
 export {
-  createNavigationMock,
-  createRouteMock,
-  createNavigationState,
-  createUseNavigationMock,
-  createUseRouteMock,
+  createRouterMock,
+  createSearchParamsMock,
+  createUseRouterMock,
+  createUseLocalSearchParamsMock,
+  createUseSearchParamsMock,
   createUseFocusEffectMock,
-  createUseIsFocusedMock,
+  createUsePathnameMock,
+  createUseSegmentsMock,
+  expectRouterPushCalledWith,
+  expectRouterReplaceCalledWith,
+  expectRouterCalledTimes,
+  resetRouterMocks,
+  simulateFocusEffect,
+  // Backwards compatibility aliases
+  createNavigationMock,
   expectNavigationCalledWith,
   expectNavigationCalledTimes,
   resetNavigationMocks,
-  MockNavigationContainer,
-  simulateNavigationEvent,
 } from './navigationHelpers';
 
 // Async helpers

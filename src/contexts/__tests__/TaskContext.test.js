@@ -15,6 +15,28 @@ jest.mock('../../services/TaskStorageService', () => ({
   deleteTask: jest.fn(),
 }));
 
+// Mock SupabaseService
+jest.mock('../../services/SupabaseService', () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: jest.fn(() => ({
+        data: {
+          subscription: {
+            unsubscribe: jest.fn(),
+          },
+        },
+      })),
+    },
+    from: jest.fn(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(() => ({
+        unsubscribe: jest.fn(),
+      })),
+    })),
+  },
+}));
+
 describe('TaskContext', () => {
   const mockTasks = [
     {

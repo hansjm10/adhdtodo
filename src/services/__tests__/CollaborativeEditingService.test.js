@@ -10,9 +10,51 @@ import OfflineQueueManager from '../OfflineQueueManager';
 jest.mock('../SupabaseService', () => ({
   supabase: {
     channel: jest.fn(),
-    from: jest.fn(),
+    from: jest.fn(() => {
+      const builder = {
+        select: jest.fn(),
+        insert: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        eq: jest.fn(),
+        is: jest.fn(),
+        order: jest.fn(),
+        limit: jest.fn(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      };
+
+      // Make all methods return the builder to enable chaining
+      builder.select.mockReturnValue(builder);
+      builder.insert.mockReturnValue(builder);
+      builder.update.mockReturnValue(builder);
+      builder.delete.mockReturnValue(builder);
+      builder.eq.mockReturnValue(builder);
+      builder.is.mockReturnValue(builder);
+      builder.order.mockReturnValue(builder);
+      builder.limit.mockReturnValue(builder);
+
+      builder.then = (resolve) => resolve({ data: [], error: null });
+      return builder;
+    }),
   },
 }));
+
+// Helper to create mock query builder for specific tests
+const _createMockQueryBuilder = (data = null, error = null) => {
+  const builder = {
+    select: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    is: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data, error }),
+  };
+  builder.then = (resolve) => resolve({ data: Array.isArray(data) ? data : [data], error });
+  return builder;
+};
 
 jest.mock('../ConflictResolver');
 jest.mock('../OfflineQueueManager');
