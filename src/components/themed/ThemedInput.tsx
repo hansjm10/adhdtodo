@@ -2,17 +2,18 @@
 // Provides clear visual feedback and proper accessibility support
 
 import React, { useState } from 'react';
+import type {
+  ViewStyle,
+  TextStyle,
+  TextInputProps,
+  NativeSyntheticEvent,
+  TextInputFocusEventData} from 'react-native';
 import {
   TextInput,
   View,
   Text,
   StyleSheet,
-  ViewStyle,
-  TextStyle,
-  TextInputProps,
-  Animated,
-  NativeSyntheticEvent,
-  TextInputFocusEventData,
+  Animated
 } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '../../styles/theme';
 

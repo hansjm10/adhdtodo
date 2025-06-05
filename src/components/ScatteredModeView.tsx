@@ -2,9 +2,10 @@
 // Displays quick tasks one at a time with completion actions
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Task } from '../types/task.types';
+import type { Task } from '../types/task.types';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
 import {
   getCardMinHeight,

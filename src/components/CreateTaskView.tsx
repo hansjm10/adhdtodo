@@ -2,6 +2,9 @@
 // Displays form inputs without business logic or data dependencies
 
 import React from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -10,12 +13,10 @@ import {
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
-  ViewStyle,
-  TextStyle,
+  Platform
 } from 'react-native';
 import { TASK_CATEGORIES, TIME_PRESETS } from '../constants/TaskConstants';
-import { TaskCategory, TimePreset } from '../types/task.types';
+import type { TaskCategory, TimePreset } from '../types/task.types';
 
 interface CreateTaskViewProps {
   title: string;
@@ -92,7 +93,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
             value={title}
             onChangeText={onTitleChange}
             maxLength={100}
-            accessible={true}
+            accessible
             accessibilityLabel="Task title input"
             accessibilityHint="Enter the title for your task"
           />
@@ -107,7 +108,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
             multiline
             numberOfLines={3}
             maxLength={500}
-            accessible={true}
+            accessible
             accessibilityLabel="Task description input"
             accessibilityHint="Enter an optional description for your task"
           />
@@ -124,8 +125,8 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
                     selectedCategory === category.id && styles.categoryButtonSelected,
                     { borderColor: category.color },
                   ]}
-                  onPress={() => onCategorySelect(category.id)}
-                  accessible={true}
+                  onPress={() => { onCategorySelect(category.id); }}
+                  accessible
                   accessibilityLabel={`${category.label} category`}
                   accessibilityHint={`Select ${category.label} as the task category`}
                   accessibilityRole="button"
@@ -156,8 +157,8 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
                     styles.timeButton,
                     selectedTimePreset === preset.minutes && styles.timeButtonSelected,
                   ]}
-                  onPress={() => onTimePresetSelect(preset.minutes)}
-                  accessible={true}
+                  onPress={() => { onTimePresetSelect(preset.minutes); }}
+                  accessible
                   accessibilityLabel={`${preset.label} time estimate`}
                   accessibilityHint={`Set time estimate to ${preset.label}`}
                   accessibilityRole="button"
@@ -181,7 +182,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
               testID="cancel-button"
               style={[styles.actionButton, styles.cancelButton]}
               onPress={onCancel}
-              accessible={true}
+              accessible
               accessibilityLabel="Cancel"
               accessibilityHint="Cancel creating this task"
               accessibilityRole="button"
@@ -197,7 +198,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({
               ]}
               onPress={onSave}
               disabled={isSaveDisabled}
-              accessible={true}
+              accessible
               accessibilityLabel="Save task"
               accessibilityHint={isSaveDisabled ? 'Enter a task title first' : 'Save this task'}
               accessibilityRole="button"

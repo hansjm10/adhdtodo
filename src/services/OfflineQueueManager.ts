@@ -4,11 +4,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // import NetInfo from '@react-native-community/netinfo';
 
+interface NetInfoState {
+  isConnected: boolean | null;
+}
+
 // Mock NetInfo for now - would need to install @react-native-community/netinfo
 const NetInfo = {
-  addEventListener: (callback: (state: any) => void) => {
+  addEventListener: (callback: (state: NetInfoState) => void) => {
     // Mock implementation - always return online
-    setTimeout(() => callback({ isConnected: true }), 100);
+    setTimeout(() => { callback({ isConnected: true }); }, 100);
     return () => {}; // unsubscribe function
   },
 };
@@ -25,7 +29,7 @@ const uuid = () => {
 export interface OfflineOperation {
   id: string;
   type: string;
-  data: any;
+  data: unknown;
   timestamp: Date;
   retryCount: number;
   maxRetries: number;
@@ -38,11 +42,11 @@ export interface OfflineOperationResult {
   success: boolean;
   operation: OfflineOperation;
   error?: Error;
-  data?: any;
+  data?: unknown;
 }
 
 interface QueueProcessor {
-  [key: string]: (operation: OfflineOperation) => Promise<any>;
+  [key: string]: (operation: OfflineOperation) => Promise<unknown>;
 }
 
 class OfflineQueueManager {
@@ -92,17 +96,17 @@ class OfflineQueueManager {
       ]);
 
       if (queueData) {
-        this.queue = JSON.parse(queueData).map((op: any) => ({
+        this.queue = JSON.parse(queueData).map((op: Record<string, unknown>) => ({
           ...op,
-          timestamp: new Date(op.timestamp),
-        }));
+          timestamp: new Date(op.timestamp as string),
+        })) as OfflineOperation[];
       }
 
       if (deadLetterData) {
-        this.deadLetterQueue = JSON.parse(deadLetterData).map((op: any) => ({
+        this.deadLetterQueue = JSON.parse(deadLetterData).map((op: Record<string, unknown>) => ({
           ...op,
-          timestamp: new Date(op.timestamp),
-        }));
+          timestamp: new Date(op.timestamp as string),
+        })) as OfflineOperation[];
       }
 
       // Sort queue by priority and timestamp
@@ -149,7 +153,7 @@ class OfflineQueueManager {
    */
   registerProcessor(
     operationType: string,
-    processor: (operation: OfflineOperation) => Promise<any>,
+    processor: (operation: OfflineOperation) => Promise<unknown>,
   ): void {
     this.processors[operationType] = processor;
   }
@@ -159,7 +163,7 @@ class OfflineQueueManager {
    */
   async addOperation(
     type: string,
-    data: any,
+    data: unknown,
     options: {
       priority?: 'low' | 'medium' | 'high';
       maxRetries?: number;

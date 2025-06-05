@@ -1,13 +1,16 @@
 // ABOUTME: Service for handling authentication including login, signup, and session management
 // Provides secure password-based authentication with session tokens
 
-import CryptoService, { ICryptoService } from './CryptoService';
-import UserStorageService, { IUserStorageService } from './UserStorageService';
+import type { ICryptoService } from './CryptoService';
+import CryptoService from './CryptoService';
+import type { IUserStorageService } from './UserStorageService';
+import UserStorageService from './UserStorageService';
 import SecureLogger from './SecureLogger';
-import RateLimiter, { IRateLimiter } from './RateLimiter';
+import type { IRateLimiter } from './RateLimiter';
+import RateLimiter from './RateLimiter';
 import ValidationService from './ValidationService';
 import { createUser, validateUser, updateUser } from '../utils/UserModel';
-import { User, UserRole, SecureToken } from '../types/user.types';
+import type { User, UserRole, SecureToken } from '../types/user.types';
 import * as SecureStore from 'expo-secure-store';
 
 interface PasswordValidationResult {

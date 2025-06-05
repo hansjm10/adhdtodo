@@ -1,8 +1,9 @@
 // ABOUTME: Partnership model for managing relationships between ADHD users and their accountability partners
 // Handles partnership creation, status management, and communication preferences
 
-import { Partnership, PartnershipStatus, PartnershipSettings } from '../types/user.types';
-import { ValidationResult } from './UserModel';
+import type { Partnership, PartnershipSettings } from '../types/user.types';
+import { PartnershipStatus } from '../types/user.types';
+import type { ValidationResult } from './UserModel';
 
 export const generatePartnershipId = (): string => {
   return `partnership_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

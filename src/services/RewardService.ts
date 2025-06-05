@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import TaskStorageService from './TaskStorageService';
 import { REWARD_POINTS } from '../constants/TaskConstants';
 import ErrorHandler from '../utils/ErrorHandler';
-import { Task } from '../types';
+import type { Task } from '../types';
 
 const STREAK_KEY = 'streak_data';
 const LAST_COMPLETION_KEY = 'last_completion_date';
@@ -92,7 +92,7 @@ class RewardService implements IRewardService {
           await this.setStreakData(streakData);
         }
         return streakData;
-      } else if (daysDiff === 1) {
+      } if (daysDiff === 1) {
         // Consecutive day, increment streak
         streakData.current = (streakData.current || 0) + 1;
         streakData.best = Math.max(streakData.current, streakData.best);

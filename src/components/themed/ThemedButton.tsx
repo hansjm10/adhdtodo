@@ -2,12 +2,13 @@
 // Demonstrates proper use of theme values, accessibility, and haptic feedback
 
 import React from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  ViewStyle,
-  TextStyle,
   ActivityIndicator,
   Animated,
 } from 'react-native';

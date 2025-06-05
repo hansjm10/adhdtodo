@@ -5,8 +5,9 @@ import { supabase } from './SupabaseService';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
 import UserStorageService from './UserStorageService';
 import SecureLogger from './SecureLogger';
-import { Notification, NotificationPriority, NotificationTypes, User, Task } from '../types';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { Notification, NotificationTypes, User, Task } from '../types';
+import { NotificationPriority } from '../types';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export interface INotificationService {
   sendNotification(

@@ -1,9 +1,10 @@
 // ABOUTME: Context for managing user presence and online status throughout the app
-// Provides real-time presence data and user activity indicators
+// Provides real-time presence data and user activity indicators with collaborative features
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppState } from 'react-native';
-import PresenceService, { PresenceState } from '../services/PresenceService';
+import type { PresenceState } from '../services/PresenceService';
+import PresenceService from '../services/PresenceService';
 import { useUser } from './UserContext';
 
 interface PresenceContextType {
@@ -14,6 +15,8 @@ interface PresenceContextType {
   signalActivity: () => Promise<void>;
   getOnlineUsers: () => PresenceState[];
   myPresence: PresenceState | null;
+  subscribeToPartnerPresence: (partnerIds: string[]) => () => void;
+  updatePresence: (status: 'online' | 'away' | 'offline', currentTaskId?: string) => Promise<void>;
 }
 
 const PresenceContext = createContext<PresenceContextType | undefined>(undefined);
@@ -93,6 +96,26 @@ export const PresenceProvider: React.FC<PresenceProviderProps> = ({ children }) 
     return PresenceService.getOnlineUsers();
   }, []);
 
+  const subscribeToPartnerPresence = useCallback((partnerIds: string[]): (() => void) => {
+    return PresenceService.subscribeToUserPresence(partnerIds, (userId, presence) => {
+      setPresenceStates((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(userId, presence);
+        return newMap;
+      });
+    });
+  }, []);
+
+  const updatePresence = useCallback(
+    async (status: 'online' | 'away' | 'offline', currentTaskId?: string): Promise<void> => {
+      await PresenceService.updatePresence(status, currentTaskId);
+      if (user?.id) {
+        setMyPresence(PresenceService.getPresenceState(user.id) || null);
+      }
+    },
+    [user?.id],
+  );
+
   const value: PresenceContextType = {
     presenceStates,
     isUserOnline,
@@ -101,6 +124,8 @@ export const PresenceProvider: React.FC<PresenceProviderProps> = ({ children }) 
     signalActivity,
     getOnlineUsers,
     myPresence,
+    subscribeToPartnerPresence,
+    updatePresence,
   };
 
   return <PresenceContext.Provider value={value}>{children}</PresenceContext.Provider>;

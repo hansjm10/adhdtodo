@@ -31,7 +31,7 @@ export const getServiceRoleSupabase = () => {
     throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY. This is required for admin operations.');
   }
 
-  return createClient<Database>(supabaseUrl!, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

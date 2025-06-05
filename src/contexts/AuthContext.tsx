@@ -1,20 +1,23 @@
 // ABOUTME: Authentication context providing app-wide authentication state and methods
 // including biometric auth, PIN fallback, auto-lock, and sensitive data protection
 
+import type {
+  ReactNode} from 'react';
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
   useRef,
-  useCallback,
-  ReactNode,
+  useCallback
 } from 'react';
-import { Alert, AppState, AppStateStatus } from 'react-native';
-import {
-  BiometricAuthService,
+import type { AppStateStatus } from 'react-native';
+import { Alert, AppState } from 'react-native';
+import type {
   AuthResult,
-  SecuritySettings,
+  SecuritySettings} from '../services/BiometricAuthService';
+import {
+  BiometricAuthService
 } from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 import SecureLogger from '../services/SecureLogger';

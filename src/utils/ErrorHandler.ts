@@ -1,7 +1,8 @@
 // ABOUTME: Global error handling utility for user-friendly error messages
 // Provides consistent error feedback and retry mechanisms for ADHD users
 
-import { Alert, AlertButton } from 'react-native';
+import type { AlertButton } from 'react-native';
+import { Alert } from 'react-native';
 
 type StorageOperation = 'save' | 'load' | 'delete' | 'update';
 type RetryFunction = () => void;

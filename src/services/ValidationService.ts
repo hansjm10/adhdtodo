@@ -78,7 +78,7 @@ class ValidationService implements IValidationService {
     if (!task.title || typeof task.title !== 'string') {
       errors.push('Task title is required');
     } else {
-      const title = task.title as string;
+      const title = task.title;
       if (title.trim().length === 0) {
         errors.push('Task title is required');
       } else if (title.length > this.MAX_TITLE_LENGTH) {
@@ -90,7 +90,7 @@ class ValidationService implements IValidationService {
     if (task.description !== undefined && task.description !== null) {
       if (typeof task.description !== 'string') {
         errors.push('Task description must be a string');
-      } else if ((task.description as string).length > this.MAX_DESCRIPTION_LENGTH) {
+      } else if ((task.description).length > this.MAX_DESCRIPTION_LENGTH) {
         errors.push(`Task description must not exceed ${this.MAX_DESCRIPTION_LENGTH} characters`);
       }
     }

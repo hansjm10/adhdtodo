@@ -1,7 +1,7 @@
 // ABOUTME: Shadow system for ADHD Todo app
 // Defines consistent elevation and shadow values for depth perception
 
-import { ViewStyle } from 'react-native';
+import type { ViewStyle } from 'react-native';
 
 // Shadow definitions with platform-specific values
 export const shadows = {

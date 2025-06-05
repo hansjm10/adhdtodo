@@ -2,15 +2,16 @@
 // Shows real-time status with visual indicators and activity descriptions
 
 import React from 'react';
+import type { ViewStyle } from 'react-native';
 import { View, Text, StyleSheet } from 'react-native';
 import { usePresence } from '../contexts/PresenceContext';
-import { PresenceState } from '../services/PresenceService';
+import type { PresenceState } from '../services/PresenceService';
 
 interface PresenceIndicatorProps {
   userId: string;
   showActivity?: boolean;
   size?: 'small' | 'medium' | 'large';
-  style?: any;
+  style?: ViewStyle;
 }
 
 const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
@@ -102,7 +103,7 @@ const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
 interface PresenceBadgeProps {
   userId: string;
   size?: number;
-  style?: any;
+  style?: object;
 }
 
 export const PresenceBadge: React.FC<PresenceBadgeProps> = ({ userId, size = 12, style }) => {
@@ -144,7 +145,7 @@ export const PresenceBadge: React.FC<PresenceBadgeProps> = ({ userId, size = 12,
 
 interface PresenceListProps {
   userIds: string[];
-  style?: any;
+  style?: object;
 }
 
 export const PresenceList: React.FC<PresenceListProps> = ({ userIds, style }) => {
@@ -153,6 +154,124 @@ export const PresenceList: React.FC<PresenceListProps> = ({ userIds, style }) =>
       {userIds.map((userId) => (
         <PresenceIndicator key={userId} userId={userId} size="medium" style={styles.listItem} />
       ))}
+    </View>
+  );
+};
+
+interface TaskPresenceIndicatorProps {
+  taskId: string;
+  currentUserId?: string;
+  style?: object;
+}
+
+export const TaskPresenceIndicator: React.FC<TaskPresenceIndicatorProps> = ({
+  taskId,
+  currentUserId,
+  style,
+}) => {
+  const { presenceStates } = usePresence();
+
+  const taskEditors = Array.from(presenceStates.values()).filter(
+    (presence) =>
+      presence.currentTaskId === taskId &&
+      presence.userId !== currentUserId &&
+      presence.status === 'online',
+  );
+
+  if (taskEditors.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={[styles.taskPresenceContainer, style]}>
+      <View style={styles.editorsContainer}>
+        {taskEditors.slice(0, 3).map((presence, index) => (
+          <PresenceBadge
+            key={presence.userId}
+            userId={presence.userId}
+            size={16}
+            style={[styles.editorBadge, { marginLeft: index > 0 ? -6 : 0 }]}
+          />
+        ))}
+        {taskEditors.length > 3 && (
+          <View style={styles.overflowBadge}>
+            <Text style={styles.overflowText}>+{taskEditors.length - 3}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.taskPresenceText}>
+        {taskEditors.length === 1 ? 'editing' : `${taskEditors.length} editing`}
+      </Text>
+    </View>
+  );
+};
+
+interface CollaboratorAvatarsProps {
+  userIds: string[];
+  maxDisplay?: number;
+  size?: number;
+  style?: object;
+}
+
+export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
+  userIds,
+  maxDisplay = 3,
+  size = 32,
+  style,
+}) => {
+  const { presenceStates } = usePresence();
+
+  const onlineCollaborators = userIds
+    .map((userId) => presenceStates.get(userId))
+    .filter((presence) => presence && presence.status === 'online');
+
+  if (onlineCollaborators.length === 0) {
+    return null;
+  }
+
+  const displayCollaborators = onlineCollaborators.slice(0, maxDisplay);
+  const remainingCount = onlineCollaborators.length - maxDisplay;
+
+  return (
+    <View style={[styles.collaboratorContainer, style]}>
+      {displayCollaborators.map((presence, index) => (
+        <View
+          key={presence!.userId}
+          style={[
+            styles.collaboratorAvatar,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              marginLeft: index > 0 ? -size * 0.3 : 0,
+              zIndex: displayCollaborators.length - index,
+            },
+          ]}
+        >
+          <Text style={[styles.avatarText, { fontSize: size * 0.4 }]}>
+            {presence!.userId.charAt(0).toUpperCase()}
+          </Text>
+          <PresenceBadge userId={presence!.userId} size={size * 0.25} style={styles.avatarBadge} />
+        </View>
+      ))}
+
+      {remainingCount > 0 && (
+        <View
+          style={[
+            styles.overflowAvatar,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              marginLeft: -size * 0.3,
+            },
+          ]}
+        >
+          <Text style={[styles.overflowAvatarText, { fontSize: size * 0.3 }]}>
+            +{remainingCount}
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -207,6 +326,76 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
+  },
+  taskPresenceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  editorsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editorBadge: {
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  overflowBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#666',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -6,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  overflowText: {
+    fontSize: 8,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  taskPresenceText: {
+    fontSize: 11,
+    color: '#1976d2',
+    fontWeight: '500',
+  },
+  collaboratorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  collaboratorAvatar: {
+    backgroundColor: '#2196f3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    position: 'relative',
+  },
+  avatarText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+  },
+  overflowAvatar: {
+    backgroundColor: '#666',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  overflowAvatarText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 

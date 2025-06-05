@@ -1,8 +1,11 @@
 // ABOUTME: Real-time presence service for tracking user online/offline status
 // Shows when partners are online and what they're working on with live updates
 
-import { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './SupabaseService';
+
+// Type for Supabase presence data - represents the raw data from Supabase
+type PresenceData = Record<string, unknown>;
 
 export interface PresenceState {
   userId: string;
@@ -240,14 +243,16 @@ class PresenceService {
     const state = this.channel.presenceState();
 
     for (const [_userId, presences] of Object.entries(state)) {
-      const latestPresence = presences[presences.length - 1] as any;
-      if (latestPresence && latestPresence.userId) {
-        this.presenceState.set(latestPresence.userId, {
-          userId: latestPresence.userId,
-          status: latestPresence.status || 'online',
-          lastSeen: latestPresence.lastSeen ? new Date(latestPresence.lastSeen) : new Date(),
-          currentTaskId: latestPresence.currentTaskId,
-          metadata: latestPresence.metadata,
+      const latestPresence = presences[presences.length - 1] as Record<string, unknown>;
+      if (latestPresence?.userId) {
+        this.presenceState.set(latestPresence.userId as string, {
+          userId: latestPresence.userId as string,
+          status: (latestPresence.status as 'online' | 'away' | 'offline') || 'online',
+          lastSeen: latestPresence.lastSeen
+            ? new Date(latestPresence.lastSeen as string)
+            : new Date(),
+          currentTaskId: latestPresence.currentTaskId as string | undefined,
+          metadata: latestPresence.metadata as PresenceState['metadata'],
         });
       }
     }
@@ -258,15 +263,20 @@ class PresenceService {
   /**
    * Handle user joining presence
    */
-  private handlePresenceJoin(key: string, newPresences: any[]): void {
-    const latestPresence = newPresences[newPresences.length - 1];
-    if (latestPresence && latestPresence.userId) {
-      this.presenceState.set(latestPresence.userId, {
-        userId: latestPresence.userId,
-        status: latestPresence.status || 'online',
-        lastSeen: latestPresence.lastSeen ? new Date(latestPresence.lastSeen) : new Date(),
-        currentTaskId: latestPresence.currentTaskId,
-        metadata: latestPresence.metadata,
+  private handlePresenceJoin(key: string, newPresences: PresenceData[]): void {
+    const latestPresence = newPresences[newPresences.length - 1] as unknown as Record<
+      string,
+      unknown
+    >;
+    if (latestPresence?.userId) {
+      this.presenceState.set(latestPresence.userId as string, {
+        userId: latestPresence.userId as string,
+        status: (latestPresence.status as 'online' | 'away' | 'offline') || 'online',
+        lastSeen: latestPresence.lastSeen
+          ? new Date(latestPresence.lastSeen as string)
+          : new Date(),
+        currentTaskId: latestPresence.currentTaskId as string | undefined,
+        metadata: latestPresence.metadata as PresenceState['metadata'],
       });
     }
   }
@@ -274,16 +284,17 @@ class PresenceService {
   /**
    * Handle user leaving presence
    */
-  private handlePresenceLeave(key: string, leftPresences: any[]): void {
+  private handlePresenceLeave(key: string, leftPresences: PresenceData[]): void {
     for (const presence of leftPresences) {
-      if (presence && presence.userId) {
+      const presenceData = presence as unknown as Record<string, unknown>;
+      if (presenceData?.userId) {
         // Mark as offline instead of removing
-        this.presenceState.set(presence.userId, {
-          userId: presence.userId,
+        this.presenceState.set(presenceData.userId as string, {
+          userId: presenceData.userId as string,
           status: 'offline' as const,
           lastSeen: new Date(),
-          currentTaskId: presence.currentTaskId,
-          metadata: presence.metadata,
+          currentTaskId: presenceData.currentTaskId as string | undefined,
+          metadata: presenceData.metadata as PresenceState['metadata'],
         });
       }
     }

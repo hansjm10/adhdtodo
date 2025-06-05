@@ -2,13 +2,14 @@
 // Provides checkbox for completion and visual feedback for task states
 
 import React, { useRef, useEffect, useState } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ViewStyle,
-  TextStyle,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,8 +19,9 @@ import TaskStorageService from '../services/TaskStorageService';
 import RewardService from '../services/RewardService';
 import NotificationService from '../services/NotificationService';
 import PartnershipService from '../services/PartnershipService';
-import { Task, TaskStatus } from '../types/task.types';
-import { User } from '../types/user.types';
+import type { Task} from '../types/task.types';
+import { TaskStatus } from '../types/task.types';
+import type { User } from '../types/user.types';
 import { animationHelpers, duration, easing } from '../styles/animations';
 import RewardAnimation from './RewardAnimation';
 
@@ -174,13 +176,13 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
 
   return (
     <>
-      <Animated.View style={[{ transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
+      <Animated.View style={{ transform: [{ scale: scaleAnim }], opacity: opacityAnim }}>
         <TouchableOpacity
           testID={`task-item-${task.id}`}
           style={[styles.container, task.completed && styles.completedContainer]}
           onPress={onPress}
           activeOpacity={0.7}
-          accessible={true}
+          accessible
           accessibilityLabel={taskAccessibilityLabel}
           accessibilityHint="Double tap to view task details"
           accessibilityRole="button"
@@ -189,7 +191,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
             testID="task-checkbox"
             style={[styles.checkbox, task.completed && styles.checkboxCompleted]}
             onPress={handleToggleComplete}
-            accessible={true}
+            accessible
             accessibilityLabel={
               task.completed ? 'Mark task as incomplete' : 'Mark task as complete'
             }
@@ -277,7 +279,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
               style={styles.startButton}
               onPress={handleStartTask}
               disabled={task.status === 'in_progress'}
-              accessible={true}
+              accessible
               accessibilityLabel={task.status === 'in_progress' ? 'Task in progress' : 'Start task'}
               accessibilityHint={
                 task.status === 'in_progress'
@@ -296,7 +298,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
           )}
         </TouchableOpacity>
       </Animated.View>
-      <RewardAnimation visible={showReward} type="emoji" onComplete={() => setShowReward(false)} />
+      <RewardAnimation visible={showReward} type="emoji" onComplete={() => { setShowReward(false); }} />
     </>
   );
 };

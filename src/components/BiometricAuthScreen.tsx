@@ -2,6 +2,9 @@
 // Touch ID, fingerprint authentication with PIN fallback option
 
 import React, { useState, useEffect } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -11,14 +14,13 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform,
-  ViewStyle,
-  TextStyle,
+  Platform
 } from 'react-native';
-import {
-  BiometricAuthService,
+import type {
   BiometricSupport,
-  SecuritySettings,
+  SecuritySettings} from '../services/BiometricAuthService';
+import {
+  BiometricAuthService
 } from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 
@@ -72,7 +74,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
       } else {
         Alert.alert('Authentication Failed', 'Please try again or use PIN', [
           { text: 'Try Again', onPress: handleBiometricAuth },
-          { text: 'Use PIN', onPress: () => setShowPIN(true) },
+          { text: 'Use PIN', onPress: () => { setShowPIN(true); } },
         ]);
       }
     } catch (error) {
@@ -233,7 +235,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         {isPINEnabled && (
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => setShowPIN(true)}
+            onPress={() => { setShowPIN(true); }}
             disabled={loading}
             accessibilityLabel="Use PIN authentication instead"
           >

@@ -2,6 +2,11 @@
 // Allows users to join partnerships by entering 6-character invite codes
 
 import React, { useState, useRef } from 'react';
+import type {
+  NativeSyntheticEvent,
+  TextInputKeyPressEventData,
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -11,11 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
-  NativeSyntheticEvent,
-  TextInputKeyPressEventData,
-  ViewStyle,
-  TextStyle,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -43,7 +44,7 @@ const PartnerInviteScreen = () => {
   const router = useRouter();
   const [inviteCode, setInviteCode] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState<boolean>(false);
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const inputRefs = useRef<Array<TextInput | null>>([]);
 
   const handleCodeChange = (value: string, index: number): void => {
     if (value.length > 1) {
@@ -103,7 +104,7 @@ const PartnerInviteScreen = () => {
         Alert.alert('Success!', 'Partnership established successfully!', [
           {
             text: 'OK',
-            onPress: () => router.replace('/profile/partnership'),
+            onPress: () => { router.replace('/profile/partnership'); },
           },
         ]);
       } else {
@@ -123,7 +124,7 @@ const PartnerInviteScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity style={styles.backButton} onPress={() => { router.back(); }}>
         <Ionicons name="arrow-back" size={24} color="#2C3E50" />
       </TouchableOpacity>
 
@@ -144,8 +145,8 @@ const PartnerInviteScreen = () => {
               }}
               style={[styles.codeInput, char && styles.codeInputFilled]}
               value={char}
-              onChangeText={(value) => handleCodeChange(value, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
+              onChangeText={(value) => { handleCodeChange(value, index); }}
+              onKeyPress={(e) => { handleKeyPress(e, index); }}
               maxLength={1}
               autoCapitalize="characters"
               keyboardType="default"

@@ -2,19 +2,21 @@
 // Displays notification list with timestamps and ability to mark as read
 
 import React, { useState, useEffect, useCallback } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Alert,
-  ViewStyle,
-  TextStyle,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { FlashList, ListRenderItem } from '@shopify/flash-list';
+import type { ListRenderItem } from '@shopify/flash-list';
+import { FlashList } from '@shopify/flash-list';
 import NotificationService from '../../src/services/NotificationService';
 import UserStorageService from '../../src/services/UserStorageService';
 import { NOTIFICATION_TYPES } from '../../src/constants/UserConstants';
@@ -184,7 +186,7 @@ const NotificationListScreen = () => {
           }
         }}
       >
-        <View style={[styles.iconContainer, { backgroundColor: style.color + '20' }]}>
+        <View style={[styles.iconContainer, { backgroundColor: `${style.color  }20` }]}>
           <Ionicons name={style.icon} size={24} color={style.color} />
         </View>
         <View style={styles.notificationContent}>

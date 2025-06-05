@@ -2,21 +2,22 @@
 // Receives tasks as props, making it easily testable
 
 import React, { useState, useEffect } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  RefreshControl,
-  ViewStyle,
-  TextStyle,
+  RefreshControl
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import TaskItem from './TaskItem';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
-import { Task, TaskCategory } from '../types/task.types';
-import { User } from '../types/user.types';
+import type { Task, TaskCategory } from '../types/task.types';
+import type { User } from '../types/user.types';
 import settingsService from '../services/SettingsService';
 
 interface TaskListViewProps {
@@ -86,7 +87,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
   const renderTask = ({ item }: { item: Task }) => (
     <TaskItem
       task={item}
-      onPress={() => onTaskPress(item)}
+      onPress={() => { onTaskPress(item); }}
       currentUser={currentUser}
       partner={partner}
     />
@@ -113,7 +114,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
             onToggleAssigned(true);
             onCategorySelect(null);
           }}
-          accessible={true}
+          accessible
           accessibilityLabel={`Show tasks from ${partner.name}`}
           accessibilityHint="Double tap to filter tasks assigned by your partner"
           accessibilityRole="button"
@@ -136,7 +137,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
           onCategorySelect(null);
           onToggleAssigned(false);
         }}
-        accessible={true}
+        accessible
         accessibilityLabel="Show all tasks"
         accessibilityHint="Double tap to show all tasks"
         accessibilityRole="button"
@@ -160,8 +161,8 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
               styles.categoryChip,
               selectedCategory === category.id && styles.categoryChipActive,
             ]}
-            onPress={() => onCategorySelect(category.id)}
-            accessible={true}
+            onPress={() => { onCategorySelect(category.id); }}
+            accessible
             accessibilityLabel={`Filter by ${category.label} category`}
             accessibilityHint={`Double tap to show only ${category.label} tasks`}
             accessibilityRole="button"
@@ -191,8 +192,8 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
         </Text>
         <TouchableOpacity
           style={styles.showMoreButton}
-          onPress={() => setShowAll(!showAll)}
-          accessible={true}
+          onPress={() => { setShowAll(!showAll); }}
+          accessible
           accessibilityLabel={showAll ? 'Show fewer tasks' : `Show all ${tasks.length} tasks`}
           accessibilityHint={
             showAll ? 'Double tap to limit visible tasks' : 'Double tap to show all tasks'
@@ -220,8 +221,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
           <EmptyState />
         </ScrollView>
       ) : (
-        <>
-          <FlashList<Task>
+        <FlashList<Task>
             testID="task-list"
             data={visibleTasks}
             renderItem={renderTask}
@@ -231,14 +231,13 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
             drawDistance={200}
             ListFooterComponent={ShowMoreButton}
           />
-        </>
       )}
 
       <TouchableOpacity
         testID="add-task-button"
         style={styles.addButton}
         onPress={onAddPress}
-        accessible={true}
+        accessible
         accessibilityLabel="Add new task"
         accessibilityHint="Double tap to create a new task"
         accessibilityRole="button"

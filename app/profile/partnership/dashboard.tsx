@@ -2,6 +2,9 @@
 // Shows task completion stats, overdue tasks, and progress visualization
 
 import React, { useState, useEffect, useCallback } from 'react';
+import type {
+  ViewStyle,
+  TextStyle} from 'react-native';
 import {
   View,
   Text,
@@ -10,13 +13,12 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
-  ViewStyle,
-  TextStyle,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { FlashList, ListRenderItem } from '@shopify/flash-list';
+import type { ListRenderItem } from '@shopify/flash-list';
+import { FlashList } from '@shopify/flash-list';
 import UserStorageService from '../../../src/services/UserStorageService';
 import TaskStorageService from '../../../src/services/TaskStorageService';
 import PartnershipService from '../../../src/services/PartnershipService';
@@ -240,19 +242,19 @@ const PartnerDashboardScreen = () => {
   const getStatusIcon = (task: Task): StatusIcon => {
     if (task.completed) {
       return { name: 'checkmark-circle', color: '#27AE60' };
-    } else if (task.status === TASK_STATUS.IN_PROGRESS) {
+    } if (task.status === TASK_STATUS.IN_PROGRESS) {
       return { name: 'play-circle', color: '#3498DB' };
-    } else if (isOverdue(task)) {
+    } if (isOverdue(task)) {
       return { name: 'alert-circle', color: '#E74C3C' };
-    } else {
+    } 
       return { name: 'time-outline', color: '#7F8C8D' };
-    }
+    
   };
 
   const TabButton = ({ tab, label, count }: TabButtonProps) => (
     <TouchableOpacity
       style={[styles.tabButton, selectedTab === tab && styles.tabButtonActive]}
-      onPress={() => setSelectedTab(tab)}
+      onPress={() => { setSelectedTab(tab); }}
     >
       <Text style={[styles.tabLabel, selectedTab === tab && styles.tabLabelActive]}>{label}</Text>
       {count > 0 && (
@@ -336,7 +338,7 @@ const PartnerDashboardScreen = () => {
         <Text style={styles.emptyText}>No active partnership</Text>
         <TouchableOpacity
           style={styles.goToPartnershipButton}
-          onPress={() => router.push('/profile/partnership')}
+          onPress={() => { router.push('/profile/partnership'); }}
         >
           <Text style={styles.goToPartnershipText}>Set up Partnership</Text>
         </TouchableOpacity>
@@ -409,7 +411,7 @@ const PartnerDashboardScreen = () => {
 
       <TouchableOpacity
         style={styles.assignButton}
-        onPress={() => router.push('/profile/partnership/assign')}
+        onPress={() => { router.push('/profile/partnership/assign'); }}
       >
         <Ionicons name="add-circle" size={24} color="white" />
         <Text style={styles.assignButtonText}>Assign New Task</Text>
