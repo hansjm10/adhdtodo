@@ -73,3 +73,6 @@ export {
   getAllTextContent,
   testComponentPerformance,
 } from './componentHelpers';
+
+// Standard mocks
+export * from './standardMocks';

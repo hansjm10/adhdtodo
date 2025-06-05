@@ -22,13 +22,13 @@ jest.mock('../../services/AuthService', () => ({
 }));
 
 // Mock UserStorageService
-jest.mock('../../services/UserStorageService', () => ({
-  __esModule: true,
-  default: {
-    setCurrentUser: jest.fn(),
-    logout: jest.fn(),
-  },
-}));
+jest.mock('../../services/UserStorageService', () => {
+  const { createUserStorageServiceMock } = require('../../../tests/utils/standardMocks');
+  return {
+    __esModule: true,
+    default: createUserStorageServiceMock(),
+  };
+});
 
 describe('UserContext', () => {
   beforeEach(() => {
@@ -37,8 +37,7 @@ describe('UserContext', () => {
     AsyncStorage.setItem.mockResolvedValue(undefined);
     AuthService.verifySession.mockResolvedValue({ isValid: false });
     AuthService.logout.mockResolvedValue({ success: true });
-    UserStorageService.setCurrentUser.mockResolvedValue(true);
-    UserStorageService.logout.mockResolvedValue(true);
+    // UserStorageService methods are already mocked by createUserStorageServiceMock
   });
 
   afterEach(() => {

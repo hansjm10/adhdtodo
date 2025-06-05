@@ -11,30 +11,7 @@ import NotificationService from '../../services/NotificationService';
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
 
-// Mock Supabase Service
-jest.mock('../../services/SupabaseService', () => ({
-  supabase: {
-    auth: {
-      getUser: jest.fn(() => Promise.resolve({ data: { user: { id: 'user1' } }, error: null })),
-      onAuthStateChange: jest.fn(() => ({
-        data: { subscription: { unsubscribe: jest.fn() } },
-      })),
-    },
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      then: jest.fn(() => Promise.resolve({ data: [], error: null })),
-    })),
-    channel: jest.fn(() => ({
-      on: jest.fn().mockReturnThis(),
-      subscribe: jest.fn(),
-      unsubscribe: jest.fn(),
-    })),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 // Mock NotificationService
 jest.mock('../../services/NotificationService', () => ({

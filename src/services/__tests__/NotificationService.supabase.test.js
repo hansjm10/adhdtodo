@@ -8,16 +8,7 @@ import { createMockUser } from '../../../tests/utils/mockFactories';
 import { createTask } from '../../utils/TaskModel';
 import UserStorageService from '../UserStorageService';
 
-// Mock Supabase
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    auth: {
-      getUser: jest.fn(),
-    },
-    from: jest.fn(),
-    channel: jest.fn(),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 // Mock SecureLogger
 jest.mock('../SecureLogger', () => ({

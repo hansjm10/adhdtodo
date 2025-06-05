@@ -4,12 +4,7 @@
 import PresenceService from '../PresenceService';
 import { supabase } from '../SupabaseService';
 
-// Mock Supabase
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    channel: jest.fn(),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 describe('PresenceService', () => {
   const mockUserId = 'user-123';

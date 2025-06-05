@@ -5,15 +5,7 @@ import TaskStorageService from '../TaskStorageService';
 import { supabase } from '../SupabaseService';
 import { createTask } from '../../utils/TaskModel';
 
-// Mock Supabase
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    auth: {
-      getUser: jest.fn(),
-    },
-    from: jest.fn(),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 // Mock SecureLogger to avoid console spam
 jest.mock('../SecureLogger', () => ({
