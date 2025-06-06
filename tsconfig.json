@@ -14,7 +14,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["jest", "react-native"],
+    "types": ["jest", "react-native", "nativewind/types"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

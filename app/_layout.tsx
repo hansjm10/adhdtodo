@@ -1,6 +1,7 @@
 // ABOUTME: Root layout for Expo Router app with providers and authentication
 // Sets up the navigation structure and wraps the app with necessary contexts
 
+import '../global.css';
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
