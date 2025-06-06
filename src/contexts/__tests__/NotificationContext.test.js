@@ -6,39 +6,91 @@ import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import { NotificationProvider, useNotifications } from '../NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NotificationService from '../../services/NotificationService';
+import { testDataFactories } from '../../../tests/utils';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
 
+// SupabaseService is already mocked globally in tests/setup.js
+
+// Mock NotificationService
+jest.mock('../../services/NotificationService', () => {
+  const callbacks = new Map();
+
+  return {
+    __esModule: true,
+    default: {
+      getNotificationsForUser: jest.fn(),
+      markNotificationAsRead: jest.fn(),
+      markAllNotificationsAsRead: jest.fn(),
+      clearNotificationsForUser: jest.fn(),
+      sendNotification: jest.fn(),
+      subscribeToNotifications: jest.fn((userId, callback) => {
+        callbacks.set(userId, callback);
+        return () => callbacks.delete(userId);
+      }),
+      // Helper to trigger subscription callbacks in tests
+      __triggerNotification: (userId, notification) => {
+        const callback = callbacks.get(userId);
+        if (callback) {
+          callback(notification);
+        }
+      },
+    },
+  };
+});
+
+// SupabaseService is already mocked globally in tests/setup.js
+// We need to override the auth user for these tests
+import { supabase } from '../../services/SupabaseService';
+
+beforeAll(() => {
+  // Mock a logged-in user for all tests
+  supabase.auth.getUser.mockResolvedValue({
+    data: { user: { id: 'test-user-123' } },
+    error: null,
+  });
+
+  // Mock auth state change listener
+  supabase.auth.onAuthStateChange.mockReturnValue({
+    data: {
+      subscription: {
+        unsubscribe: jest.fn(),
+      },
+    },
+  });
+});
+
 describe('NotificationContext', () => {
   const mockNotifications = [
-    {
+    testDataFactories.notification({
       id: '1',
       type: 'task_assigned',
       title: 'New Task Assigned',
       message: 'Partner assigned you a task',
       userId: 'user1',
-      isRead: false,
+      read: false,
       createdAt: '2023-01-01T00:00:00Z',
-    },
-    {
+    }),
+    testDataFactories.notification({
       id: '2',
       type: 'task_completed',
       title: 'Task Completed',
       message: 'Partner completed a task',
       userId: 'user1',
-      isRead: true,
+      read: true,
       createdAt: '2023-01-02T00:00:00Z',
-    },
-    {
+    }),
+    testDataFactories.notification({
       id: '3',
       type: 'reminder',
       title: 'Task Reminder',
       message: 'Task is due soon',
       userId: 'user1',
-      isRead: false,
+      read: false,
       createdAt: '2023-01-03T00:00:00Z',
-    },
+    }),
   ];
 
   beforeEach(() => {
@@ -46,6 +98,28 @@ describe('NotificationContext', () => {
     AsyncStorage.getItem.mockResolvedValue(JSON.stringify(mockNotifications));
     AsyncStorage.setItem.mockResolvedValue(undefined);
     AsyncStorage.removeItem.mockResolvedValue(undefined);
+
+    // Set up NotificationService mocks
+    NotificationService.getNotificationsForUser.mockResolvedValue(mockNotifications);
+    NotificationService.markNotificationAsRead.mockResolvedValue(true);
+    NotificationService.markAllNotificationsAsRead.mockResolvedValue(true);
+    NotificationService.clearNotificationsForUser.mockResolvedValue(true);
+    NotificationService.sendNotification.mockImplementation(async (userId, type, data) => {
+      // Simulate real-time update
+      const newNotification = testDataFactories.notification({
+        id: Date.now().toString(),
+        type,
+        title: data.title || 'New Notification',
+        message: data.message || 'Notification message',
+        userId,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+      setTimeout(() => {
+        NotificationService.__triggerNotification(userId, newNotification);
+      }, 0);
+      return newNotification;
+    });
   });
 
   afterEach(async () => {
@@ -97,12 +171,12 @@ describe('NotificationContext', () => {
       expect(getByTestId('notif-0').props.children).toBe('New Task Assigned');
     });
 
-    expect(AsyncStorage.getItem).toHaveBeenCalledWith('notifications');
+    expect(NotificationService.getNotificationsForUser).toHaveBeenCalledWith('test-user-123');
   });
 
   it('should handle errors gracefully', async () => {
     const errorMessage = 'Failed to load notifications';
-    AsyncStorage.getItem.mockRejectedValueOnce(new Error(errorMessage));
+    NotificationService.getNotificationsForUser.mockRejectedValueOnce(new Error(errorMessage));
 
     // Suppress expected console.error
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -129,12 +203,14 @@ describe('NotificationContext', () => {
       React.useEffect(() => {
         if (!loading && !hasAdded) {
           setHasAdded(true);
-          addNotification({
-            type: 'task_update',
-            title: 'Task Updated',
-            message: 'A task was updated',
-            userId: 'user1',
-          });
+          addNotification(
+            testDataFactories.notification({
+              type: 'task_update',
+              title: 'Task Updated',
+              message: 'A task was updated',
+              userId: 'user1',
+            }),
+          );
         }
       }, [loading, hasAdded, addNotification]);
 
@@ -151,9 +227,10 @@ describe('NotificationContext', () => {
       expect(getByTestId('notif-count').props.children).toBe(4);
     });
 
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      'notifications',
-      expect.stringContaining('Task Updated'),
+    expect(NotificationService.sendNotification).toHaveBeenCalledWith(
+      'test-user-123',
+      'task_update',
+      {},
     );
   });
 
@@ -273,7 +350,7 @@ describe('NotificationContext', () => {
       expect(getByTestId('notif-count').props.children).toBe(0);
     });
 
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('notifications');
+    expect(NotificationService.clearNotificationsForUser).toHaveBeenCalledWith('test-user-123');
   });
 
   it('should filter notifications by type', async () => {

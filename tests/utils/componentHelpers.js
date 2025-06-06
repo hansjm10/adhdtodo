@@ -23,6 +23,10 @@ export const testLoadingState = async (Component, props = {}, options = {}) => {
     queryByText(/loading/i) ||
     UNSAFE_queryAllByType('ActivityIndicator')[0];
 
+  if (!loadingIndicator) {
+    throw new Error('No loading indicator found in component');
+  }
+
   expect(loadingIndicator).toBeTruthy();
 
   return result;
@@ -63,8 +67,15 @@ export const testErrorState = async (Component, props = {}, error = 'Test error'
  * @param {Object} options - Render options
  * @returns {Promise<Object>} Render result
  */
-export const testEmptyState = async (Component, props = {}, options = {}) => {
-  const result = render(<Component {...props} data={[]} items={[]} />, options);
+export const testEmptyState = async (
+  Component,
+  props = {},
+  dataPropName = 'data',
+  options = {},
+) => {
+  // Create props with empty array for the specified data prop
+  const emptyProps = { ...props, [dataPropName]: [] };
+  const result = render(<Component {...emptyProps} />, options);
 
   const { queryByText, queryByTestId } = result;
 
@@ -74,6 +85,10 @@ export const testEmptyState = async (Component, props = {}, options = {}) => {
     queryByText(/no data/i) ||
     queryByText(/empty/i) ||
     queryByTestId('empty-state');
+
+  if (!emptyMessage) {
+    throw new Error('No empty state message found in component');
+  }
 
   expect(emptyMessage).toBeTruthy();
 
@@ -251,31 +266,48 @@ export const testKeyboardInteraction = async (input, expectations) => {
 
 /**
  * Get all text content from a component tree
- * @param {Object} screen - Render result
+ * @param {Object} screenOrRoot - Render result or root element
  * @returns {Array<string>} Array of text content
  */
-export const getAllTextContent = (screen) => {
-  // Try to get UNSAFE_queryAllByType from screen, fallback to alternative method
-  if (screen.UNSAFE_queryAllByType) {
-    const textElements = screen.UNSAFE_queryAllByType('Text');
-    return textElements.map((el) => el.props.children).filter(Boolean);
+export const getAllTextContent = (screenOrRoot) => {
+  // If this is a render result with query methods
+  if (screenOrRoot.UNSAFE_queryAllByType) {
+    const textElements = screenOrRoot.UNSAFE_queryAllByType('Text');
+    return textElements
+      .map((el) => el.props.children)
+      .filter(Boolean)
+      .flat();
   }
 
-  // Alternative: get all text elements using a different approach
-  const allText = [];
-
-  // If screen has root property, traverse it
-  if (screen.root) {
+  // If this is a root element directly
+  if (screenOrRoot.findAll) {
     try {
-      const textElements = screen.root.findAll((el) => el.type === 'Text');
-      return textElements.map((el) => el.props.children).filter(Boolean);
+      const textElements = screenOrRoot.findAll((el) => el.type === 'Text');
+      return textElements
+        .map((el) => el.props.children)
+        .filter(Boolean)
+        .flat();
     } catch (error) {
       // Fallback if findAll doesn't work
       return [];
     }
   }
 
-  return allText;
+  // If screen has root property, traverse it
+  if (screenOrRoot.root && screenOrRoot.root.findAll) {
+    try {
+      const textElements = screenOrRoot.root.findAll((el) => el.type === 'Text');
+      return textElements
+        .map((el) => el.props.children)
+        .filter(Boolean)
+        .flat();
+    } catch (error) {
+      // Fallback if findAll doesn't work
+      return [];
+    }
+  }
+
+  return [];
 };
 
 /**

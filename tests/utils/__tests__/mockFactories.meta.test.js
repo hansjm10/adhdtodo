@@ -28,6 +28,7 @@ describe('Mock Factory Functions Meta-Tests', () => {
     });
 
     it('should allow overriding defaults', () => {
+      // eslint-disable-next-line custom-rules/enforce-test-data-factories
       const customData = {
         id: 'custom_123',
         name: 'Custom User',

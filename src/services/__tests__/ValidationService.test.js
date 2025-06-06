@@ -1,6 +1,7 @@
 // ABOUTME: Tests for ValidationService ensuring proper input validation and sanitization
 
 import ValidationService from '../ValidationService';
+import { testDataFactories } from '../../../tests/utils';
 
 describe('ValidationService', () => {
   describe('Email Validation', () => {
@@ -46,12 +47,12 @@ describe('ValidationService', () => {
 
   describe('Task Data Validation', () => {
     it('should validate valid task data', () => {
-      const validTask = {
+      const validTask = testDataFactories.task({
         title: 'Test Task',
         description: 'A valid description',
         priority: 'high',
         category: 'work',
-      };
+      });
       const result = ValidationService.validateTaskData(validTask);
       expect(result.isValid).toBe(true);
       expect(result.errors).toEqual([]);
