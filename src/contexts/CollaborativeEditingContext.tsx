@@ -2,7 +2,7 @@
 // Provides real-time collaboration features with cursor tracking and conflict resolution
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import type {
   TaskEditSession,
   EditOperation,
@@ -175,36 +175,42 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
     };
   }, [state.currentTaskId]);
 
-  const startEditing = async (taskId: string): Promise<void> => {
-    if (!user) return;
+  const startEditing = useCallback(
+    async (taskId: string): Promise<void> => {
+      if (!user) return;
 
-    try {
-      const session = await CollaborativeEditingService.startEditSession(taskId, user.id);
-      dispatch({ type: 'START_SESSION', payload: { taskId, session } });
-      dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId } });
-      dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: true } });
-    } catch (error) {
-      console.error('Failed to start editing session:', error);
-      dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: false } });
-    }
-  };
-
-  const stopEditing = async (taskId: string): Promise<void> => {
-    if (!user) return;
-
-    try {
-      await CollaborativeEditingService.stopEditSession(taskId, user.id);
-      dispatch({ type: 'STOP_SESSION', payload: { taskId } });
-
-      if (state.currentTaskId === taskId) {
-        dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId: null } });
+      try {
+        const session = await CollaborativeEditingService.startEditSession(taskId, user.id);
+        dispatch({ type: 'START_SESSION', payload: { taskId, session } });
+        dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId } });
+        dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: true } });
+      } catch (error) {
+        console.error('Failed to start editing session:', error);
+        dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: false } });
       }
-    } catch (error) {
-      console.error('Failed to stop editing session:', error);
-    }
-  };
+    },
+    [user],
+  );
 
-  const applyOperation = async (operation: EditOperation): Promise<boolean> => {
+  const stopEditing = useCallback(
+    async (taskId: string): Promise<void> => {
+      if (!user) return;
+
+      try {
+        await CollaborativeEditingService.stopEditSession(taskId, user.id);
+        dispatch({ type: 'STOP_SESSION', payload: { taskId } });
+
+        if (state.currentTaskId === taskId) {
+          dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId: null } });
+        }
+      } catch (error) {
+        console.error('Failed to stop editing session:', error);
+      }
+    },
+    [user, state.currentTaskId],
+  );
+
+  const applyOperation = useCallback(async (operation: EditOperation): Promise<boolean> => {
     try {
       const success = await CollaborativeEditingService.applyOperation(operation);
       if (success) {
@@ -216,74 +222,91 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
       console.error('Failed to apply operation:', error);
       return false;
     }
-  };
+  }, []);
 
-  const updateCursor = async (field: string, position: number): Promise<void> => {
-    if (!user || !state.currentTaskId) return;
+  const updateCursor = useCallback(
+    async (field: string, position: number): Promise<void> => {
+      if (!user || !state.currentTaskId) return;
 
-    try {
-      await CollaborativeEditingService.updateCursor(state.currentTaskId, user.id, field, position);
-    } catch (error) {
-      console.error('Failed to update cursor:', error);
-    }
-  };
+      try {
+        await CollaborativeEditingService.updateCursor(
+          state.currentTaskId,
+          user.id,
+          field,
+          position,
+        );
+      } catch (error) {
+        console.error('Failed to update cursor:', error);
+      }
+    },
+    [user, state.currentTaskId],
+  );
 
-  const toggleTaskLock = async (lock: boolean): Promise<boolean> => {
-    if (!user || !state.currentTaskId) return false;
+  const toggleTaskLock = useCallback(
+    async (lock: boolean): Promise<boolean> => {
+      if (!user || !state.currentTaskId) return false;
 
-    try {
-      return await CollaborativeEditingService.toggleTaskLock(state.currentTaskId, user.id, lock);
-    } catch (error) {
-      console.error('Failed to toggle task lock:', error);
-      return false;
-    }
-  };
+      try {
+        return await CollaborativeEditingService.toggleTaskLock(state.currentTaskId, user.id, lock);
+      } catch (error) {
+        console.error('Failed to toggle task lock:', error);
+        return false;
+      }
+    },
+    [user, state.currentTaskId],
+  );
 
-  const createTextOperation = (
-    field: string,
-    operation: 'insert' | 'delete' | 'replace',
-    content: string,
-    position: number,
-    length?: number,
-  ): EditOperation | null => {
-    if (!user || !state.currentTaskId) return null;
+  const createTextOperation = useCallback(
+    (
+      field: string,
+      operation: 'insert' | 'delete' | 'replace',
+      content: string,
+      position: number,
+      length?: number,
+    ): EditOperation | null => {
+      if (!user || !state.currentTaskId) return null;
 
-    return CollaborativeEditingService.createOperation(
-      state.currentTaskId,
-      user.id,
-      'text',
-      field,
-      operation,
-      content,
-      position,
-      length,
-    );
-  };
+      return CollaborativeEditingService.createOperation(
+        state.currentTaskId,
+        user.id,
+        'text',
+        field,
+        operation,
+        content,
+        position,
+        length,
+      );
+    },
+    [user, state.currentTaskId],
+  );
 
-  const createFieldOperation = (field: string, content: unknown): EditOperation | null => {
-    if (!user || !state.currentTaskId) return null;
+  const createFieldOperation = useCallback(
+    (field: string, content: unknown): EditOperation | null => {
+      if (!user || !state.currentTaskId) return null;
 
-    return CollaborativeEditingService.createOperation(
-      state.currentTaskId,
-      user.id,
-      'field',
-      field,
-      'replace',
-      content,
-    );
-  };
+      return CollaborativeEditingService.createOperation(
+        state.currentTaskId,
+        user.id,
+        'field',
+        field,
+        'replace',
+        content,
+      );
+    },
+    [user, state.currentTaskId],
+  );
 
-  const getCurrentCollaborators = (): CollaboratorCursor[] => {
+  const getCurrentCollaborators = useCallback((): CollaboratorCursor[] => {
     return state.collaborators.filter((cursor) => cursor.userId !== user?.id);
-  };
+  }, [state.collaborators, user?.id]);
 
-  const isTaskLocked = (): boolean => {
+  const isTaskLocked = useCallback((): boolean => {
     return state.currentSession?.isLocked ?? false;
-  };
+  }, [state.currentSession?.isLocked]);
 
-  const getLockOwner = (): string | undefined => {
+  const getLockOwner = useCallback((): string | undefined => {
     return state.currentSession?.lockOwner;
-  };
+  }, [state.currentSession?.lockOwner]);
 
   const contextValue: CollaborativeEditingContextType = React.useMemo(
     () => ({

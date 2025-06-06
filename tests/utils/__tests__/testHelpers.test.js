@@ -26,7 +26,7 @@ describe('Test Helper Functions', () => {
 
     it('should pass custom props', async () => {
       const CustomComponent = ({ isLoading, customProp }) => (
-        <View>{isLoading && <Text>{customProp}</Text>}</View>
+        <View>{isLoading && <Text>Loading {customProp}</Text>}</View>
       );
 
       await expect(
@@ -35,9 +35,12 @@ describe('Test Helper Functions', () => {
     });
 
     it('should throw when no loading indicator found', async () => {
-      const NoLoadingComponent = () => <Text>No loading state</Text>;
+      const NoLoadingComponent = () => <Text>No indicator present</Text>;
 
-      await expect(testLoadingState(NoLoadingComponent)).rejects.toThrow();
+      // Since testLoadingState is async, we need to handle the promise
+      await expect(testLoadingState(NoLoadingComponent)).rejects.toThrow(
+        'No loading indicator found in component',
+      );
     });
   });
 
@@ -57,9 +60,12 @@ describe('Test Helper Functions', () => {
     });
 
     it('should throw when no error message found', async () => {
-      const NoErrorComponent = () => <Text>No error state</Text>;
+      const NoErrorComponent = () => <Text>All is well</Text>;
 
-      await expect(testErrorState(NoErrorComponent)).rejects.toThrow();
+      // Since testErrorState is async, we need to handle the promise
+      await expect(testErrorState(NoErrorComponent)).rejects.toThrow(
+        'No error message found in component',
+      );
     });
   });
 

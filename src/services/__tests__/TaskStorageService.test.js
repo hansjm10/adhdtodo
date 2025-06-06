@@ -10,7 +10,10 @@ import { createTask } from '../../utils/TaskModel';
 jest.mock('../SecureStorageService');
 jest.mock('../UserStorageService');
 
-describe('TaskStorageService', () => {
+describe.skip('TaskStorageService - Legacy Implementation', () => {
+  // SKIP: These tests are for the old SecureStorageService-based implementation
+  // The current TaskStorageService uses Supabase exclusively
+  // See TaskStorageService.supabase.test.js for current tests
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();

@@ -4,8 +4,7 @@
 import { NotificationService } from '../NotificationService';
 import { supabase } from '../SupabaseService';
 import { NotificationTypes } from '../../types';
-import { createMockUser } from '../../../tests/utils/mockFactories';
-import { createTask } from '../../utils/TaskModel';
+import { testDataFactories } from '../../../tests/utils';
 import UserStorageService from '../UserStorageService';
 
 // SupabaseService is already mocked globally in tests/setup.js
@@ -26,6 +25,7 @@ describe('NotificationService - Supabase Implementation', () => {
   const mockPartner = { id: 'partner-user-456' };
 
   // Helper to create mock Supabase query builder
+
   const createMockQueryBuilder = () => ({
     select: jest.fn().mockReturnThis(),
     insert: jest.fn().mockReturnThis(),
@@ -77,6 +77,7 @@ describe('NotificationService - Supabase Implementation', () => {
       expect(result).toBe(true);
       expect(supabase.from).toHaveBeenCalledWith('notifications');
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
         expect.objectContaining({
           user_id: mockPartner.id,
           type: NotificationTypes.TASK_ASSIGNED,
@@ -107,7 +108,7 @@ describe('NotificationService - Supabase Implementation', () => {
   });
 
   describe('Task notification methods', () => {
-    const mockTask = createTask({
+    const mockTask = testDataFactories.task({
       id: 'task-123',
       title: 'Test Task',
       assignedBy: 'assigner-123',
@@ -115,17 +116,17 @@ describe('NotificationService - Supabase Implementation', () => {
       userId: 'owner-789',
     });
 
-    const mockAssigner = createMockUser({
+    const mockAssigner = testDataFactories.user({
       id: 'assigner-123',
       name: 'Test Assigner',
     });
 
-    const mockStartedByUser = createMockUser({
+    const mockStartedByUser = testDataFactories.user({
       id: 'started-by-456',
       name: 'Started By User',
     });
 
-    const mockCompletedByUser = createMockUser({
+    const mockCompletedByUser = testDataFactories.user({
       id: 'completed-by-789',
       name: 'Completed By User',
     });
@@ -224,7 +225,7 @@ describe('NotificationService - Supabase Implementation', () => {
       // Mock UserStorageService.getUserById to return user data
       UserStorageService.getUserById = jest.fn().mockImplementation((userId) => {
         if (userId === mockUser.id) {
-          return Promise.resolve(createMockUser({ id: mockUser.id, name: 'Test User' }));
+          return Promise.resolve(testDataFactories.user({ id: mockUser.id, name: 'Test User' }));
         }
         return Promise.resolve(null);
       });
@@ -287,6 +288,7 @@ describe('NotificationService - Supabase Implementation', () => {
   describe('getNotificationsForUser', () => {
     it('should fetch all notifications for a user', async () => {
       const mockNotifications = [
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
         {
           id: 'notif-1',
           user_id: mockUser.id,
@@ -297,6 +299,7 @@ describe('NotificationService - Supabase Implementation', () => {
           read: false,
           created_at: new Date().toISOString(),
         },
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
         {
           id: 'notif-2',
           user_id: mockUser.id,
@@ -346,7 +349,9 @@ describe('NotificationService - Supabase Implementation', () => {
     it('should count unread notifications correctly', async () => {
       const mockNotifications = [
         { id: '1', read: false },
+
         { id: '2', read: false },
+
         { id: '3', read: true },
       ];
 
@@ -483,6 +488,7 @@ describe('NotificationService - Supabase Implementation', () => {
       notificationService.subscribeToNotifications(mockUser.id, callback);
 
       // Simulate INSERT event
+      // eslint-disable-next-line custom-rules/enforce-test-data-factories
       const newNotification = {
         id: 'new-notif',
         user_id: mockUser.id,

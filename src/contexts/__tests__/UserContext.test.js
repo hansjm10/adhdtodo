@@ -8,6 +8,7 @@ import { UserProvider, useUser } from '../UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../../services/AuthService';
 import UserStorageService from '../../services/UserStorageService';
+import { testDataFactories } from '../../../tests/utils';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
@@ -73,7 +74,11 @@ describe('UserContext', () => {
   });
 
   it('should load user data on mount', async () => {
-    const mockUser = { id: '1', name: 'Test User', email: 'test@example.com' };
+    const mockUser = testDataFactories.user({
+      id: '1',
+      name: 'Test User',
+      email: 'test@example.com',
+    });
     AuthService.verifySession.mockResolvedValueOnce({
       isValid: true,
       user: mockUser,
@@ -94,14 +99,18 @@ describe('UserContext', () => {
   });
 
   it('should load partner and partnership data when user has partnerId', async () => {
-    const mockUser = {
+    const mockUser = testDataFactories.user({
       id: '1',
       name: 'Test User',
       email: 'test@example.com',
       partnerId: 'partner1',
-    };
-    const mockPartner = { id: 'partner1', name: 'Test Partner' };
-    const mockPartnership = { id: 'partnership1', userId: '1', partnerId: 'partner1' };
+    });
+    const mockPartner = testDataFactories.user({ id: 'partner1', name: 'Test Partner' });
+    const mockPartnership = testDataFactories.partnership({
+      id: 'partnership1',
+      adhdUserId: '1',
+      partnerId: 'partner1',
+    });
 
     AuthService.verifySession.mockResolvedValueOnce({
       isValid: true,

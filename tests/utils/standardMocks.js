@@ -130,7 +130,7 @@ export const createNotificationServiceMock = () => ({
   notifyTaskAssigned: jest.fn().mockResolvedValue({ id: 'notif-123' }),
   notifyTaskCompleted: jest.fn().mockResolvedValue({ id: 'notif-124' }),
   notifyTaskReminder: jest.fn().mockResolvedValue({ id: 'notif-125' }),
-  subscribeToNotifications: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+  subscribeToNotifications: jest.fn().mockReturnValue(jest.fn()),
 });
 
 /**
@@ -143,7 +143,9 @@ export const createUserStorageServiceMock = (currentUser = null) => ({
   saveUser: jest.fn().mockResolvedValue(true),
   updateUser: jest.fn().mockResolvedValue(true),
   clearCurrentUser: jest.fn().mockResolvedValue(true),
-  subscribeToUserUpdates: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+  setCurrentUser: jest.fn().mockResolvedValue(true),
+  logout: jest.fn().mockResolvedValue(true),
+  subscribeToUserUpdates: jest.fn().mockReturnValue(jest.fn()),
 });
 
 /**
@@ -156,7 +158,7 @@ export const createTaskStorageServiceMock = (tasks = []) => ({
   updateTask: jest.fn().mockResolvedValue(true),
   deleteTask: jest.fn().mockResolvedValue(true),
   getTasksForUser: jest.fn().mockResolvedValue(tasks),
-  subscribeToTaskUpdates: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+  subscribeToTaskUpdates: jest.fn().mockReturnValue(jest.fn()),
 });
 
 /**
@@ -177,7 +179,7 @@ export const createPartnershipServiceMock = (partnerships = []) => ({
   updatePartnership: jest.fn().mockResolvedValue(true),
   incrementPartnershipStat: jest.fn().mockResolvedValue(true),
   clearAllPartnerships: jest.fn().mockResolvedValue(true),
-  subscribeToPartnershipUpdates: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+  subscribeToPartnershipUpdates: jest.fn().mockReturnValue(jest.fn()),
 });
 
 /**

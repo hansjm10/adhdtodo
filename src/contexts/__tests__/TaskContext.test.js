@@ -6,58 +6,118 @@ import { render, waitFor, cleanup } from '@testing-library/react-native';
 import { View, Text } from 'react-native';
 import { TaskProvider, useTasks } from '../TaskContext';
 import TaskStorageService from '../../services/TaskStorageService';
+import { testDataFactories } from '../../../tests/utils';
 
 // Mock TaskStorageService
-jest.mock('../../services/TaskStorageService', () => ({
-  getAllTasks: jest.fn(),
-  saveTask: jest.fn(),
-  updateTask: jest.fn(),
-  deleteTask: jest.fn(),
-}));
+jest.mock('../../services/TaskStorageService', () => {
+  const callbacks = new Map();
+
+  return {
+    getAllTasks: jest.fn(),
+    saveTask: jest.fn(),
+    updateTask: jest.fn(),
+    deleteTask: jest.fn(),
+    subscribeToTaskUpdates: jest.fn((userId, callback) => {
+      callbacks.set(userId, callback);
+      return () => callbacks.delete(userId);
+    }),
+    // Helper to trigger subscription callbacks in tests
+    __triggerUpdate: (userId, task, eventType) => {
+      const callback = callbacks.get(userId);
+      if (callback) {
+        callback(task, eventType);
+      }
+    },
+  };
+});
 
 // SupabaseService is already mocked globally in tests/setup.js
+// We need to override the auth user for these tests
+import { supabase } from '../../services/SupabaseService';
+
+beforeAll(() => {
+  // Mock a logged-in user for all tests
+  supabase.auth.getUser.mockResolvedValue({
+    data: { user: { id: 'test-user-123' } },
+    error: null,
+  });
+
+  // Mock auth state change listener
+  supabase.auth.onAuthStateChange.mockReturnValue({
+    data: {
+      subscription: {
+        unsubscribe: jest.fn(),
+      },
+    },
+  });
+});
 
 describe('TaskContext', () => {
   const mockTasks = [
-    {
+    testDataFactories.task({
       id: '1',
       title: 'Test Task 1',
       userId: 'user1',
       completed: false,
+      status: 'pending',
       category: 'work',
       priority: 'high',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    },
-    {
+      createdAt: new Date('2024-01-01').toISOString(),
+      updatedAt: new Date('2024-01-01').toISOString(),
+    }),
+    testDataFactories.task({
       id: '2',
       title: 'Test Task 2',
       userId: 'user1',
       completed: true,
+      status: 'completed',
       category: 'personal',
       priority: 'medium',
-      createdAt: new Date('2024-01-02'),
-      updatedAt: new Date('2024-01-02'),
-    },
-    {
+      createdAt: new Date('2024-01-02').toISOString(),
+      updatedAt: new Date('2024-01-02').toISOString(),
+    }),
+    testDataFactories.task({
       id: '3',
       title: 'Test Task 3',
       userId: 'user2',
       completed: false,
+      status: 'pending',
       category: 'work',
       priority: 'low',
       assignedBy: 'user1',
-      createdAt: new Date('2024-01-03'),
-      updatedAt: new Date('2024-01-03'),
-    },
+      createdAt: new Date('2024-01-03').toISOString(),
+      updatedAt: new Date('2024-01-03').toISOString(),
+    }),
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
     TaskStorageService.getAllTasks.mockResolvedValue(mockTasks);
-    TaskStorageService.saveTask.mockResolvedValue(true);
-    TaskStorageService.updateTask.mockResolvedValue(true);
-    TaskStorageService.deleteTask.mockResolvedValue(true);
+
+    // Mock saveTask to trigger subscription callback
+    TaskStorageService.saveTask.mockImplementation(async (task) => {
+      // Simulate real-time update
+      setTimeout(() => {
+        TaskStorageService.__triggerUpdate('test-user-123', task, 'INSERT');
+      }, 0);
+      return true;
+    });
+
+    // Mock updateTask to trigger subscription callback
+    TaskStorageService.updateTask.mockImplementation(async (task) => {
+      setTimeout(() => {
+        TaskStorageService.__triggerUpdate('test-user-123', task, 'UPDATE');
+      }, 0);
+      return true;
+    });
+
+    // Mock deleteTask to trigger subscription callback
+    TaskStorageService.deleteTask.mockImplementation(async (taskId) => {
+      setTimeout(() => {
+        TaskStorageService.__triggerUpdate('test-user-123', { id: taskId }, 'DELETE');
+      }, 0);
+      return true;
+    });
   });
 
   afterEach(async () => {
@@ -247,12 +307,12 @@ describe('TaskContext', () => {
       React.useEffect(() => {
         if (!loading && !hasAdded) {
           setHasAdded(true);
-          const newTask = {
+          const newTask = testDataFactories.task({
             title: 'New Task',
             userId: 'user1',
             category: 'personal',
             priority: 'high',
-          };
+          });
           addTask(newTask);
         }
       }, [loading, hasAdded, addTask]);
@@ -271,6 +331,7 @@ describe('TaskContext', () => {
     });
 
     expect(TaskStorageService.saveTask).toHaveBeenCalledWith(
+      // eslint-disable-next-line custom-rules/enforce-test-data-factories
       expect.objectContaining({
         title: 'New Task',
         userId: 'user1',
@@ -305,6 +366,7 @@ describe('TaskContext', () => {
     });
 
     expect(TaskStorageService.updateTask).toHaveBeenCalledWith(
+      // eslint-disable-next-line custom-rules/enforce-test-data-factories
       expect.objectContaining({
         id: '1',
         title: 'Updated Task',

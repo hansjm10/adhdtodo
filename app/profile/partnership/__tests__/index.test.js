@@ -7,6 +7,7 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import PartnershipScreen from '../index';
 import { USER_ROLE, PARTNERSHIP_STATUS } from '../../../../src/constants/UserConstants';
+import { testDataFactories } from '../../../../tests/utils';
 
 // Mock dependencies
 jest.mock('expo-router', () => ({
@@ -54,28 +55,28 @@ describe('PartnershipScreen', () => {
     back: jest.fn(),
   };
 
-  const mockUser = {
+  const mockUser = testDataFactories.user({
     id: 'user1',
     name: 'Test User',
     email: 'test@example.com',
     role: USER_ROLE.ADHD,
     partnerId: 'partner1',
-  };
+  });
 
-  const mockPartner = {
+  const mockPartner = testDataFactories.user({
     id: 'partner1',
     name: 'Partner User',
     email: 'partner@example.com',
     role: USER_ROLE.NON_ADHD,
-  };
+  });
 
-  const mockPartnership = {
+  const mockPartnership = testDataFactories.partnership({
     id: 'partnership1',
     adhdUserId: 'user1',
     partnerId: 'partner1',
     status: PARTNERSHIP_STATUS.ACTIVE,
     createdAt: new Date().toISOString(),
-  };
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

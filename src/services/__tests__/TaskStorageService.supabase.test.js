@@ -3,7 +3,7 @@
 
 import { TaskStorageService } from '../TaskStorageService';
 import { supabase } from '../SupabaseService';
-import { createTask } from '../../utils/TaskModel';
+import { testDataFactories } from '../../../tests/utils';
 import { TaskStatus, TaskPriority } from '../../types/task.types';
 
 // SupabaseService is already mocked globally in tests/setup.js
@@ -15,26 +15,31 @@ jest.mock('../SecureLogger', () => ({
   warn: jest.fn(),
 }));
 
+// Use the global SupabaseService mock from tests/setup.js
+
 describe('TaskStorageService - Supabase Implementation', () => {
   let taskService;
   const mockUser = { id: 'test-user-123' };
 
   // Helper to create mock Supabase query builder
-  const createMockQueryBuilder = () => ({
-    select: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockReturnThis(),
-    update: jest.fn().mockReturnThis(),
-    delete: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    neq: jest.fn().mockReturnThis(),
-    or: jest.fn().mockReturnThis(),
-    lt: jest.fn().mockReturnThis(),
-    lte: jest.fn().mockReturnThis(),
-    gte: jest.fn().mockReturnThis(),
-    order: jest.fn().mockReturnThis(),
-    range: jest.fn().mockReturnThis(),
-    single: jest.fn().mockReturnThis(),
-  });
+  const createMockQueryBuilder = () => {
+    const builder = {
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
+      single: jest.fn().mockReturnThis(),
+    };
+    return builder;
+  };
 
   // Helper to create mock channel
   const createMockChannel = () => ({
@@ -67,6 +72,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
 
     it('should fetch all tasks for authenticated user', async () => {
       const mockTasks = [
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
         {
           id: 'task-1',
           user_id: mockUser.id,
@@ -78,6 +84,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
         {
           id: 'task-2',
           user_id: mockUser.id,
@@ -158,7 +165,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
 
   describe('saveTask', () => {
     it('should save a new task to the database', async () => {
-      const newTask = createTask({
+      const newTask = testDataFactories.task({
         title: 'New Task',
         description: 'Task description',
         category: 'work',
@@ -191,7 +198,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
         error: null,
       });
 
-      const newTask = createTask({ title: 'New Task' });
+      const newTask = testDataFactories.task({ title: 'New Task' });
       const result = await taskService.saveTask(newTask);
 
       expect(result).toBe(false);
@@ -225,7 +232,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
       jest.clearAllMocks();
 
       // Save new task
-      const newTask = createTask({ title: 'New Task' });
+      const newTask = testDataFactories.task({ title: 'New Task' });
       await taskService.saveTask(newTask);
 
       // Next getAllTasks should hit database again
@@ -236,7 +243,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
 
   describe('updateTask', () => {
     it('should update an existing task', async () => {
-      const updatedTask = createTask({
+      const updatedTask = testDataFactories.task({
         id: 'task-123',
         title: 'Updated Task',
         status: TaskStatus.COMPLETED,
@@ -245,9 +252,12 @@ describe('TaskStorageService - Supabase Implementation', () => {
       });
 
       const mockQueryBuilder = createMockQueryBuilder();
-      mockQueryBuilder.or.mockResolvedValue({
-        data: null,
-        error: null,
+      // Make the final method in the chain return a promise
+      mockQueryBuilder.or.mockImplementation(() => {
+        return Promise.resolve({
+          data: null,
+          error: null,
+        });
       });
       supabase.from.mockReturnValue(mockQueryBuilder);
 
@@ -263,7 +273,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
     });
 
     it('should handle update errors', async () => {
-      const updatedTask = createTask({ id: 'task-123', title: 'Updated Task' });
+      const updatedTask = testDataFactories.task({ id: 'task-123', title: 'Updated Task' });
 
       const mockQueryBuilder = createMockQueryBuilder();
       mockQueryBuilder.or.mockResolvedValue({
@@ -328,6 +338,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
           category: 'work',
           created_at: new Date().toISOString(),
         },
+
         {
           id: 'task-2',
           user_id: mockUser.id,
@@ -372,8 +383,11 @@ describe('TaskStorageService - Supabase Implementation', () => {
     it('should calculate task statistics correctly', async () => {
       const mockTasks = [
         { status: 'completed', xp_earned: 10 },
+
         { status: 'completed', xp_earned: 15 },
+
         { status: 'pending', xp_earned: 0 },
+
         { status: 'in_progress', xp_earned: 0 },
       ];
 
@@ -523,6 +537,7 @@ describe('TaskStorageService - Supabase Implementation', () => {
       taskService.subscribeToTaskUpdates(mockUser.id, callback);
 
       // Simulate INSERT event
+
       const newTask = {
         id: 'new-task',
         user_id: mockUser.id,
