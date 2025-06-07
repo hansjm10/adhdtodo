@@ -12,34 +12,17 @@ import ValidationService from './ValidationService';
 import type { User, UserRole, SecureToken } from '../types/user.types';
 import { NotificationPreference } from '../types/user.types';
 import type { IAuthService } from './AuthService';
+import type {
+  AuthResult,
+  AuthUser,
+  PasswordValidationResult,
+  SessionVerificationResult,
+  PasswordResetResult,
+} from '../types/auth.types';
 import * as SecureStore from 'expo-secure-store';
 import UserStorageService from './UserStorageService';
 
 // type DbUser = Database['public']['Tables']['users']['Row']; // Will be used in future
-
-interface PasswordValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
-
-interface AuthResult {
-  success: boolean;
-  user?: Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
-  token?: string;
-  error?: string;
-}
-
-interface SessionVerificationResult {
-  isValid: boolean;
-  reason?: string;
-  user?: Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
-}
-
-interface PasswordResetResult {
-  success: boolean;
-  message?: string;
-  error?: string;
-}
 
 export class SupabaseAuthService implements IAuthService {
   // Password validation rules (same as original)
@@ -457,7 +440,7 @@ export class SupabaseAuthService implements IAuthService {
   }
 
   // Remove sensitive fields from user object
-  sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'> {
+  sanitizeUser(user: User): AuthUser {
     const {
       passwordHash: _passwordHash,
       passwordSalt: _passwordSalt,

@@ -27,34 +27,40 @@ Follow these steps:
    - Consider edge cases and potential impacts
    - Think about the most elegant solution
 
-5. **Implement the Fix**
+5. **Research**
+
+   - Use Context7 commands to find any related library information.
+   - Use Brave to search for any information that may help fix the issue.
+   - Ask for clarification if needed.
+
+6. **Implement the Fix**
 
    - Write tests first (TDD approach)
    - Implement the minimal code needed to fix the issue
    - Ensure the fix doesn't break existing functionality
 
-6. **Verify the Solution**
+7. **Verify the Solution**
 
    - Run all relevant tests
    - Manually test the fix if applicable
    - Check for any regression issues
 
-7. **Quality Assurance**
+8. **Quality Assurance**
 
    - Run linting: `npm run lint`
    - Run type checking: `npm run typecheck`
    - Ensure all tests pass: `npm test`
 
-8. **Documentation**
+9. **Documentation**
 
    - Update any affected documentation
    - Add code comments if the logic is complex
    - Update CHANGELOG.md if appropriate
 
-9. **Create Pull Request**
-   - Create a descriptive commit message
-   - Push changes to the feature branch: `git push -u origin fix/issue-$ARGUMENTS`
-   - Create PR with `gh pr create`
-   - Link the PR to the issue with "Closes #$ARGUMENTS" in the PR body
+10. **Create Pull Request**
+    - Create a descriptive commit message
+    - Push changes to the feature branch: `git push -u origin fix/issue-$ARGUMENTS`
+    - Create PR with `gh pr create`
+    - Link the PR to the issue with "Closes #$ARGUMENTS" in the PR body
 
 Remember to follow the project's code style guidelines and testing requirements!
