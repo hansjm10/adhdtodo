@@ -2,10 +2,12 @@
 // Clean, widget-style layout with ADHD-friendly visual hierarchy
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import TaskItem from './TaskItem';
 import { ThemedContainer, ThemedText, ThemedButton, ThemedIcon } from './themed';
+import NativePullToRefresh from './native/NativePullToRefresh';
+import { ListSkeleton } from './native/NativeLoadingStates';
+import GradientView from './native/GradientView';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
 import type { Task, TaskCategory } from '../types/task.types';
 import type { User } from '../types/user.types';
@@ -214,49 +216,67 @@ const TaskListView: React.FC<TaskListViewProps> = ({
         onCategorySelect={onCategorySelect}
       />
 
-      {tasks.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <>
-          <FlashList
-            data={visibleTasks}
-            renderItem={renderTask}
-            keyExtractor={(item) => item.id}
-            estimatedItemSize={100}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor="#3b82f6"
-                colors={['#3b82f6']}
-              />
-            }
-            ListEmptyComponent={EmptyState}
-            contentContainerClassName="pt-2"
-            testID="task-list"
-          />
-          <ShowMoreButton
-            hasMoreTasks={hasMoreTasks}
-            visibleTasksCount={visibleTasks.length}
-            totalTasksCount={tasks.length}
-            showAll={showAll}
-            onToggle={() => {
-              setShowAll(!showAll);
-            }}
-          />
-        </>
-      )}
+      {(() => {
+        if (refreshing && tasks.length === 0) {
+          return <ListSkeleton count={5} />;
+        }
+        if (tasks.length === 0) {
+          return <EmptyState />;
+        }
+        return (
+          <>
+            <NativePullToRefresh
+              onRefresh={async () => {
+                onRefresh();
+                await Promise.resolve();
+              }}
+              data={visibleTasks}
+              renderItem={renderTask}
+              keyExtractor={(item: Task) => item.id}
+              estimatedItemSize={100}
+              ListEmptyComponent={EmptyState}
+              contentContainerClassName="pt-2"
+              useFlashList
+            />
+            <ShowMoreButton
+              hasMoreTasks={hasMoreTasks}
+              visibleTasksCount={visibleTasks.length}
+              totalTasksCount={tasks.length}
+              showAll={showAll}
+              onToggle={() => {
+                setShowAll(!showAll);
+              }}
+            />
+          </>
+        );
+      })()}
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-primary-500 justify-center items-center shadow-lg"
+        className="absolute bottom-6 right-6 w-14 h-14 rounded-full justify-center items-center"
         onPress={onAddPress}
         accessible
         accessibilityLabel="Add new task"
         accessibilityHint="Double tap to create a new task"
         accessibilityRole="button"
       >
-        <ThemedIcon name="add" size="lg" color="white" />
+        <GradientView
+          variant="primary"
+          className="w-full h-full rounded-full justify-center items-center"
+          style={Platform.select({
+            ios: {
+              shadowColor: '#a855f7',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+            },
+            android: {
+              elevation: 8,
+            },
+          })}
+        >
+          <ThemedIcon name="add" size="lg" color="white" />
+        </GradientView>
       </TouchableOpacity>
     </ThemedContainer>
   );

@@ -3,44 +3,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import type { Ionicons } from '@expo/vector-icons';
 import NotificationBadge from '../../src/components/NotificationBadge';
+import NativeTabBar from '../../src/components/navigation/NativeTabBar';
 import UserStorageService from '../../src/services/UserStorageService';
 import NotificationService from '../../src/services/NotificationService';
-
-// Tab bar icon type
-type TabBarIconProps = {
-  focused: boolean;
-  color: string;
-  size: number;
-};
-
-const TabIcon = ({
-  focused,
-  color,
-  size,
-  focusedName,
-  unfocusedName,
-}: TabBarIconProps & {
-  focusedName: keyof typeof Ionicons.glyphMap;
-  unfocusedName: keyof typeof Ionicons.glyphMap;
-}) => <Ionicons name={focused ? focusedName : unfocusedName} size={size} color={color} />;
-
-const TasksIcon = (props: TabBarIconProps) => (
-  <TabIcon {...props} focusedName="checkbox" unfocusedName="checkbox-outline" />
-);
-
-const FocusIcon = (props: TabBarIconProps) => (
-  <TabIcon {...props} focusedName="time" unfocusedName="time-outline" />
-);
-
-const PartnerIcon = (props: TabBarIconProps) => (
-  <TabIcon {...props} focusedName="people" unfocusedName="people-outline" />
-);
-
-const ProfileIcon = (props: TabBarIconProps) => (
-  <TabIcon {...props} focusedName="person" unfocusedName="person-outline" />
-);
 
 const useNotificationHeaderButton = (unreadCount: number) => {
   const router = useRouter();
@@ -57,6 +24,7 @@ const useNotificationHeaderButton = (unreadCount: number) => {
 
 export default function TabLayout() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const router = useRouter();
   const NotificationHeaderButton = useNotificationHeaderButton(unreadCount);
 
   const loadUnreadCount = useCallback(async (): Promise<void> => {
@@ -93,44 +61,93 @@ export default function TabLayout() {
     };
   }, [loadUnreadCount]);
 
+  const tabs = [
+    {
+      name: 'tasks',
+      label: 'Tasks',
+      icon: 'checkbox-outline' as keyof typeof Ionicons.glyphMap,
+      activeIcon: 'checkbox' as keyof typeof Ionicons.glyphMap,
+      path: '/(tabs)',
+    },
+    {
+      name: 'focus',
+      label: 'Focus',
+      icon: 'time-outline' as keyof typeof Ionicons.glyphMap,
+      activeIcon: 'time' as keyof typeof Ionicons.glyphMap,
+      path: '/(tabs)/focus',
+    },
+    {
+      name: 'partner',
+      label: 'Partner',
+      icon: 'people-outline' as keyof typeof Ionicons.glyphMap,
+      activeIcon: 'people' as keyof typeof Ionicons.glyphMap,
+      path: '/(tabs)/partner',
+    },
+    {
+      name: 'profile',
+      label: 'Profile',
+      icon: 'person-outline' as keyof typeof Ionicons.glyphMap,
+      activeIcon: 'person' as keyof typeof Ionicons.glyphMap,
+      path: '/(tabs)/profile',
+    },
+  ];
+
+  const handleTabPress = (tab: (typeof tabs)[0]) => {
+    router.push(tab.path);
+  };
+
+  const renderTabBar = useCallback(
+    (props: object) => (
+      <NativeTabBar
+        {...props}
+        tabs={tabs}
+        onTabPress={handleTabPress}
+        badge={{ tasks: unreadCount }}
+      />
+    ),
+    [tabs, handleTabPress, unreadCount],
+  );
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#3498DB',
-        tabBarInactiveTintColor: '#7F8C8D',
+        tabBarStyle: { display: 'none' }, // Hide default tab bar
+        headerStyle: {
+          backgroundColor: '#131316',
+          shadowColor: 'transparent',
+          elevation: 0,
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 17,
+        },
       }}
+      tabBar={renderTabBar}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Tasks',
-          tabBarButtonTestID: 'tab-tasks',
-          tabBarIcon: TasksIcon,
           headerRight: NotificationHeaderButton,
         }}
       />
       <Tabs.Screen
         name="focus"
         options={{
-          title: 'Focus',
-          tabBarButtonTestID: 'tab-focus',
-          tabBarIcon: FocusIcon,
+          title: 'Focus Mode',
         }}
       />
       <Tabs.Screen
         name="partner"
         options={{
           title: 'Partner',
-          tabBarButtonTestID: 'tab-partner',
-          tabBarIcon: PartnerIcon,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarButtonTestID: 'tab-profile',
-          tabBarIcon: ProfileIcon,
         }}
       />
       {/* Hidden screens that are part of focus stack */}

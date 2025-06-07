@@ -6,6 +6,8 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import type { ListRenderItemInfo } from '@shopify/flash-list';
 import { FlashList } from '@shopify/flash-list';
 import { ThemedContainer, ThemedText, ThemedCard, ThemedButton, ThemedIcon } from './themed';
+import NativeCard from './native/NativeCard';
+import { AttentionPulse } from './native/MicroInteractions';
 import { getModeCardStyle, getScaleTransform, spacing } from '../styles/dynamicStyles';
 import type { Task } from '../types/task.types';
 
@@ -79,77 +81,81 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
 
         {/* Mode Selection */}
         <View className="px-4 mb-6">
-          <TouchableOpacity
-            testID="hyperfocus-mode"
-            className={`mb-4${selectedMode === 'hyperfocus' ? ' transform scale-105' : ''}`}
-            onPress={() => {
-              onModeSelect('hyperfocus');
-            }}
-            style={getScaleTransform(selectedMode === 'hyperfocus')}
-          >
-            <ThemedCard
-              variant="elevated"
-              spacing="large"
-              style={getModeCardStyle(selectedMode === 'hyperfocus')}
+          <AttentionPulse enabled={!selectedMode} color="#a855f7">
+            <TouchableOpacity
+              testID="hyperfocus-mode"
+              className="mb-4"
+              onPress={() => {
+                onModeSelect('hyperfocus');
+              }}
+              style={getScaleTransform(selectedMode === 'hyperfocus')}
             >
-              <View className="items-center">
-                <Text className="text-5xl mb-3">🎯</Text>
-                <ThemedText variant="h3" color="primary" align="center" className="mb-2">
-                  Hyperfocus Mode
-                </ThemedText>
-                <ThemedText variant="body" color="secondary" align="center" className="mb-3">
-                  Deep focus on a single task with timed sessions and breaks
-                </ThemedText>
-                <View className="w-full">
-                  <ThemedText variant="caption" color="tertiary" className="mb-1">
-                    • 25-minute sessions
+              <NativeCard
+                variant={selectedMode === 'hyperfocus' ? 'glass' : 'elevated'}
+                className="p-6"
+                intensity={40}
+              >
+                <View className="items-center">
+                  <Text className="text-5xl mb-3">🎯</Text>
+                  <ThemedText variant="h3" color="primary" align="center" className="mb-2">
+                    Hyperfocus Mode
                   </ThemedText>
-                  <ThemedText variant="caption" color="tertiary" className="mb-1">
-                    • Built-in breaks
+                  <ThemedText variant="body" color="secondary" align="center" className="mb-3">
+                    Deep focus on a single task with timed sessions and breaks
                   </ThemedText>
-                  <ThemedText variant="caption" color="tertiary">
-                    • Distraction-free
-                  </ThemedText>
+                  <View className="w-full">
+                    <ThemedText variant="caption" color="tertiary" className="mb-1">
+                      • 25-minute sessions
+                    </ThemedText>
+                    <ThemedText variant="caption" color="tertiary" className="mb-1">
+                      • Built-in breaks
+                    </ThemedText>
+                    <ThemedText variant="caption" color="tertiary">
+                      • Distraction-free
+                    </ThemedText>
+                  </View>
                 </View>
-              </View>
-            </ThemedCard>
-          </TouchableOpacity>
+              </NativeCard>
+            </TouchableOpacity>
+          </AttentionPulse>
 
-          <TouchableOpacity
-            testID="scattered-mode"
-            className={`mb-4${selectedMode === 'scattered' ? ' transform scale-105' : ''}`}
-            onPress={() => {
-              onModeSelect('scattered');
-            }}
-            style={getScaleTransform(selectedMode === 'scattered')}
-          >
-            <ThemedCard
-              variant="elevated"
-              spacing="large"
-              style={getModeCardStyle(selectedMode === 'scattered')}
+          <AttentionPulse enabled={!selectedMode} color="#f59e0b">
+            <TouchableOpacity
+              testID="scattered-mode"
+              className="mb-4"
+              onPress={() => {
+                onModeSelect('scattered');
+              }}
+              style={getScaleTransform(selectedMode === 'scattered')}
             >
-              <View className="items-center">
-                <Text className="text-5xl mb-3">⚡</Text>
-                <ThemedText variant="h3" color="primary" align="center" className="mb-2">
-                  Scattered Mode
-                </ThemedText>
-                <ThemedText variant="body" color="secondary" align="center" className="mb-3">
-                  Quick task switching for high-energy, low-focus times
-                </ThemedText>
-                <View className="w-full">
-                  <ThemedText variant="caption" color="tertiary" className="mb-1">
-                    • 5-15 minute tasks
+              <NativeCard
+                variant={selectedMode === 'scattered' ? 'glass' : 'elevated'}
+                className="p-6"
+                intensity={40}
+              >
+                <View className="items-center">
+                  <Text className="text-5xl mb-3">⚡</Text>
+                  <ThemedText variant="h3" color="primary" align="center" className="mb-2">
+                    Scattered Mode
                   </ThemedText>
-                  <ThemedText variant="caption" color="tertiary" className="mb-1">
-                    • Rapid switching
+                  <ThemedText variant="body" color="secondary" align="center" className="mb-3">
+                    Quick task switching for high-energy, low-focus times
                   </ThemedText>
-                  <ThemedText variant="caption" color="tertiary">
-                    • Momentum building
-                  </ThemedText>
+                  <View className="w-full">
+                    <ThemedText variant="caption" color="tertiary" className="mb-1">
+                      • 5-15 minute tasks
+                    </ThemedText>
+                    <ThemedText variant="caption" color="tertiary" className="mb-1">
+                      • Rapid switching
+                    </ThemedText>
+                    <ThemedText variant="caption" color="tertiary">
+                      • Momentum building
+                    </ThemedText>
+                  </View>
                 </View>
-              </View>
-            </ThemedCard>
-          </TouchableOpacity>
+              </NativeCard>
+            </TouchableOpacity>
+          </AttentionPulse>
         </View>
 
         {/* Task Selection */}

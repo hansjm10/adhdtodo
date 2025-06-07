@@ -2,8 +2,9 @@
 // Provides clean checkbox interaction and visual feedback for task states
 
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { TASK_CATEGORIES, TASK_PRIORITY } from '../constants/TaskConstants';
 import { completeTask, updateTask, startTask, markPartnerNotified } from '../utils/TaskModel';
 import TaskStorageService from '../services/TaskStorageService';
@@ -65,6 +66,9 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
   };
 
   const animateCompletion = () => {
+    // Haptic feedback for completion
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
     // Bounce animation on the entire task item
     Animated.sequence([
       Animated.timing(scaleAnim, {
@@ -86,6 +90,9 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
   };
 
   const handleToggleComplete = async (): Promise<void> => {
+    // Haptic feedback on toggle
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     let updatedTask;
 
     if (task.completed) {
@@ -181,21 +188,55 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
   return (
     <>
       <Animated.View style={{ transform: [{ scale: scaleAnim }], opacity: opacityAnim }}>
-        <TouchableOpacity
+        <Pressable
           testID={`task-item-${task.id}`}
           className={containerClasses}
-          onPress={onPress}
-          activeOpacity={0.7}
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onPress?.();
+          }}
+          onPressIn={() => {
+            Animated.timing(scaleAnim, {
+              toValue: 0.98,
+              duration: 100,
+              useNativeDriver: true,
+            }).start();
+          }}
+          onPressOut={() => {
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              friction: 5,
+              useNativeDriver: true,
+            }).start();
+          }}
+          android_ripple={{
+            color: 'rgba(168, 85, 247, 0.1)',
+            borderless: false,
+          }}
           accessible
           accessibilityLabel={taskAccessibilityLabel}
           accessibilityHint="Double tap to view task details"
           accessibilityRole="button"
         >
-          <TouchableOpacity
+          <Pressable
             testID="task-checkbox"
             className={checkboxClasses}
             onPress={() => {
               void handleToggleComplete();
+            }}
+            onPressIn={() => {
+              Animated.timing(checkboxScaleAnim, {
+                toValue: 0.8,
+                duration: 100,
+                useNativeDriver: true,
+              }).start();
+            }}
+            onPressOut={() => {
+              Animated.spring(checkboxScaleAnim, {
+                toValue: task.completed ? 1 : 0,
+                friction: 5,
+                useNativeDriver: true,
+              }).start();
             }}
             accessible
             accessibilityLabel={
@@ -218,7 +259,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
             >
               ✓
             </Animated.Text>
-          </TouchableOpacity>
+          </Pressable>
 
           <View className="flex-1" testID="task-content">
             <View className="flex-row justify-between items-center mb-1">
@@ -289,6 +330,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
             <TouchableOpacity
               className="ml-2 justify-center"
               onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 void handleStartTask();
               }}
               disabled={task.status === 'in_progress'}
@@ -309,7 +351,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
               />
             </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
       <RewardAnimation
         visible={showReward}
