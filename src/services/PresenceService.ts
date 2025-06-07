@@ -359,6 +359,27 @@ class PresenceService {
 
     this.resetAwayTimer();
   }
+
+  /**
+   * Reset service state for testing purposes
+   * @internal
+   */
+  __resetForTesting(): void {
+    // Clear timers safely
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    if (this.awayTimer) {
+      clearTimeout(this.awayTimer);
+      this.awayTimer = null;
+    }
+
+    // Clear channel without calling unsubscribe (for testing)
+    this.channel = null;
+    this.currentUserId = null;
+    this.presenceState = new Map();
+  }
 }
 
 export default new PresenceService();

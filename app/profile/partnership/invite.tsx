@@ -1,45 +1,25 @@
-// ABOUTME: Screen for entering and accepting partnership invite codes
-// Allows users to join partnerships by entering 6-character invite codes
+// ABOUTME: Mac-inspired invite code entry screen using NativeWind
+// Clean interface for accepting partnership invitations
 
 import React, { useState, useRef } from 'react';
-import type {
-  NativeSyntheticEvent,
-  TextInputKeyPressEventData,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
+import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import {
+  ThemedText,
+  ThemedContainer,
+  ThemedButton,
+  ThemedIcon,
+} from '../../../src/components/themed';
 import PartnershipService from '../../../src/services/PartnershipService';
 import UserStorageService from '../../../src/services/UserStorageService';
-
-interface Styles {
-  container: ViewStyle;
-  backButton: ViewStyle;
-  content: ViewStyle;
-  iconContainer: ViewStyle;
-  title: TextStyle;
-  subtitle: TextStyle;
-  codeContainer: ViewStyle;
-  codeInput: TextStyle;
-  codeInputFilled: ViewStyle;
-  acceptButton: ViewStyle;
-  acceptButtonDisabled: ViewStyle;
-  acceptButtonText: TextStyle;
-  helpContainer: ViewStyle;
-  helpText: TextStyle;
-}
 
 const PartnerInviteScreen = () => {
   const router = useRouter();
@@ -123,161 +103,82 @@ const PartnerInviteScreen = () => {
   const isCodeComplete = inviteCode.every((char) => char !== '');
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => {
-          router.back();
-        }}
+    <ThemedContainer variant="screen" safeArea>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
       >
-        <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-      </TouchableOpacity>
-
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="link-outline" size={80} color="#3498DB" />
-        </View>
-
-        <Text style={styles.title}>Enter Invite Code</Text>
-        <Text style={styles.subtitle}>Ask your partner for their 6-character invite code</Text>
-
-        <View style={styles.codeContainer}>
-          {inviteCode.map((char, index) => (
-            <TextInput
-              key={`code-input-${index.toString()}`}
-              ref={(ref) => {
-                inputRefs.current[index] = ref;
-              }}
-              style={[styles.codeInput, char && styles.codeInputFilled]}
-              value={char}
-              onChangeText={(value) => {
-                handleCodeChange(value, index);
-              }}
-              onKeyPress={(e) => {
-                handleKeyPress(e, index);
-              }}
-              maxLength={1}
-              autoCapitalize="characters"
-              keyboardType="default"
-              editable={!loading}
-            />
-          ))}
-        </View>
-
         <TouchableOpacity
-          style={[styles.acceptButton, (!isCodeComplete || loading) && styles.acceptButtonDisabled]}
+          className="absolute top-12 left-5 z-10 p-2.5"
           onPress={() => {
-            handleAcceptInvite().catch((error) => {
-              if (global.__DEV__) {
-                console.error('Failed to accept invite:', error);
-              }
-            });
+            router.back();
           }}
-          disabled={!isCodeComplete || loading}
         >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.acceptButtonText}>Accept Invite</Text>
-          )}
+          <ThemedIcon name="arrow-back" size="md" color="primary" />
         </TouchableOpacity>
 
-        <View style={styles.helpContainer}>
-          <Ionicons name="information-circle-outline" size={20} color="#7F8C8D" />
-          <Text style={styles.helpText}>
-            Invite codes are 6 characters long and contain only letters and numbers
-          </Text>
+        <View className="flex-1 justify-center items-center px-5">
+          <View className="mb-8">
+            <ThemedIcon name="link-outline" size="xl" color="primary" />
+          </View>
+
+          <ThemedText variant="h1" color="primary" weight="bold" className="mb-2.5">
+            Enter Invite Code
+          </ThemedText>
+          <ThemedText variant="body" color="secondary" align="center" className="mb-10">
+            Ask your partner for their 6-character invite code
+          </ThemedText>
+
+          <View className="flex-row justify-center mb-10">
+            {inviteCode.map((char, index) => (
+              <TextInput
+                key={`code-input-${index.toString()}`}
+                ref={(ref) => {
+                  inputRefs.current[index] = ref;
+                }}
+                className={`w-11 h-14 mx-1.5 text-center text-2xl font-bold rounded-xl border-2 ${char ? 'bg-primary-50 border-primary-500 text-primary-600' : 'bg-white border-neutral-200 text-neutral-900'}`}
+                value={char}
+                onChangeText={(value) => {
+                  handleCodeChange(value, index);
+                }}
+                onKeyPress={(e) => {
+                  handleKeyPress(e, index);
+                }}
+                maxLength={1}
+                autoCapitalize="characters"
+                keyboardType="default"
+                editable={!loading}
+              />
+            ))}
+          </View>
+
+          <View className="px-12 mb-8">
+            <ThemedButton
+              label={loading ? '' : 'Accept Invite'}
+              variant="primary"
+              size="large"
+              onPress={() => {
+                handleAcceptInvite().catch((error) => {
+                  if (global.__DEV__) {
+                    console.error('Failed to accept invite:', error);
+                  }
+                });
+              }}
+              disabled={!isCodeComplete || loading}
+              loading={loading}
+            />
+          </View>
+
+          <View className="flex-row items-center px-10">
+            <ThemedIcon name="information-circle-outline" size="sm" color="tertiary" />
+            <ThemedText variant="caption" color="tertiary" align="center" className="ml-2 flex-1">
+              Invite codes are 6 characters long and contain only letters and numbers
+            </ThemedText>
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ThemedContainer>
   );
 };
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 1,
-    padding: 10,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  iconContainer: {
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  codeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 40,
-  },
-  codeInput: {
-    width: 45,
-    height: 55,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    marginHorizontal: 5,
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    backgroundColor: 'white',
-  },
-  codeInputFilled: {
-    borderColor: '#3498DB',
-    backgroundColor: '#EBF5FB',
-  },
-  acceptButton: {
-    backgroundColor: '#3498DB',
-    paddingHorizontal: 50,
-    paddingVertical: 15,
-    borderRadius: 12,
-    marginBottom: 30,
-  },
-  acceptButtonDisabled: {
-    backgroundColor: '#BDC3C7',
-  },
-  acceptButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  helpContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  helpText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginLeft: 8,
-    flex: 1,
-    textAlign: 'center',
-  },
-});
 
 export default PartnerInviteScreen;

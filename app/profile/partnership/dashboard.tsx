@@ -1,22 +1,33 @@
-// ABOUTME: Dashboard for accountability partners to track assigned task progress
-// Shows task completion stats, overdue tasks, and progress visualization
+// ABOUTME: Mac-inspired partnership dashboard using NativeWind
+// Clean task tracking interface with stats and progress visualization
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
-  Text,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import type { ListRenderItem } from '@shopify/flash-list';
 import { FlashList } from '@shopify/flash-list';
+import type { Ionicons } from '@expo/vector-icons';
+import {
+  ThemedText,
+  ThemedContainer,
+  ThemedButton,
+  ThemedIcon,
+  ThemedCard,
+} from '../../../src/components/themed';
+import {
+  getProgressBarStyle,
+  getTextColorStyle,
+  PRIORITY_COLORS,
+  STATUS_COLORS,
+  spacing,
+} from '../../../src/styles/dynamicStyles';
 import UserStorageService from '../../../src/services/UserStorageService';
 import TaskStorageService from '../../../src/services/TaskStorageService';
 import PartnershipService from '../../../src/services/PartnershipService';
@@ -36,7 +47,7 @@ interface TaskStats {
 }
 
 interface StatusIcon {
-  name: keyof typeof Ionicons.glyphMap;
+  name: string;
   color: string;
 }
 
@@ -50,71 +61,23 @@ interface TabButtonProps {
 
 const TabButton = ({ tab: _tab, label, count, isActive, onPress }: TabButtonProps) => (
   <TouchableOpacity
-    style={[styles.tabButton, isActive && styles.tabButtonActive]}
+    className={`flex-1 flex-row items-center justify-center py-3 border-b-2 ${isActive ? 'border-primary-500' : 'border-transparent'}`}
     onPress={onPress}
   >
-    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{label}</Text>
+    <ThemedText variant="body" color={isActive ? 'primary' : 'tertiary'} weight="semibold">
+      {label}
+    </ThemedText>
     {count > 0 && (
-      <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-        <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>{count}</Text>
+      <View
+        className={`ml-2 px-2 py-0.5 rounded-full ${isActive ? 'bg-primary-500' : 'bg-neutral-200'}`}
+      >
+        <ThemedText variant="caption" color={isActive ? 'white' : 'tertiary'} weight="semibold">
+          {count}
+        </ThemedText>
       </View>
     )}
   </TouchableOpacity>
 );
-
-interface Styles {
-  container: ViewStyle;
-  loadingContainer: ViewStyle;
-  emptyContainer: ViewStyle;
-  emptyText: TextStyle;
-  goToPartnershipButton: ViewStyle;
-  goToPartnershipText: TextStyle;
-  header: ViewStyle;
-  partnerName: TextStyle;
-  subtitle: TextStyle;
-  statsContainer: ViewStyle;
-  statCard: ViewStyle;
-  statValue: TextStyle;
-  statLabel: TextStyle;
-  progressBar: ViewStyle;
-  progressFill: ViewStyle;
-  statsRow: ViewStyle;
-  statItem: ViewStyle;
-  statItemValue: TextStyle;
-  statItemLabel: TextStyle;
-  statItemActive: ViewStyle;
-  statItemCompleted: ViewStyle;
-  statItemOverdue: ViewStyle;
-  statItemValueActive: TextStyle;
-  statItemValueCompleted: TextStyle;
-  statItemValueOverdue: TextStyle;
-  tabContainer: ViewStyle;
-  tabButton: ViewStyle;
-  tabButtonActive: ViewStyle;
-  tabLabel: TextStyle;
-  tabLabelActive: TextStyle;
-  tabBadge: ViewStyle;
-  tabBadgeActive: ViewStyle;
-  tabBadgeText: TextStyle;
-  tabBadgeTextActive: TextStyle;
-  taskList: ViewStyle;
-  taskCard: ViewStyle;
-  taskHeader: ViewStyle;
-  taskInfo: ViewStyle;
-  taskTitle: TextStyle;
-  taskMeta: ViewStyle;
-  priorityIndicator: ViewStyle;
-  dueText: TextStyle;
-  overdueText: TextStyle;
-  inProgressText: TextStyle;
-  timeSpentText: TextStyle;
-  encourageButton: ViewStyle;
-  encourageButtonText: TextStyle;
-  emptyTaskContainer: ViewStyle;
-  emptyTaskText: TextStyle;
-  assignButton: ViewStyle;
-  assignButtonText: TextStyle;
-}
 
 const PartnerDashboardScreen = () => {
   const router = useRouter();
@@ -245,31 +208,21 @@ const PartnerDashboardScreen = () => {
   );
 
   const getPriorityColor = (priority: string): string => {
-    switch (priority) {
-      case TASK_PRIORITY.LOW:
-        return '#27AE60';
-      case TASK_PRIORITY.MEDIUM:
-        return '#F39C12';
-      case TASK_PRIORITY.HIGH:
-        return '#E74C3C';
-      case TASK_PRIORITY.URGENT:
-        return '#C0392B';
-      default:
-        return '#7F8C8D';
-    }
+    const priorityKey = priority.toLowerCase() as keyof typeof PRIORITY_COLORS;
+    return PRIORITY_COLORS[priorityKey] ?? PRIORITY_COLORS.default;
   };
 
   const getStatusIcon = (task: Task): StatusIcon => {
     if (task.completed) {
-      return { name: 'checkmark-circle', color: '#27AE60' };
+      return { name: 'checkmark-circle', color: STATUS_COLORS.success };
     }
     if (task.status === TASK_STATUS.IN_PROGRESS) {
-      return { name: 'play-circle', color: '#3498DB' };
+      return { name: 'play-circle', color: STATUS_COLORS.primary };
     }
     if (isOverdue(task)) {
-      return { name: 'alert-circle', color: '#E74C3C' };
+      return { name: 'alert-circle', color: STATUS_COLORS.danger };
     }
-    return { name: 'time-outline', color: '#7F8C8D' };
+    return { name: 'time-outline', color: PRIORITY_COLORS.default };
   };
 
   const renderTaskItem: ListRenderItem<Task> = ({ item: task }) => {
@@ -280,85 +233,111 @@ const PartnerDashboardScreen = () => {
     const daysUntilDue = timeUntilDue ? Math.ceil(timeUntilDue / (1000 * 60 * 60 * 24)) : null;
 
     return (
-      <View style={styles.taskCard}>
-        <View style={styles.taskHeader}>
-          <Ionicons name={statusIcon.name} size={24} color={statusIcon.color} />
-          <View style={styles.taskInfo}>
-            <Text style={styles.taskTitle} numberOfLines={2}>
-              {task.title}
-            </Text>
-            <View style={styles.taskMeta}>
-              {task.priority !== TASK_PRIORITY.MEDIUM && (
-                <View
-                  style={[
-                    styles.priorityIndicator,
-                    { backgroundColor: getPriorityColor(task.priority) },
-                  ]}
-                />
-              )}
-              {task.dueDate && (
-                <Text style={[styles.dueText, isOverdue(task) && styles.overdueText]}>
-                  {(() => {
-                    if (isOverdue(task)) {
-                      return `Overdue by ${Math.abs(daysUntilDue!)} days`;
+      <View className="mb-3">
+        <ThemedCard variant="outlined" spacing="medium">
+          <View className="flex-row items-start">
+            <ThemedIcon
+              name={statusIcon.name as keyof typeof Ionicons.glyphMap}
+              size="md"
+              style={getTextColorStyle(statusIcon.color)}
+            />
+            <View className="flex-1 ml-3">
+              <ThemedText
+                variant="body"
+                color="primary"
+                weight="semibold"
+                numberOfLines={2}
+                className="mb-1"
+              >
+                {task.title}
+              </ThemedText>
+              <View className="flex-row items-center flex-wrap gap-2">
+                {task.priority !== TASK_PRIORITY.MEDIUM && (
+                  <View
+                    className="w-2 h-2 rounded-full"
+                    style={
+                      getTextColorStyle(getPriorityColor(task.priority)).color
+                        ? { backgroundColor: getPriorityColor(task.priority) }
+                        : {}
                     }
-                    if (task.completed) {
-                      return `Completed ${task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'recently'}`;
-                    }
-                    return `Due in ${daysUntilDue} days`;
-                  })()}
-                </Text>
-              )}
-              {task.status === TASK_STATUS.IN_PROGRESS && (
-                <Text style={styles.inProgressText}>In Progress</Text>
-              )}
+                  />
+                )}
+                {task.dueDate && (
+                  <ThemedText
+                    variant="caption"
+                    color={isOverdue(task) ? 'danger' : 'tertiary'}
+                    weight={isOverdue(task) ? 'semibold' : 'medium'}
+                  >
+                    {(() => {
+                      if (isOverdue(task)) {
+                        return `Overdue by ${Math.abs(daysUntilDue!)} days`;
+                      }
+                      if (task.completed) {
+                        return `Completed ${task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'recently'}`;
+                      }
+                      return `Due in ${daysUntilDue} days`;
+                    })()}
+                  </ThemedText>
+                )}
+                {task.status === TASK_STATUS.IN_PROGRESS && (
+                  <ThemedText variant="caption" color="primary" weight="semibold">
+                    In Progress
+                  </ThemedText>
+                )}
+              </View>
             </View>
           </View>
-        </View>
 
-        {!task.completed && (
-          <TouchableOpacity
-            style={styles.encourageButton}
-            onPress={() => {
-              sendEncouragement(task).catch(() => {});
-            }}
-          >
-            <Ionicons name="heart-outline" size={20} color="#E74C3C" />
-            <Text style={styles.encourageButtonText}>Encourage</Text>
-          </TouchableOpacity>
-        )}
+          {!task.completed && (
+            <TouchableOpacity
+              className="flex-row items-center self-start mt-3 py-1.5 px-3 bg-danger-50 rounded-full"
+              onPress={() => {
+                sendEncouragement(task).catch(() => {});
+              }}
+            >
+              <ThemedIcon name="heart-outline" size="sm" color="danger" />
+              <ThemedText variant="caption" color="danger" weight="semibold" className="ml-1.5">
+                Encourage
+              </ThemedText>
+            </TouchableOpacity>
+          )}
 
-        {task.completed && task.timeSpent > 0 && (
-          <Text style={styles.timeSpentText}>
-            Time spent: {Math.round(task.timeSpent / 60)} min
-          </Text>
-        )}
+          {task.completed && task.timeSpent > 0 && (
+            <ThemedText variant="caption" color="success" className="mt-2">
+              Time spent: {Math.round(task.timeSpent / 60)} min
+            </ThemedText>
+          )}
+        </ThemedCard>
       </View>
     );
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <ThemedContainer variant="screen" safeArea centered>
         <ActivityIndicator size="large" color="#3498DB" />
-      </View>
+      </ThemedContainer>
     );
   }
 
   if (!partner) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="people-outline" size={64} color="#BDC3C7" />
-        <Text style={styles.emptyText}>No active partnership</Text>
-        <TouchableOpacity
-          style={styles.goToPartnershipButton}
-          onPress={() => {
-            router.push('/profile/partnership');
-          }}
-        >
-          <Text style={styles.goToPartnershipText}>Set up Partnership</Text>
-        </TouchableOpacity>
-      </View>
+      <ThemedContainer variant="screen" safeArea centered>
+        <View className="px-5">
+          <ThemedIcon name="people-outline" size="xl" color="tertiary" />
+          <ThemedText variant="h3" color="secondary" className="mt-4 mb-6">
+            No active partnership
+          </ThemedText>
+          <ThemedButton
+            label="Set up Partnership"
+            variant="primary"
+            size="medium"
+            onPress={() => {
+              router.push('/profile/partnership');
+            }}
+          />
+        </View>
+      </ThemedContainer>
     );
   }
 
@@ -366,7 +345,7 @@ const PartnerDashboardScreen = () => {
 
   return (
     <ScrollView
-      style={styles.container}
+      className="flex-1 bg-neutral-50"
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -380,42 +359,68 @@ const PartnerDashboardScreen = () => {
         />
       }
     >
-      <View style={styles.header}>
-        <Text style={styles.partnerName}>{partner.name}&apos;s Progress</Text>
-        <Text style={styles.subtitle}>Tracking {stats.total} assigned tasks</Text>
+      {/* Header */}
+      <View className="p-5 bg-white border-b border-neutral-200">
+        <ThemedText variant="h2" color="primary" weight="bold">
+          {partner.name}&apos;s Progress
+        </ThemedText>
+        <ThemedText variant="body" color="tertiary" className="mt-1">
+          Tracking {stats.total} assigned tasks
+        </ThemedText>
       </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{stats.completionRate}%</Text>
-          <Text style={styles.statLabel}>Completion Rate</Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${stats.completionRate}%` }]} />
-          </View>
+      {/* Stats */}
+      <View className="p-5">
+        <View className="mb-4">
+          <ThemedCard variant="elevated" spacing="large">
+            <ThemedText variant="h1" color="primary" weight="bold">
+              {stats.completionRate}%
+            </ThemedText>
+            <ThemedText variant="body" color="secondary" className="mt-1">
+              Completion Rate
+            </ThemedText>
+            <View className="h-2 bg-neutral-200 rounded-full mt-3 overflow-hidden">
+              <View
+                className="h-full bg-primary-500 rounded-full"
+                style={getProgressBarStyle(stats.completionRate)}
+              />
+            </View>
+          </ThemedCard>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={[styles.statItem, styles.statItemActive]}>
-            <Ionicons name="time-outline" size={24} color="#3498DB" />
-            <Text style={[styles.statItemValue, styles.statItemValueActive]}>{stats.active}</Text>
-            <Text style={styles.statItemLabel}>Active</Text>
+        <View className="flex-row gap-3">
+          <View className="flex-1 items-center p-4 rounded-xl bg-blue-50">
+            <ThemedIcon name="time-outline" size="md" color="primary" />
+            <ThemedText variant="h3" color="primary" weight="bold" className="mt-2">
+              {stats.active}
+            </ThemedText>
+            <ThemedText variant="caption" color="tertiary" className="mt-1">
+              Active
+            </ThemedText>
           </View>
-          <View style={[styles.statItem, styles.statItemCompleted]}>
-            <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
-            <Text style={[styles.statItemValue, styles.statItemValueCompleted]}>
+          <View className="flex-1 items-center p-4 rounded-xl bg-success-50">
+            <ThemedIcon name="checkmark-circle" size="md" color="success" />
+            <ThemedText variant="h3" color="success" weight="bold" className="mt-2">
               {stats.completed}
-            </Text>
-            <Text style={styles.statItemLabel}>Completed</Text>
+            </ThemedText>
+            <ThemedText variant="caption" color="tertiary" className="mt-1">
+              Completed
+            </ThemedText>
           </View>
-          <View style={[styles.statItem, styles.statItemOverdue]}>
-            <Ionicons name="alert-circle" size={24} color="#E74C3C" />
-            <Text style={[styles.statItemValue, styles.statItemValueOverdue]}>{stats.overdue}</Text>
-            <Text style={styles.statItemLabel}>Overdue</Text>
+          <View className="flex-1 items-center p-4 rounded-xl bg-danger-50">
+            <ThemedIcon name="alert-circle" size="md" color="danger" />
+            <ThemedText variant="h3" color="danger" weight="bold" className="mt-2">
+              {stats.overdue}
+            </ThemedText>
+            <ThemedText variant="caption" color="tertiary" className="mt-1">
+              Overdue
+            </ThemedText>
           </View>
         </View>
       </View>
 
-      <View style={styles.tabContainer}>
+      {/* Tabs */}
+      <View className="flex-row px-5 mb-4">
         <TabButton
           tab="all"
           label="All Tasks"
@@ -454,298 +459,37 @@ const PartnerDashboardScreen = () => {
         />
       </View>
 
+      {/* Task List */}
       <FlashList
         data={assignedTasks}
         renderItem={renderTaskItem}
         keyExtractor={(item) => item.id}
         scrollEnabled={false}
-        contentContainerStyle={styles.taskList}
+        contentContainerStyle={{ paddingHorizontal: spacing.xl }}
         estimatedItemSize={120}
         ListEmptyComponent={
-          <View style={styles.emptyTaskContainer}>
-            <Text style={styles.emptyTaskText}>
+          <View className="py-10 items-center">
+            <ThemedText variant="body" color="tertiary">
               {selectedTab === 'all' ? 'No tasks assigned yet' : `No ${selectedTab} tasks`}
-            </Text>
+            </ThemedText>
           </View>
         }
       />
 
-      <TouchableOpacity
-        style={styles.assignButton}
-        onPress={() => {
-          router.push('/profile/partnership/assign');
-        }}
-      >
-        <Ionicons name="add-circle" size={24} color="white" />
-        <Text style={styles.assignButtonText}>Assign New Task</Text>
-      </TouchableOpacity>
+      {/* Assign Button */}
+      <View className="m-5">
+        <ThemedButton
+          label="Assign New Task"
+          variant="primary"
+          size="large"
+          icon="add-circle"
+          onPress={() => {
+            router.push('/profile/partnership/assign');
+          }}
+        />
+      </View>
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#7F8C8D',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  goToPartnershipButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#3498DB',
-    borderRadius: 8,
-  },
-  goToPartnershipText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  partnerName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginTop: 4,
-  },
-  statsContainer: {
-    padding: 20,
-  },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statValue: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#3498DB',
-  },
-  statLabel: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    marginTop: 4,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    marginTop: 12,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3498DB',
-    borderRadius: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-  },
-  statItemValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 8,
-  },
-  statItemLabel: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    marginTop: 4,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabButtonActive: {
-    borderBottomColor: '#3498DB',
-  },
-  tabLabel: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    fontWeight: '600',
-  },
-  tabLabelActive: {
-    color: '#3498DB',
-  },
-  tabBadge: {
-    marginLeft: 8,
-    backgroundColor: '#E0E0E0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  tabBadgeActive: {
-    backgroundColor: '#3498DB',
-  },
-  tabBadgeText: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    fontWeight: '600',
-  },
-  tabBadgeTextActive: {
-    color: 'white',
-  },
-  taskList: {
-    paddingHorizontal: 20,
-  },
-  taskCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  taskHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  taskInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  taskMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  priorityIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dueText: {
-    fontSize: 12,
-    color: '#7F8C8D',
-  },
-  overdueText: {
-    color: '#E74C3C',
-    fontWeight: '600',
-  },
-  inProgressText: {
-    fontSize: 12,
-    color: '#3498DB',
-    fontWeight: '600',
-  },
-  timeSpentText: {
-    fontSize: 12,
-    color: '#27AE60',
-    marginTop: 8,
-  },
-  encourageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginTop: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#FADBD8',
-    borderRadius: 20,
-  },
-  encourageButtonText: {
-    fontSize: 14,
-    color: '#E74C3C',
-    marginLeft: 6,
-    fontWeight: '600',
-  },
-  emptyTaskContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyTaskText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
-  assignButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3498DB',
-    margin: 20,
-    padding: 16,
-    borderRadius: 12,
-  },
-  assignButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  statItemActive: {
-    backgroundColor: '#EBF5FB',
-  },
-  statItemCompleted: {
-    backgroundColor: '#D5F4E6',
-  },
-  statItemOverdue: {
-    backgroundColor: '#FADBD8',
-  },
-  statItemValueActive: {
-    color: '#3498DB',
-  },
-  statItemValueCompleted: {
-    color: '#27AE60',
-  },
-  statItemValueOverdue: {
-    color: '#E74C3C',
-  },
-});
 
 export default PartnerDashboardScreen;

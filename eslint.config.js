@@ -7,6 +7,7 @@ const reactNativePlugin = require('eslint-plugin-react-native');
 const typescriptPlugin = require('@typescript-eslint/eslint-plugin');
 const typescriptParser = require('@typescript-eslint/parser');
 const globals = require('globals');
+const customRules = require('./eslint-rules');
 
 module.exports = [
   // ESLint recommended rules
@@ -284,8 +285,15 @@ module.exports = [
         ...globals.jest,
       },
     },
+    plugins: {
+      'custom-rules': customRules,
+    },
     rules: {
       'no-console': 'off',
+      // Custom rules to enforce test consistency
+      'custom-rules/enforce-mock-factories': 'error',
+      'custom-rules/enforce-console-mocks': 'warn',
+      'custom-rules/enforce-test-data-factories': 'warn',
     },
   },
 

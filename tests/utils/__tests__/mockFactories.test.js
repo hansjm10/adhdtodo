@@ -23,33 +23,36 @@ describe('Mock Factories', () => {
     it('should create a valid user with default values', () => {
       const user = createMockUser();
 
-      expect(user).toMatchObject({
-        id: expect.stringMatching(/^user-\d+-[a-z0-9]{5}$/),
-        email: 'test@example.com',
-        name: 'Test User',
-        role: USER_ROLE.ADHD_USER,
-        passwordHash: 'mock-hash',
-        passwordSalt: 'mock-salt',
-        sessionToken: 'mock-session-token',
-        partnerId: null,
-        notificationPreferences: {
-          global: NOTIFICATION_PREFERENCES.ALL,
-          taskAssigned: true,
-          taskStarted: true,
-          taskCompleted: true,
-          taskOverdue: true,
-          encouragement: true,
-          checkIn: true,
+      expect(user).toMatchObject(
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
+        {
+          id: expect.stringMatching(/^user-\d+-[a-z0-9]{5}$/),
+          email: 'test@example.com',
+          name: 'Test User',
+          role: USER_ROLE.ADHD_USER,
+          passwordHash: 'mock-hash',
+          passwordSalt: 'mock-salt',
+          sessionToken: 'mock-session-token',
+          partnerId: null,
+          notificationPreferences: {
+            global: NOTIFICATION_PREFERENCES.ALL,
+            taskAssigned: true,
+            taskStarted: true,
+            taskCompleted: true,
+            taskOverdue: true,
+            encouragement: true,
+            checkIn: true,
+          },
+          encouragementMessages: [],
+          stats: {
+            tasksAssigned: 0,
+            tasksCompleted: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            totalXP: 0,
+          },
         },
-        encouragementMessages: [],
-        stats: {
-          tasksAssigned: 0,
-          tasksCompleted: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          totalXP: 0,
-        },
-      });
+      );
 
       expect(user.createdAt).toBeInstanceOf(Date);
       expect(user.updatedAt).toBeInstanceOf(Date);
@@ -58,6 +61,7 @@ describe('Mock Factories', () => {
     });
 
     it('should allow overriding default values', () => {
+      // eslint-disable-next-line custom-rules/enforce-test-data-factories
       const customData = {
         id: 'custom-id',
         email: 'custom@test.com',
@@ -83,32 +87,35 @@ describe('Mock Factories', () => {
     it('should create a valid task with default values', () => {
       const task = createMockTask();
 
-      expect(task).toMatchObject({
-        id: expect.stringMatching(/^task-\d+-[a-z0-9]{5}$/),
-        title: 'Test Task',
-        description: 'Test Description',
-        category: 'personal',
-        status: TASK_STATUS.PENDING,
-        priority: TASK_PRIORITY.MEDIUM,
-        timeEstimate: 30,
-        timeSpent: 0,
-        completed: false,
-        completedAt: null,
-        xpEarned: 0,
-        streakContribution: false,
-        assignedBy: null,
-        assignedTo: null,
-        dueDate: null,
-        preferredStartTime: null,
-        startedAt: null,
-        partnerNotified: {
-          onStart: false,
-          onComplete: false,
-          onOverdue: false,
+      expect(task).toMatchObject(
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
+        {
+          id: expect.stringMatching(/^task-\d+-[a-z0-9]{5}$/),
+          title: 'Test Task',
+          description: 'Test Description',
+          category: 'personal',
+          status: TASK_STATUS.PENDING,
+          priority: TASK_PRIORITY.MEDIUM,
+          timeEstimate: 30,
+          timeSpent: 0,
+          completed: false,
+          completedAt: null,
+          xpEarned: 0,
+          streakContribution: false,
+          assignedBy: null,
+          assignedTo: null,
+          dueDate: null,
+          preferredStartTime: null,
+          startedAt: null,
+          partnerNotified: {
+            onStart: false,
+            onComplete: false,
+            onOverdue: false,
+          },
+          encouragementReceived: [],
+          userId: 'user-123',
         },
-        encouragementReceived: [],
-        userId: 'user-123',
-      });
+      );
 
       expect(task.createdAt).toBeInstanceOf(Date);
       expect(task.updatedAt).toBeInstanceOf(Date);

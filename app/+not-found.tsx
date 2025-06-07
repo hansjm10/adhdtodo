@@ -1,41 +1,29 @@
-// ABOUTME: 404 not found screen for unmatched routes
-// Displays when user navigates to a non-existent route
+// ABOUTME: Mac-inspired 404 not found screen using NativeWind
+// Clean error screen for unmatched routes
 
 import { Link } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import { ThemedText, ThemedContainer } from '../src/components/themed';
 
 export default function NotFoundScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>404 - Page Not Found</Text>
-      <Text style={styles.subtitle}>This screen doesn&apos;t exist.</Text>
-      <Link href="/" style={styles.link}>
-        Go to home screen
-      </Link>
-    </View>
+    <ThemedContainer variant="screen" safeArea centered>
+      <View className="items-center">
+        <ThemedText variant="h1" color="primary" weight="bold" className="mb-2.5">
+          404
+        </ThemedText>
+        <ThemedText variant="h3" color="secondary" className="mb-2">
+          Page Not Found
+        </ThemedText>
+        <ThemedText variant="body" color="tertiary" align="center" className="mb-5">
+          This screen doesn&apos;t exist.
+        </ThemedText>
+        <Link href="/" className="text-lg text-primary-500 underline">
+          <ThemedText variant="body" color="primary" weight="semibold">
+            Go to home screen
+          </ThemedText>
+        </Link>
+      </View>
+    </ThemedContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-  },
-  link: {
-    fontSize: 18,
-    color: '#007AFF',
-    textDecorationLine: 'underline',
-  },
-});

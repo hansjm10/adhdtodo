@@ -4,45 +4,47 @@
 import PresenceService from '../PresenceService';
 import { supabase } from '../SupabaseService';
 
-// Mock Supabase
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    channel: jest.fn(),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 describe('PresenceService', () => {
   const mockUserId = 'user-123';
   const mockUserId2 = 'user-456';
   const mockTaskId = 'task-789';
 
+  // Global mock channel with all necessary methods
+  const createMockChannel = () => ({
+    on: jest.fn().mockReturnThis(),
+    subscribe: jest.fn((callback) => {
+      callback('SUBSCRIBED');
+      return Promise.resolve();
+    }),
+    unsubscribe: jest.fn().mockResolvedValue(undefined),
+    track: jest.fn().mockResolvedValue(undefined),
+    presenceState: jest.fn(() => ({})),
+  });
+
   beforeEach(() => {
+    // Mock timers to prevent hanging
+    jest.useFakeTimers();
     jest.clearAllMocks();
 
     // Reset service state
-    PresenceService.channel = null;
-    PresenceService.heartbeatTimer = null;
-    PresenceService.awayTimer = null;
-    PresenceService.currentUserId = null;
-    PresenceService.presenceState = new Map();
+    PresenceService.__resetForTesting();
+
+    // Set up default mock channel
+    supabase.channel.mockReturnValue(createMockChannel());
   });
 
-  afterEach(async () => {
-    await PresenceService.stopPresence();
+  afterEach(() => {
+    // Just reset state and restore timers
+    PresenceService.__resetForTesting();
+    // Restore real timers
+    jest.useRealTimers();
   });
 
   describe('startPresence', () => {
     it('should initialize presence tracking for a user', async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          // Simulate successful subscription
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
       await PresenceService.startPresence(mockUserId, mockTaskId);
@@ -73,15 +75,7 @@ describe('PresenceService', () => {
     });
 
     it('should not create duplicate presence if already tracking', async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
       // Start presence twice
@@ -93,26 +87,8 @@ describe('PresenceService', () => {
     });
 
     it('should stop existing presence before starting new one', async () => {
-      const mockChannel1 = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel1;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-        unsubscribe: jest.fn(),
-      };
-
-      const mockChannel2 = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel2;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel1 = createMockChannel();
+      const mockChannel2 = createMockChannel();
 
       supabase.channel.mockReturnValueOnce(mockChannel1).mockReturnValueOnce(mockChannel2);
 
@@ -180,7 +156,8 @@ describe('PresenceService', () => {
     });
 
     it('should not update if not initialized', async () => {
-      await PresenceService.stopPresence();
+      // Ensure service is not initialized by resetting state
+      PresenceService.__resetForTesting();
 
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 

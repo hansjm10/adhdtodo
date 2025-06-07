@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
 import { AppProvider } from '../../src/contexts/AppProvider';
 
 /**
@@ -11,30 +10,12 @@ import { AppProvider } from '../../src/contexts/AppProvider';
  * @param {React.Component} ui - Component to render
  * @param {Object} options - Render options
  * @param {Object} options.initialState - Initial state for context providers
- * @param {Object} options.navigationState - Initial navigation state
  * @param {Object} options.renderOptions - Additional render options
  * @returns {Object} Render result with queries and utilities
  */
-export const renderWithProviders = (
-  ui,
-  { initialState = {}, navigationState = null, ...renderOptions } = {},
-) => {
-  // Provide default navigation state if none specified
-  const defaultNavigationState = {
-    type: 'stack',
-    key: 'stack-1',
-    routeNames: ['TestScreen'],
-    routes: [{ name: 'TestScreen', key: 'test-1' }],
-    index: 0,
-    stale: false,
-  };
-
+export const renderWithProviders = (ui, { initialState = {}, ...renderOptions } = {}) => {
   const Wrapper = ({ children }) => (
-    <AppProvider initialState={initialState}>
-      <NavigationContainer initialState={navigationState || defaultNavigationState}>
-        {children}
-      </NavigationContainer>
-    </AppProvider>
+    <AppProvider initialState={initialState}>{children}</AppProvider>
   );
 
   return render(ui, { wrapper: Wrapper, ...renderOptions });
