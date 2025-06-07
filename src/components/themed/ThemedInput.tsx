@@ -19,6 +19,8 @@ interface ThemedInputProps extends Omit<TextInputProps, 'style'> {
   required?: boolean;
   style?: ViewStyle;
   inputStyle?: TextStyle;
+  className?: string;
+  inputClassName?: string;
   variant?: 'outlined' | 'filled';
 }
 
@@ -27,8 +29,10 @@ export const ThemedInput = ({
   error,
   helper,
   required = false,
-  style,
+  style: _style,
   inputStyle,
+  className,
+  inputClassName,
   variant = 'outlined',
   onFocus,
   onBlur,
@@ -59,7 +63,7 @@ export const ThemedInput = ({
   };
 
   // Container classes
-  const containerClasses = cn('mb-4', style && '');
+  const containerClasses = cn('mb-4', className);
 
   // Label classes
   const labelClasses = cn(
@@ -89,6 +93,8 @@ export const ThemedInput = ({
   const inputClasses = cn(
     'text-base text-neutral-900 px-4 py-3 min-h-[48px]',
     variant === 'filled' && isFocused && 'pt-3 pb-3',
+    // Custom inputClassName (applied last for override capability)
+    inputClassName,
   );
 
   // Helper text classes
@@ -100,7 +106,7 @@ export const ThemedInput = ({
   });
 
   return (
-    <View className={containerClasses}>
+    <View className={containerClasses} style={_style}>
       {label && (
         <Text className={labelClasses}>
           {label}

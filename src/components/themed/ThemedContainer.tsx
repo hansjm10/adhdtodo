@@ -13,6 +13,7 @@ interface ThemedContainerProps {
   safeArea?: boolean;
   centered?: boolean;
   style?: ViewStyle;
+  className?: string;
   testID?: string;
 }
 
@@ -22,6 +23,7 @@ export const ThemedContainer = ({
   safeArea = false,
   centered = false,
   style,
+  className,
   testID,
 }: ThemedContainerProps) => {
   // Base container classes
@@ -38,6 +40,8 @@ export const ThemedContainer = ({
     baseClasses,
     variantClasses[variant],
     centered && 'justify-center items-center',
+    // Custom className (applied last for override capability)
+    className,
   );
 
   const Container = safeArea ? SafeAreaView : View;

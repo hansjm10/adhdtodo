@@ -12,6 +12,7 @@ interface ThemedCardProps {
   spacing?: 'small' | 'medium' | 'large';
   onPress?: () => void;
   style?: ViewStyle;
+  className?: string;
   testID?: string;
   disabled?: boolean;
 }
@@ -22,6 +23,7 @@ export const ThemedCard = ({
   spacing: cardSpacing = 'medium',
   onPress,
   style,
+  className,
   testID,
   disabled = false,
 }: ThemedCardProps) => {
@@ -47,6 +49,8 @@ export const ThemedCard = ({
     variantClasses[variant],
     spacingClasses[cardSpacing],
     disabled && 'opacity-60',
+    // Custom className (applied last for override capability)
+    className,
   );
 
   if (onPress) {

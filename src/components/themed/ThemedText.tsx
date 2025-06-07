@@ -13,6 +13,7 @@ interface ThemedTextProps {
   weight?: 'normal' | 'medium' | 'semibold' | 'bold';
   align?: 'left' | 'center' | 'right';
   style?: TextStyle;
+  className?: string;
   testID?: string;
   numberOfLines?: number;
   onPress?: () => void;
@@ -25,6 +26,7 @@ export const ThemedText = ({
   weight,
   align = 'left',
   style,
+  className,
   testID,
   numberOfLines,
   onPress,
@@ -72,6 +74,8 @@ export const ThemedText = ({
     colorClasses[color],
     weight && weightClasses[weight],
     alignClasses[align],
+    // Custom className (applied last for override capability)
+    className,
   );
 
   return (
