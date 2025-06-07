@@ -138,6 +138,10 @@ export const expectRouterCalledTimes = (router, method, times) => {
  * @param {Object} router - Router mock object
  */
 export const resetRouterMocks = (router) => {
+  if (!router || typeof router !== 'object') {
+    return;
+  }
+
   Object.keys(router).forEach((key) => {
     if (typeof router[key] === 'function' && router[key].mockClear) {
       router[key].mockClear();

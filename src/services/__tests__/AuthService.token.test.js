@@ -25,8 +25,8 @@ describe('AuthService Secure Token Tests', () => {
     jest.clearAllMocks();
 
     // Mock methods for device ID generation
-    AuthService.getDeviceId = jest.fn().mockResolvedValue(mockDeviceId);
-    AuthService.getInstallationId = jest.fn().mockResolvedValue(mockInstallationId);
+    jest.spyOn(AuthService, 'getDeviceId').mockResolvedValue(mockDeviceId);
+    jest.spyOn(AuthService, 'getInstallationId').mockResolvedValue(mockInstallationId);
 
     // Default CryptoService mocks
     CryptoService.generateSalt.mockResolvedValue('mocksalt');
@@ -44,6 +44,10 @@ describe('AuthService Secure Token Tests', () => {
     // Default UserStorageService mocks
     UserStorageService.getUserToken = jest.fn().mockResolvedValue('reference-token');
     UserStorageService.saveUserToken = jest.fn().mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('createSecureToken', () => {
@@ -79,7 +83,7 @@ describe('AuthService Secure Token Tests', () => {
 
       // Mock device key generation
       const mockDeviceKey = 'device-specific-key';
-      AuthService.getOrCreateDeviceKey = jest.fn().mockResolvedValue(mockDeviceKey);
+      jest.spyOn(AuthService, 'getOrCreateDeviceKey').mockResolvedValue(mockDeviceKey);
 
       await AuthService.createSecureToken(userId);
 
@@ -98,7 +102,7 @@ describe('AuthService Secure Token Tests', () => {
 
     it('should reject token from different device', async () => {
       // Change device ID
-      AuthService.getDeviceId.mockResolvedValue('different-device-id');
+      jest.spyOn(AuthService, 'getDeviceId').mockResolvedValue('different-device-id');
 
       const isValid = await AuthService.validateSecureToken(mockSecureToken, 'token');
 
@@ -129,7 +133,7 @@ describe('AuthService Secure Token Tests', () => {
 
     it('should accept valid token from same device', async () => {
       // Mock device key and decryption
-      AuthService.getOrCreateDeviceKey = jest.fn().mockResolvedValue('device-key');
+      jest.spyOn(AuthService, 'getOrCreateDeviceKey').mockResolvedValue('device-key');
       CryptoService.decrypt.mockResolvedValue('token');
 
       const isValid = await AuthService.validateSecureToken(mockSecureToken, 'token');
@@ -138,7 +142,7 @@ describe('AuthService Secure Token Tests', () => {
     });
 
     it('should update lastUsedAt for valid tokens', async () => {
-      AuthService.getOrCreateDeviceKey = jest.fn().mockResolvedValue('device-key');
+      jest.spyOn(AuthService, 'getOrCreateDeviceKey').mockResolvedValue('device-key');
       CryptoService.decrypt.mockResolvedValue('token');
 
       // Test that lastUsedAt gets updated (in real implementation)
@@ -184,7 +188,7 @@ describe('AuthService Secure Token Tests', () => {
       const userId = 'user-123';
 
       // Mock methods
-      AuthService.createSecureToken = jest.fn().mockResolvedValue({
+      jest.spyOn(AuthService, 'createSecureToken').mockResolvedValue({
         encryptedToken: 'new-encrypted-token',
         deviceId: 'device-id',
         createdAt: new Date(),
@@ -192,8 +196,8 @@ describe('AuthService Secure Token Tests', () => {
         fingerprint: 'new-fingerprint',
       });
 
-      AuthService.storeSecureToken = jest.fn().mockResolvedValue(true);
-      AuthService.invalidateOtherSessions = jest.fn().mockResolvedValue(true);
+      jest.spyOn(AuthService, 'storeSecureToken').mockResolvedValue(true);
+      jest.spyOn(AuthService, 'invalidateOtherSessions').mockResolvedValue(true);
 
       const newToken = await AuthService.rotateToken(userId);
 
@@ -221,7 +225,7 @@ describe('AuthService Secure Token Tests', () => {
       CryptoService.verifyPassword.mockResolvedValue(true);
 
       // Mock secure token creation
-      AuthService.createSecureToken = jest.fn().mockResolvedValue({
+      jest.spyOn(AuthService, 'createSecureToken').mockResolvedValue({
         encryptedToken: 'secure-encrypted-token',
         deviceId: 'device-id',
         createdAt: new Date(),
@@ -229,7 +233,7 @@ describe('AuthService Secure Token Tests', () => {
         fingerprint: 'fingerprint',
       });
 
-      AuthService.storeSecureToken = jest.fn().mockResolvedValue(true);
+      jest.spyOn(AuthService, 'storeSecureToken').mockResolvedValue(true);
 
       const result = await AuthService.login(email, password);
 
@@ -335,8 +339,14 @@ describe('AuthService Secure Token Tests', () => {
       SecureStore.getItemAsync.mockClear();
       SecureStore.setItemAsync.mockClear();
 
-      // Mock secure storage - no existing key on first call
-      SecureStore.getItemAsync.mockResolvedValueOnce(null);
+      // Mock secure storage - no existing key
+      // Need to use mockImplementation to ensure it returns null for device key
+      SecureStore.getItemAsync.mockImplementation((key) => {
+        if (key === 'device_encryption_key') {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(null);
+      });
 
       const deviceKey = await AuthService.getOrCreateDeviceKey();
 
@@ -356,18 +366,29 @@ describe('AuthService Secure Token Tests', () => {
     });
 
     it('should reuse existing device key', async () => {
-      const existingKey = 'existing-device-key';
+      // Use a valid base64 string as existing key
+      const existingKey = 'ZXhpc3RpbmctZGV2aWNlLWtleQ=='; // base64 encoded "existing-device-key"
 
       // Clear previous mocks and set up for this test
       SecureStore.getItemAsync.mockClear();
       SecureStore.setItemAsync.mockClear();
 
       // Mock secure storage - existing key found
-      SecureStore.getItemAsync.mockResolvedValueOnce(existingKey);
+      // Use mockImplementation to override any existing mock
+      SecureStore.getItemAsync.mockImplementation((key) => {
+        if (key === 'device_encryption_key') {
+          return Promise.resolve(existingKey);
+        }
+        return Promise.resolve(null);
+      });
 
       const deviceKey = await AuthService.getOrCreateDeviceKey();
 
       expect(deviceKey).toBe(existingKey);
+      expect(SecureStore.getItemAsync).toHaveBeenCalledWith('device_encryption_key', {
+        requireAuthentication: true,
+        authenticationPrompt: 'Authenticate to access secure storage',
+      });
       // Should only be called once to get the key, not to set it
       expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
     });
@@ -384,7 +405,7 @@ describe('AuthService Secure Token Tests', () => {
       };
 
       // Mock anomaly detection
-      AuthService.detectAnomalousUsage = jest.fn().mockReturnValue(true);
+      jest.spyOn(AuthService, 'detectAnomalousUsage').mockReturnValue(true);
 
       const isAnomalous = await AuthService.detectAnomalousUsage(secureToken);
 

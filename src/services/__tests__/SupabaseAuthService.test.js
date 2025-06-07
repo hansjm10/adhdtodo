@@ -13,25 +13,7 @@ jest.mock('expo-secure-store');
 jest.mock('../SecureLogger');
 jest.mock('../UserStorageService');
 
-// Mock SupabaseService with a proper structure
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    auth: {
-      signUp: jest.fn(),
-      signInWithPassword: jest.fn(),
-      signOut: jest.fn(),
-      getSession: jest.fn(),
-      getUser: jest.fn(),
-      refreshSession: jest.fn(),
-      updateUser: jest.fn(),
-      onAuthStateChange: jest.fn(),
-      admin: {
-        deleteUser: jest.fn(),
-      },
-    },
-    from: jest.fn(),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 describe('SupabaseAuthService', () => {
   let authService;
