@@ -2,7 +2,15 @@
 // Ensures runtime type validation works correctly
 
 import type { Result, ErrorResponse, ValidationResult, ValidationError } from '../common.types';
-import { isResult, isErrorResponse, isValidationResult, isValidationError } from '../common.types';
+import {
+  isResult,
+  isErrorResponse,
+  isValidationResult,
+  isValidationError,
+  successResult,
+  errorResult,
+  createError,
+} from '../common.types';
 
 describe('Common Types - Type Guards', () => {
   describe('isResult', () => {
@@ -203,5 +211,177 @@ describe('Common Types - Type Usage', () => {
 
     expect(validation.errors).toHaveLength(2);
     expect(validation.errors[0].field).toBe('email');
+  });
+});
+
+describe('Common Types - Helper Functions', () => {
+  describe('successResult', () => {
+    it('should create a successful Result with data', () => {
+      const data = { id: '123', name: 'Test' };
+      const result = successResult(data);
+
+      expect(result).toEqual({
+        success: true,
+        data,
+      });
+      expect(isResult(result)).toBe(true);
+    });
+
+    it('should work with primitive types', () => {
+      const result = successResult('success');
+      expect(result.success).toBe(true);
+      expect(result.data).toBe('success');
+    });
+
+    it('should work with void/undefined data', () => {
+      const result = successResult(undefined);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeUndefined();
+    });
+
+    it('should work with null data', () => {
+      const result = successResult(null);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeNull();
+    });
+
+    it('should work with array data', () => {
+      const data = [1, 2, 3];
+      const result = successResult(data);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(data);
+    });
+  });
+
+  describe('errorResult', () => {
+    it('should create a failed Result with error', () => {
+      const error = createError('TEST_ERROR', 'Test error message');
+      const result = errorResult<string>(error);
+
+      expect(result).toEqual({
+        success: false,
+        error,
+      });
+      expect(isResult(result)).toBe(true);
+    });
+
+    it('should work with ErrorResponse objects', () => {
+      const error: ErrorResponse = {
+        code: 'AUTH_FAILED',
+        message: 'Authentication failed',
+        details: { userId: '123' },
+      };
+      const result = errorResult<unknown>(error);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toEqual(error);
+    });
+
+    it('should properly type the generic parameter', () => {
+      interface User {
+        id: string;
+        name: string;
+      }
+      const error = createError('USER_NOT_FOUND', 'User does not exist');
+      const result = errorResult<User>(error);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toEqual(error);
+      // TypeScript should allow this type annotation
+      const typedResult: Result<User> = result;
+      expect(typedResult).toBeDefined();
+    });
+  });
+
+  describe('createError', () => {
+    it('should create an ErrorResponse with code and message', () => {
+      const error = createError('ERROR_CODE', 'Error message');
+
+      expect(error).toEqual({
+        code: 'ERROR_CODE',
+        message: 'Error message',
+      });
+      expect(isErrorResponse(error)).toBe(true);
+    });
+
+    it('should create an ErrorResponse with details', () => {
+      const details = { field: 'email', reason: 'invalid' };
+      const error = createError('VALIDATION_ERROR', 'Validation failed', details);
+
+      expect(error).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+        details,
+      });
+      expect(isErrorResponse(error)).toBe(true);
+    });
+
+    it('should handle empty string code and message', () => {
+      const error = createError('', '');
+      expect(error.code).toBe('');
+      expect(error.message).toBe('');
+      expect(isErrorResponse(error)).toBe(true);
+    });
+
+    it('should handle complex details objects', () => {
+      const details = {
+        timestamp: new Date().toISOString(),
+        stack: new Error().stack,
+        metadata: {
+          version: '1.0.0',
+          environment: 'test',
+        },
+      };
+      const error = createError('SYSTEM_ERROR', 'System error occurred', details);
+
+      expect(error.details).toEqual(details);
+      expect(isErrorResponse(error)).toBe(true);
+    });
+
+    it('should handle undefined details', () => {
+      const error = createError('ERROR_CODE', 'Error message', undefined);
+      expect(error).toEqual({
+        code: 'ERROR_CODE',
+        message: 'Error message',
+      });
+      expect(error.details).toBeUndefined();
+    });
+  });
+
+  describe('Helper Functions Integration', () => {
+    it('should work together to create and validate results', () => {
+      // Success case
+      const successData = { id: '123', value: 42 };
+      const success = successResult(successData);
+      expect(isResult(success)).toBe(true);
+      expect(success.data).toEqual(successData);
+
+      // Error case
+      const error = createError('TEST_ERROR', 'Something went wrong', { debug: true });
+      const failure = errorResult<typeof successData>(error);
+      expect(isResult(failure)).toBe(true);
+      expect(failure.error).toEqual(error);
+      expect(isErrorResponse(failure.error)).toBe(true);
+    });
+
+    it('should maintain type safety through the chain', () => {
+      interface ApiResponse {
+        users: Array<{ id: string; name: string }>;
+        total: number;
+      }
+
+      // Success path
+      const data: ApiResponse = {
+        users: [{ id: '1', name: 'Alice' }],
+        total: 1,
+      };
+      const success = successResult(data);
+      expect(success.data?.users[0].name).toBe('Alice');
+
+      // Error path
+      const error = createError('API_ERROR', 'Failed to fetch users');
+      const failure = errorResult<ApiResponse>(error);
+      expect(failure.error?.code).toBe('API_ERROR');
+    });
   });
 });

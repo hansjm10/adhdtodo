@@ -70,6 +70,18 @@ export function isResult<T>(value: unknown): value is Result<T> {
     return false;
   }
 
+  // Semantic validation: successful results should have data, failed results should have error
+  if (obj.success && obj.data === undefined) {
+    if (global.__DEV__) {
+      console.warn('Successful Result should include data');
+    }
+  }
+  if (!obj.success && obj.error === undefined) {
+    if (global.__DEV__) {
+      console.warn('Failed Result should include error');
+    }
+  }
+
   // data can be anything or undefined
   return true;
 }
@@ -119,6 +131,16 @@ export function isValidationResult(value: unknown): value is ValidationResult {
   // errors is required and must be an array
   if (!Array.isArray(obj.errors)) {
     return false;
+  }
+
+  // Performance consideration: limit array size to prevent excessive validation time
+  const MAX_VALIDATION_ERRORS = 100;
+  if (obj.errors.length > MAX_VALIDATION_ERRORS) {
+    if (global.__DEV__) {
+      console.warn(
+        `ValidationResult contains ${obj.errors.length} errors, which exceeds the recommended maximum of ${MAX_VALIDATION_ERRORS}`,
+      );
+    }
   }
 
   // All items in errors array must be valid ValidationError objects

@@ -5,6 +5,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { SecureStorageService } from './SecureStorageService';
 import type { BiometricAuthResult } from '../types/auth.types';
 
+// Re-exported for backward compatibility - types now live in auth.types.ts
 export { BiometricAuthResult };
 
 export interface BiometricSupport {
