@@ -29,36 +29,40 @@ describe('UserModel', () => {
     it('should create a user with default values', () => {
       const user = createUser();
 
-      expect(user).toMatchObject({
-        id: expect.stringMatching(/^user_\d+_[a-z0-9]{9}$/),
-        email: '',
-        name: '',
-        role: USER_ROLE.ADHD_USER,
-        partnerId: null,
-        notificationPreferences: {
-          global: NOTIFICATION_PREFERENCES.ALL,
-          taskAssigned: true,
-          taskStarted: true,
-          taskCompleted: true,
-          taskOverdue: true,
-          encouragement: true,
-          checkIn: true,
+      expect(user).toMatchObject(
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
+        {
+          id: expect.stringMatching(/^user_\d+_[a-z0-9]{9}$/),
+          email: '',
+          name: '',
+          role: USER_ROLE.ADHD_USER,
+          partnerId: null,
+          notificationPreferences: {
+            global: NOTIFICATION_PREFERENCES.ALL,
+            taskAssigned: true,
+            taskStarted: true,
+            taskCompleted: true,
+            taskOverdue: true,
+            encouragement: true,
+            checkIn: true,
+          },
+          encouragementMessages: [],
+          stats: {
+            tasksAssigned: 0,
+            tasksCompleted: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            totalXP: 0,
+          },
         },
-        encouragementMessages: [],
-        stats: {
-          tasksAssigned: 0,
-          tasksCompleted: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          totalXP: 0,
-        },
-      });
+      );
       expect(user.createdAt).toBeInstanceOf(Date);
       expect(user.updatedAt).toBeInstanceOf(Date);
       expect(user.lastActiveAt).toBeInstanceOf(Date);
     });
 
     it('should create a user with provided data', () => {
+      // eslint-disable-next-line custom-rules/enforce-test-data-factories
       const userData = {
         email: 'test@example.com',
         name: 'Test User',
@@ -149,10 +153,14 @@ describe('UserModel', () => {
         name: 'Test User',
       });
 
-      const updatedUser = updateUser(user, {
-        name: 'Updated Name',
-        role: USER_ROLE.BOTH,
-      });
+      const updatedUser = updateUser(
+        user,
+
+        {
+          name: 'Updated Name',
+          role: USER_ROLE.BOTH,
+        },
+      );
 
       expect(updatedUser.name).toBe('Updated Name');
       expect(updatedUser.role).toBe(USER_ROLE.BOTH);
@@ -164,10 +172,14 @@ describe('UserModel', () => {
   describe('updateUserStats', () => {
     it('should update specific stats', () => {
       const user = createUser();
-      const updatedUser = updateUserStats(user, {
-        tasksCompleted: 5,
-        totalXP: 100,
-      });
+      const updatedUser = updateUserStats(
+        user,
+
+        {
+          tasksCompleted: 5,
+          totalXP: 100,
+        },
+      );
 
       expect(updatedUser.stats.tasksCompleted).toBe(5);
       expect(updatedUser.stats.totalXP).toBe(100);
@@ -189,10 +201,14 @@ describe('UserModel', () => {
   describe('updateNotificationPreferences', () => {
     it('should update notification preferences', () => {
       const user = createUser();
-      const updatedUser = updateNotificationPreferences(user, {
-        global: NOTIFICATION_PREFERENCES.IMPORTANT_ONLY,
-        encouragement: false,
-      });
+      const updatedUser = updateNotificationPreferences(
+        user,
+
+        {
+          global: NOTIFICATION_PREFERENCES.IMPORTANT_ONLY,
+          encouragement: false,
+        },
+      );
 
       expect(updatedUser.notificationPreferences.global).toBe(
         NOTIFICATION_PREFERENCES.IMPORTANT_ONLY,

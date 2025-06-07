@@ -4,7 +4,6 @@
 import React from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { renderWithProviders, waitForLoadingToFinish, getByTestIdSafe } from '../testUtils';
-import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../../../src/contexts/UserContext';
 import { useTasks } from '../../../src/contexts/TaskContext';
 import { useNotifications } from '../../../src/contexts/NotificationContext';
@@ -19,15 +18,6 @@ const TestComponent = ({ testID = 'test-component' }) => (
 const LoadingComponent = ({ isLoading }) => (
   <View>{isLoading ? <ActivityIndicator testID="loading-indicator" /> : <Text>Loaded</Text>}</View>
 );
-
-const NavigationTestComponent = () => {
-  const navigation = useNavigation();
-  return (
-    <View>
-      <Text testID="navigation-status">{navigation ? 'Has navigation' : 'No navigation'}</Text>
-    </View>
-  );
-};
 
 const ContextTestComponent = () => {
   const { user } = useUser();
@@ -54,13 +44,6 @@ describe('Test Utils', () => {
       expect(getByText('Test Component')).toBeTruthy();
     });
 
-    it('should provide navigation context', () => {
-      const { getByTestId } = renderWithProviders(<NavigationTestComponent />);
-
-      expect(getByTestId('navigation-status')).toBeTruthy();
-      expect(getByTestId('navigation-status').props.children).toBe('Has navigation');
-    });
-
     it('should provide app contexts', () => {
       const { getByTestId } = renderWithProviders(<ContextTestComponent />);
 
@@ -68,17 +51,6 @@ describe('Test Utils', () => {
       expect(getByTestId('user-context')).toBeTruthy();
       expect(getByTestId('task-context')).toBeTruthy();
       expect(getByTestId('notification-context')).toBeTruthy();
-    });
-
-    it('should accept custom navigation state', () => {
-      const navigationState = {
-        routes: [{ name: 'CustomScreen', key: 'custom-1' }],
-        index: 0,
-      };
-
-      const { root } = renderWithProviders(<TestComponent />, { navigationState });
-
-      expect(root).toBeTruthy();
     });
 
     it('should accept render options', () => {

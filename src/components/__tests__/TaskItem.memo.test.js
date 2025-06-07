@@ -1,219 +1,113 @@
 // ABOUTME: Tests for TaskItem React.memo optimization
-// Verifies that TaskItem doesn't re-render unnecessarily
+// Verifies that TaskItem is properly memoized with custom comparison
 
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import TaskItem from '../TaskItem';
-import { createTask } from '../../utils/TaskModel';
+import { testDataFactories } from '../../../tests/utils';
+
+// Mock services that TaskItem uses
+jest.mock('../../services/TaskStorageService');
+jest.mock('../../services/RewardService');
+jest.mock('../../services/NotificationService');
+jest.mock('../../services/PartnershipService');
+jest.mock('../RewardAnimation', () => 'RewardAnimation');
+
+// Import mocked services to set up responses
+import TaskStorageService from '../../services/TaskStorageService';
+import RewardService from '../../services/RewardService';
+import NotificationService from '../../services/NotificationService';
+import PartnershipService from '../../services/PartnershipService';
 
 describe('TaskItem - React.memo Optimization', () => {
-  const mockOnUpdate = jest.fn();
-  const mockOnPress = jest.fn();
-  const mockCurrentUser = { id: 'user1', name: 'Test User' };
-  const mockPartner = { id: 'partner1', name: 'Partner' };
-
-  // Mock console.log to count renders
-  let renderCount = 0;
-  const originalLog = console.log;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    renderCount = 0;
-    // Track renders by intercepting console.log calls
-    console.log = jest.fn((...args) => {
-      if (args[0] === 'TaskItem render') {
-        renderCount++;
-      }
-      originalLog(...args);
-    });
+
+    // Set up mock responses
+    TaskStorageService.updateTask.mockResolvedValue(true);
+    RewardService.calculateTaskXP.mockReturnValue(10);
+    RewardService.updateStreak.mockResolvedValue(true);
+    NotificationService.notifyTaskCompleted.mockResolvedValue(true);
+    NotificationService.notifyTaskStarted.mockResolvedValue(true);
+    PartnershipService.getActivePartnership.mockResolvedValue(null);
+    PartnershipService.incrementPartnershipStat.mockResolvedValue(true);
   });
 
-  afterEach(() => {
-    console.log = originalLog;
+  it('should verify React.memo is applied', () => {
+    // Check that TaskItem is wrapped with React.memo
+    expect(TaskItem.$$typeof).toBe(Symbol.for('react.memo'));
   });
 
-  it('should not re-render when props are the same', () => {
-    const task = createTask({
-      id: 'task1',
-      title: 'Test Task',
-      category: 'home',
-    });
-
-    const { rerender } = render(
-      <TaskItem
-        task={task}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    const initialRenderCount = renderCount;
-
-    // Re-render with same props
-    rerender(
-      <TaskItem
-        task={task}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    // Component should not have re-rendered
-    expect(renderCount).toBe(initialRenderCount);
+  it('should use custom comparison function', () => {
+    // TaskItem should have a custom compare function
+    expect(typeof TaskItem.compare).toBe('function');
   });
 
-  it('should re-render when task prop changes', () => {
-    const task1 = createTask({
-      id: 'task1',
-      title: 'Test Task',
-      category: 'home',
-    });
+  it('should have correct comparison logic for visual properties', () => {
+    const mockOnUpdate = jest.fn();
+    const mockOnPress = jest.fn();
+    const currentUser = testDataFactories.user({ id: 'user1' });
+    const partner = testDataFactories.user({ id: 'partner1' });
 
-    const { rerender, getByText } = render(
-      <TaskItem
-        task={task1}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    expect(getByText('Test Task')).toBeTruthy();
-    const initialRenderCount = renderCount;
-
-    // Update task
-    const task2 = createTask({
-      id: 'task1',
-      title: 'Updated Task',
-      category: 'home',
-    });
-
-    rerender(
-      <TaskItem
-        task={task2}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    expect(getByText('Updated Task')).toBeTruthy();
-    // Component should have re-rendered
-    expect(renderCount).toBeGreaterThan(initialRenderCount);
-  });
-
-  it('should not re-render when only callback functions change but have same reference', () => {
-    const task = createTask({
-      id: 'task1',
-      title: 'Test Task',
-      category: 'home',
-    });
-
-    const { rerender } = render(
-      <TaskItem
-        task={task}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    const initialRenderCount = renderCount;
-
-    // Re-render with same function references
-    rerender(
-      <TaskItem
-        task={task}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    // Component should not have re-rendered
-    expect(renderCount).toBe(initialRenderCount);
-  });
-
-  it('should re-render when callback functions change reference', () => {
-    const task = createTask({
-      id: 'task1',
-      title: 'Test Task',
-      category: 'home',
-    });
-
-    const { rerender } = render(
-      <TaskItem
-        task={task}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    const initialRenderCount = renderCount;
-
-    // Re-render with new function references
-    const newMockOnUpdate = jest.fn();
-    const newMockOnPress = jest.fn();
-
-    rerender(
-      <TaskItem
-        task={task}
-        onUpdate={newMockOnUpdate}
-        onPress={newMockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    // Component should have re-rendered due to new function references
-    expect(renderCount).toBeGreaterThan(initialRenderCount);
-  });
-
-  it('should optimize rendering with custom comparison function', () => {
-    const task = createTask({
+    const task1 = testDataFactories.task({
       id: 'task1',
       title: 'Test Task',
       category: 'home',
       completed: false,
+      priority: 'medium',
     });
 
-    const { rerender } = render(
+    const prevProps = {
+      task: task1,
+      onUpdate: mockOnUpdate,
+      onPress: mockOnPress,
+      currentUser,
+      partner,
+    };
+
+    // Test that updatedAt changes don't trigger re-render
+    const task2 = { ...task1, updatedAt: new Date().toISOString() };
+    const nextProps1 = { ...prevProps, task: task2 };
+    expect(TaskItem.compare(prevProps, nextProps1)).toBe(true);
+
+    // Test that visual changes do trigger re-render
+    const task3 = { ...task1, title: 'Different Title' };
+    const nextProps2 = { ...prevProps, task: task3 };
+    expect(TaskItem.compare(prevProps, nextProps2)).toBe(false);
+
+    // Test that completion status changes trigger re-render
+    const task4 = { ...task1, completed: true };
+    const nextProps3 = { ...prevProps, task: task4 };
+    expect(TaskItem.compare(prevProps, nextProps3)).toBe(false);
+
+    // Test that priority changes trigger re-render
+    const task5 = { ...task1, priority: 'high' };
+    const nextProps4 = { ...prevProps, task: task5 };
+    expect(TaskItem.compare(prevProps, nextProps4)).toBe(false);
+  });
+
+  it('should render without errors', () => {
+    const task = testDataFactories.task({
+      id: 'task1',
+      title: 'Test Task',
+      category: 'home',
+    });
+
+    const mockOnUpdate = jest.fn();
+    const mockOnPress = jest.fn();
+    const currentUser = testDataFactories.user({ id: 'user1' });
+    const partner = testDataFactories.user({ id: 'partner1' });
+
+    const { getByText } = render(
       <TaskItem
         task={task}
         onUpdate={mockOnUpdate}
         onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
+        currentUser={currentUser}
+        partner={partner}
       />,
     );
 
-    const initialRenderCount = renderCount;
-
-    // Re-render with task that has same visual properties but different timestamp
-    const taskWithSameVisuals = { ...task, updatedAt: new Date() };
-
-    rerender(
-      <TaskItem
-        task={taskWithSameVisuals}
-        onUpdate={mockOnUpdate}
-        onPress={mockOnPress}
-        currentUser={mockCurrentUser}
-        partner={mockPartner}
-      />,
-    );
-
-    // Component might re-render depending on memo implementation
-    // This test documents the current behavior
-    expect(renderCount).toBeGreaterThanOrEqual(initialRenderCount);
+    expect(getByText('Test Task')).toBeTruthy();
   });
 });
