@@ -3,73 +3,11 @@
 
 import type { AlertButton } from 'react-native';
 import { Alert } from 'react-native';
-import SecureLogger from '../services/SecureLogger';
-import type { ErrorResponse } from '../types/common.types';
 
 type StorageOperation = 'save' | 'load' | 'delete' | 'update';
 type RetryFunction = () => void;
 
 class ErrorHandler {
-  private static logger = SecureLogger;
-
-  /**
-   * Converts various error types to a standardized ErrorResponse
-   * @param error The error to handle
-   * @param context Additional context about where the error occurred
-   * @returns Standardized error response
-   */
-  static handleError(error: unknown, context?: string): ErrorResponse {
-    let code = 'UNKNOWN_ERROR';
-    let message = 'An unexpected error occurred';
-    let details: Record<string, unknown> | undefined;
-
-    if (error instanceof Error) {
-      message = error.message;
-      code = error.name || 'ERROR';
-      if (global.__DEV__) {
-        details = {
-          stack: error.stack,
-          context,
-        };
-      }
-    } else if (typeof error === 'string') {
-      message = error;
-      code = 'STRING_ERROR';
-    } else if (error && typeof error === 'object') {
-      // Handle custom error objects
-      const errorObj = error as Record<string, unknown>;
-      if (errorObj.code) code = String(errorObj.code);
-      if (errorObj.message) message = String(errorObj.message);
-      if (errorObj.details && global.__DEV__) details = errorObj.details as Record<string, unknown>;
-    }
-
-    // Log the error
-    this.logError(context ?? 'Unknown context', error);
-
-    return {
-      code: context ? `${context.toUpperCase()}_${code}` : code,
-      message,
-      details,
-    };
-  }
-
-  /**
-   * Centralized error logging that respects environment settings
-   * @param context The context where the error occurred
-   * @param error The error to log
-   */
-  static logError(context: string, error: unknown): void {
-    if (global.__DEV__) {
-      console.error(`[${context}] Error:`, error);
-    }
-
-    // Use SecureLogger for production-safe logging
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    this.logger.error(`${context}: ${errorMessage}`, {
-      code: `${context.toUpperCase()}_ERROR`,
-    });
-  }
-
   static showError(message: string, retry: RetryFunction | null = null): void {
     const buttons: AlertButton[] = [{ text: 'OK' }];
     if (retry) {
@@ -110,14 +48,5 @@ class ErrorHandler {
     this.showError('A critical error occurred. Please restart the app.');
   }
 }
-
-// Export standalone functions for convenience
-export const handleError = (error: unknown, context?: string): ErrorResponse => {
-  return ErrorHandler.handleError(error, context);
-};
-
-export const logError = (context: string, error: unknown): void => {
-  ErrorHandler.logError(context, error);
-};
 
 export default ErrorHandler;
