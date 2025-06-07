@@ -111,6 +111,26 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+// Mock BiometricAuthService
+jest.mock('../src/services/BiometricAuthService', () => ({
+  BiometricAuthService: {
+    getSecuritySettings: jest.fn().mockResolvedValue({
+      requireAuthOnLaunch: false,
+      autoLockTimeout: 0,
+      requireAuthForSensitiveData: false,
+    }),
+    authenticate: jest.fn().mockResolvedValue({ success: true }),
+    isSupported: jest.fn().mockResolvedValue(true),
+  },
+}));
+
+// Mock UserStorageService
+jest.mock('../src/services/UserStorageService', () => ({
+  getUserData: jest.fn().mockResolvedValue(null),
+  saveUserData: jest.fn().mockResolvedValue(undefined),
+  clearUserData: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock SupabaseService
 jest.mock('../src/services/SupabaseService', () => ({
   supabase: {

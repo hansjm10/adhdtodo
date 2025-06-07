@@ -9,7 +9,7 @@ import {
   expectNavigationCalledWith,
   resetNavigationMocks,
 } from '../navigationHelpers';
-import { renderWithProviders } from '../testUtils';
+import { renderWithProviders, waitFor } from '../testUtils';
 import { fireEvent } from '@testing-library/react-native';
 
 describe('Navigation Helpers - Extended Tests', () => {
@@ -18,7 +18,7 @@ describe('Navigation Helpers - Extended Tests', () => {
   });
 
   describe('Complex Navigation Scenarios', () => {
-    it('should handle nested navigation with params', () => {
+    it('should handle nested navigation with params', async () => {
       const navigation = createNavigationMock();
       const TestComponent = () => {
         const handlePress = () => {
@@ -36,7 +36,10 @@ describe('Navigation Helpers - Extended Tests', () => {
       };
 
       const { getByTestId } = renderWithProviders(<TestComponent />);
-      fireEvent.press(getByTestId('navigate-button'));
+
+      await waitFor(() => {
+        fireEvent.press(getByTestId('navigate-button'));
+      });
 
       expect(navigation.navigate).toHaveBeenCalledWith('Profile', {
         screen: 'Settings',
@@ -44,7 +47,7 @@ describe('Navigation Helpers - Extended Tests', () => {
       });
     });
 
-    it('should handle navigation replace', () => {
+    it('should handle navigation replace', async () => {
       const navigation = createNavigationMock();
       const TestComponent = () => {
         const handleReplace = () => {
@@ -59,12 +62,15 @@ describe('Navigation Helpers - Extended Tests', () => {
       };
 
       const { getByTestId } = renderWithProviders(<TestComponent />);
-      fireEvent.press(getByTestId('replace-button'));
+
+      await waitFor(() => {
+        fireEvent.press(getByTestId('replace-button'));
+      });
 
       expect(navigation.replace).toHaveBeenCalledWith('Home');
     });
 
-    it('should track multiple navigation actions', () => {
+    it('should track multiple navigation actions', async () => {
       const navigation = createNavigationMock();
       const TestComponent = () => {
         const performActions = () => {
@@ -82,7 +88,10 @@ describe('Navigation Helpers - Extended Tests', () => {
       };
 
       const { getByTestId } = renderWithProviders(<TestComponent />);
-      fireEvent.press(getByTestId('multi-action'));
+
+      await waitFor(() => {
+        fireEvent.press(getByTestId('multi-action'));
+      });
 
       expect(navigation.navigate).toHaveBeenCalledTimes(1);
       expect(navigation.push).toHaveBeenCalledTimes(1);
@@ -92,7 +101,7 @@ describe('Navigation Helpers - Extended Tests', () => {
   });
 
   describe('Router Mock Integration', () => {
-    it('should work with router mock in components', () => {
+    it('should work with router mock in components', async () => {
       const mockRouter = createNavigationMock();
 
       const ComponentWithRouter = () => {
@@ -104,12 +113,15 @@ describe('Navigation Helpers - Extended Tests', () => {
       };
 
       const { getByTestId } = renderWithProviders(<ComponentWithRouter />);
-      fireEvent.press(getByTestId('nav-button'));
+
+      await waitFor(() => {
+        fireEvent.press(getByTestId('nav-button'));
+      });
 
       expectNavigationCalledWith(mockRouter, 'Details');
     });
 
-    it('should simulate focus effects', () => {
+    it('should simulate focus effects', async () => {
       const mockUseFocusEffect = createUseFocusEffectMock();
       const effectFn = jest.fn();
       const cleanupFn = jest.fn();
@@ -125,20 +137,24 @@ describe('Navigation Helpers - Extended Tests', () => {
 
       renderWithProviders(<ComponentWithFocusEffect />);
 
-      // Verify effect was called
-      expect(effectFn).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        // Verify effect was called
+        expect(effectFn).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
   describe('Navigation Mock Container', () => {
-    it('should render children components', () => {
+    it('should render children components', async () => {
       const TestComponent = () => {
         return <Text testID="test-component">Test Component</Text>;
       };
 
       const { getByTestId } = renderWithProviders(<TestComponent />);
 
-      expect(getByTestId('test-component')).toBeTruthy();
+      await waitFor(() => {
+        expect(getByTestId('test-component')).toBeTruthy();
+      });
     });
   });
 
