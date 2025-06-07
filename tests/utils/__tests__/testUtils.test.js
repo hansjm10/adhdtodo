@@ -4,7 +4,7 @@
 import React from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
 import { renderWithProviders, waitForLoadingToFinish, getByTestIdSafe } from '../testUtils';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useUser } from '../../../src/contexts/UserContext';
 import { useTasks } from '../../../src/contexts/TaskContext';
 import { useNotifications } from '../../../src/contexts/NotificationContext';
@@ -21,10 +21,10 @@ const LoadingComponent = ({ isLoading }) => (
 );
 
 const NavigationTestComponent = () => {
-  const navigation = useNavigation();
+  const router = useRouter();
   return (
     <View>
-      <Text testID="navigation-status">{navigation ? 'Has navigation' : 'No navigation'}</Text>
+      <Text testID="navigation-status">{router ? 'Has router' : 'No router'}</Text>
     </View>
   );
 };
@@ -54,11 +54,11 @@ describe('Test Utils', () => {
       expect(getByText('Test Component')).toBeTruthy();
     });
 
-    it('should provide navigation context', () => {
+    it('should work with components using expo-router', () => {
       const { getByTestId } = renderWithProviders(<NavigationTestComponent />);
 
       expect(getByTestId('navigation-status')).toBeTruthy();
-      expect(getByTestId('navigation-status').props.children).toBe('Has navigation');
+      expect(getByTestId('navigation-status').props.children).toBe('Has router');
     });
 
     it('should provide app contexts', () => {
@@ -70,13 +70,12 @@ describe('Test Utils', () => {
       expect(getByTestId('notification-context')).toBeTruthy();
     });
 
-    it('should accept custom navigation state', () => {
-      const navigationState = {
-        routes: [{ name: 'CustomScreen', key: 'custom-1' }],
-        index: 0,
+    it('should accept initial state for context providers', () => {
+      const initialState = {
+        user: { id: 'test-user' },
       };
 
-      const { root } = renderWithProviders(<TestComponent />, { navigationState });
+      const { root } = renderWithProviders(<TestComponent />, { initialState });
 
       expect(root).toBeTruthy();
     });
