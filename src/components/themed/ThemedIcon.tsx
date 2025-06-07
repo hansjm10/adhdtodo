@@ -37,12 +37,12 @@ export const ThemedIcon = ({
     xl: 40,
   };
 
-  // Color mappings
+  // Color mappings for dark theme
   const colorMap = {
-    primary: '#111827',
-    secondary: '#6b7280',
-    tertiary: '#9ca3af',
-    success: '#10b981',
+    primary: '#FFFFFF',
+    secondary: '#A1A1AA',
+    tertiary: '#71717A',
+    success: '#22c55e',
     warning: '#f59e0b',
     danger: '#ef4444',
     white: '#ffffff',

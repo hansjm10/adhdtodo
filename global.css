@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base layer resets for dark theme */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    @apply bg-background-primary text-text-primary;
+  }
+
+  body {
+    @apply bg-background-primary;
+  }
+}

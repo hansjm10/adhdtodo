@@ -27,14 +27,14 @@ export const ThemedCard = ({
   testID,
   disabled = false,
 }: ThemedCardProps) => {
-  // Base card classes
-  const baseClasses = 'bg-white rounded-card overflow-hidden';
+  // Base card classes with dark theme
+  const baseClasses = 'bg-surface-1 rounded-card overflow-hidden';
 
-  // Variant classes
+  // Variant classes for dark theme
   const variantClasses = {
-    elevated: 'shadow-card',
-    outlined: 'border border-neutral-200',
-    filled: 'bg-neutral-100',
+    elevated: 'shadow-card bg-surface-2',
+    outlined: 'border border-border-default',
+    filled: 'bg-surface-2',
   };
 
   // Spacing classes

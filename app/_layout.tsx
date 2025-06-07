@@ -13,8 +13,8 @@ import BiometricAuthScreen from '../src/components/BiometricAuthScreen';
 
 // Loading Screen Component
 const LoadingScreen = () => (
-  <View className="flex-1 justify-center items-center bg-neutral-50">
-    <ActivityIndicator size="large" color="#3498DB" />
+  <View className="flex-1 justify-center items-center bg-background-primary">
+    <ActivityIndicator size="large" color="#a855f7" />
   </View>
 );
 
@@ -99,8 +99,22 @@ function RootLayoutNav() {
   }
 
   return (
-    <View className="flex-1">
-      <Stack>
+    <View className="flex-1 bg-background-primary">
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#131316',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+          headerShadowVisible: false,
+          contentStyle: {
+            backgroundColor: '#0A0A0B',
+          },
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="(auth)"
