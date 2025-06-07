@@ -5,17 +5,7 @@ import UserStorageService from '../UserStorageService';
 import { supabase } from '../SupabaseService';
 import { NotificationPreference } from '../../types/user.types';
 
-// Mock Supabase
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    auth: {
-      getSession: jest.fn(),
-      getUser: jest.fn(),
-    },
-    from: jest.fn(),
-    channel: jest.fn(),
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 
 // Mock SecureLogger to avoid console spam in tests
 jest.mock('../SecureLogger', () => ({

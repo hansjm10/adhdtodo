@@ -1,11 +1,11 @@
-// ABOUTME: Pure presentation component for displaying tasks
-// Receives tasks as props, making it easily testable
+// ABOUTME: Mac-inspired dashboard view using NativeWind
+// Clean, widget-style layout with ADHD-friendly visual hierarchy
 
 import React, { useState, useEffect } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import TaskItem from './TaskItem';
+import { ThemedContainer, ThemedText, ThemedButton, ThemedIcon } from './themed';
 import { TASK_CATEGORIES } from '../constants/TaskConstants';
 import type { Task, TaskCategory } from '../types/task.types';
 import type { User } from '../types/user.types';
@@ -27,9 +27,14 @@ interface TaskListViewProps {
 
 // Empty state component
 const EmptyState: React.FC = () => (
-  <View style={styles.emptyContainer}>
-    <Text style={styles.emptyTitle}>No tasks yet</Text>
-    <Text style={styles.emptySubtitle}>Tap the + button to create your first task</Text>
+  <View className="flex-1 justify-center items-center px-8 py-12">
+    <ThemedIcon name="checkmark-circle-outline" size="xl" color="tertiary" />
+    <ThemedText variant="h3" color="primary" align="center" className="mt-4 mb-2">
+      No tasks yet
+    </ThemedText>
+    <ThemedText variant="body" color="secondary" align="center">
+      Tap the + button to create your first task
+    </ThemedText>
   </View>
 );
 
@@ -52,12 +57,12 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
   <ScrollView
     horizontal
     showsHorizontalScrollIndicator={false}
-    style={styles.categoryFilter}
-    contentContainerStyle={styles.categoryFilterContent}
+    className="bg-white py-3 border-b border-neutral-100"
+    contentContainerClassName="px-4 gap-2"
   >
     {partner && (
       <TouchableOpacity
-        style={[styles.categoryChip, showAssignedOnly && styles.categoryChipActive]}
+        className={`flex-row items-center px-4 py-2 rounded-full border-2 mr-2 ${showAssignedOnly ? 'bg-primary-500 border-primary-500' : 'bg-neutral-50 border-neutral-200'}`}
         onPress={() => {
           onToggleAssigned(true);
           onCategorySelect(null);
@@ -68,17 +73,18 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
         accessibilityRole="button"
         accessibilityState={{ selected: showAssignedOnly }}
       >
-        <Text style={[styles.categoryChipText, showAssignedOnly && styles.categoryChipTextActive]}>
+        <ThemedText
+          variant="caption"
+          weight="medium"
+          color={showAssignedOnly ? 'white' : 'secondary'}
+        >
           Assigned
-        </Text>
+        </ThemedText>
       </TouchableOpacity>
     )}
 
     <TouchableOpacity
-      style={[
-        styles.categoryChip,
-        !selectedCategory && !showAssignedOnly && styles.categoryChipActive,
-      ]}
+      className={`flex-row items-center px-4 py-2 rounded-full border-2 mr-2 ${!selectedCategory && !showAssignedOnly ? 'bg-primary-500 border-primary-500' : 'bg-neutral-50 border-neutral-200'}`}
       onPress={() => {
         onCategorySelect(null);
         onToggleAssigned(false);
@@ -89,24 +95,20 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
       accessibilityRole="button"
       accessibilityState={{ selected: !selectedCategory && !showAssignedOnly }}
     >
-      <Text
-        style={[
-          styles.categoryChipText,
-          !selectedCategory && !showAssignedOnly && styles.categoryChipTextActive,
-        ]}
+      <ThemedText
+        variant="caption"
+        weight="medium"
+        color={!selectedCategory && !showAssignedOnly ? 'white' : 'secondary'}
       >
         All Tasks
-      </Text>
+      </ThemedText>
     </TouchableOpacity>
 
     {!showAssignedOnly &&
       Object.values(TASK_CATEGORIES).map((category: TaskCategory) => (
         <TouchableOpacity
           key={category.id}
-          style={[
-            styles.categoryChip,
-            selectedCategory === category.id && styles.categoryChipActive,
-          ]}
+          className={`flex-row items-center px-4 py-2 rounded-full border-2 mr-2 gap-1 ${selectedCategory === category.id ? 'bg-primary-500 border-primary-500' : 'bg-neutral-50 border-neutral-200'}`}
           onPress={() => {
             onCategorySelect(category.id);
           }}
@@ -116,15 +118,14 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
           accessibilityRole="button"
           accessibilityState={{ selected: selectedCategory === category.id }}
         >
-          <Text style={styles.categoryIcon}>{category.icon}</Text>
-          <Text
-            style={[
-              styles.categoryChipText,
-              selectedCategory === category.id && styles.categoryChipTextActive,
-            ]}
+          <Text className="text-base">{category.icon}</Text>
+          <ThemedText
+            variant="caption"
+            weight="medium"
+            color={selectedCategory === category.id ? 'white' : 'secondary'}
           >
             {category.label}
-          </Text>
+          </ThemedText>
         </TouchableOpacity>
       ))}
   </ScrollView>
@@ -149,48 +150,20 @@ const ShowMoreButton: React.FC<ShowMoreButtonProps> = ({
   if (!hasMoreTasks) return null;
 
   return (
-    <View style={styles.showMoreContainer}>
-      <Text style={styles.taskCountText}>
+    <View className="items-center py-4 bg-white border-t border-neutral-100">
+      <ThemedText variant="caption" color="secondary" className="mb-2">
         Showing {visibleTasksCount} of {totalTasksCount} tasks
-      </Text>
-      <TouchableOpacity
-        style={styles.showMoreButton}
+      </ThemedText>
+      <ThemedButton
+        label={showAll ? 'Show Less' : `Show All (${totalTasksCount - visibleTasksCount} more)`}
+        variant="ghost"
+        size="small"
         onPress={onToggle}
-        accessible
-        accessibilityLabel={showAll ? 'Show fewer tasks' : `Show all ${totalTasksCount} tasks`}
-        accessibilityHint={
-          showAll ? 'Double tap to limit visible tasks' : 'Double tap to show all tasks'
-        }
-        accessibilityRole="button"
-      >
-        <Text style={styles.showMoreText}>
-          {showAll ? 'Show Less' : `Show All (${totalTasksCount - visibleTasksCount} more)`}
-        </Text>
-      </TouchableOpacity>
+        testID="show-more-button"
+      />
     </View>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  emptyContainer: ViewStyle;
-  emptyList: ViewStyle;
-  emptyTitle: TextStyle;
-  emptySubtitle: TextStyle;
-  addButton: ViewStyle;
-  addButtonText: TextStyle;
-  categoryFilter: ViewStyle;
-  categoryFilterContent: ViewStyle;
-  categoryChip: ViewStyle;
-  categoryChipActive: ViewStyle;
-  categoryChipText: TextStyle;
-  categoryChipTextActive: TextStyle;
-  categoryIcon: TextStyle;
-  showMoreContainer: ViewStyle;
-  taskCountText: TextStyle;
-  showMoreButton: ViewStyle;
-  showMoreText: TextStyle;
-}
 
 const TaskListView: React.FC<TaskListViewProps> = ({
   tasks,
@@ -232,7 +205,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
   );
 
   return (
-    <View style={styles.container} testID="task-list-view">
+    <ThemedContainer variant="screen" testID="task-list-view">
       <CategoryFilter
         partner={partner}
         showAssignedOnly={showAssignedOnly}
@@ -242,9 +215,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
       />
 
       {tasks.length === 0 ? (
-        <View style={styles.emptyList}>
-          <EmptyState />
-        </View>
+        <EmptyState />
       ) : (
         <>
           <FlashList
@@ -252,9 +223,16 @@ const TaskListView: React.FC<TaskListViewProps> = ({
             renderItem={renderTask}
             keyExtractor={(item) => item.id}
             estimatedItemSize={100}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#3b82f6"
+                colors={['#3b82f6']}
+              />
+            }
             ListEmptyComponent={EmptyState}
-            contentContainerStyle={styles.emptyContainer}
+            contentContainerClassName="pt-2"
             testID="task-list"
           />
           <ShowMoreButton
@@ -269,121 +247,19 @@ const TaskListView: React.FC<TaskListViewProps> = ({
         </>
       )}
 
+      {/* Floating Action Button */}
       <TouchableOpacity
-        style={styles.addButton}
+        className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-primary-500 justify-center items-center shadow-lg"
         onPress={onAddPress}
         accessible
         accessibilityLabel="Add new task"
         accessibilityHint="Double tap to create a new task"
         accessibilityRole="button"
       >
-        <Text style={styles.addButtonText}>+</Text>
+        <ThemedIcon name="add" size="lg" color="white" />
       </TouchableOpacity>
-    </View>
+    </ThemedContainer>
   );
 };
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  emptyContainer: {
-    paddingTop: 20,
-  },
-  emptyList: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#666',
-  },
-  addButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#4ECDC4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  addButtonText: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: '300',
-  },
-  categoryFilter: {
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  categoryFilterContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-    gap: 4,
-  },
-  categoryChipActive: {
-    backgroundColor: '#4ECDC4',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  categoryIcon: {
-    fontSize: 16,
-  },
-  showMoreContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  taskCountText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  showMoreButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-  },
-  showMoreText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-  },
-});
 
 export default TaskListView;

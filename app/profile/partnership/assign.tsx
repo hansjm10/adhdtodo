@@ -1,14 +1,10 @@
-// ABOUTME: Screen for accountability partners to assign tasks to ADHD users
-// Includes task details, due dates, preferred start times, and priority settings
+// ABOUTME: Mac-inspired task assignment screen using NativeWind
+// Clean interface for partners to assign tasks with details and priority
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -16,10 +12,18 @@ import {
 } from 'react-native';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import type { Ionicons } from '@expo/vector-icons';
+import {
+  ThemedText,
+  ThemedContainer,
+  ThemedButton,
+  ThemedIcon,
+  ThemedInput,
+} from '../../../src/components/themed';
 import { createTask, validateTask } from '../../../src/utils/TaskModel';
 import { TASK_PRIORITY, TASK_CATEGORIES } from '../../../src/constants/TaskConstants';
+import { getCategoryBgStyle, getTextColorStyle } from '../../../src/styles/dynamicStyles';
 import TaskStorageService from '../../../src/services/TaskStorageService';
 import UserStorageService from '../../../src/services/UserStorageService';
 import PartnershipService from '../../../src/services/PartnershipService';
@@ -50,15 +54,18 @@ const PriorityButton = ({
   onPress,
 }: PriorityButtonProps & { isActive: boolean; onPress: () => void }) => (
   <TouchableOpacity
-    style={[styles.priorityButton, isActive && { backgroundColor: `${color}20` }]}
+    className={`flex-1 items-center p-3 mx-1 rounded-xl bg-white border ${isActive ? 'border-transparent' : 'border-neutral-200'}`}
+    style={isActive ? getCategoryBgStyle(color) : {}}
     onPress={onPress}
   >
-    <Ionicons
-      name={icon as keyof typeof Ionicons.glyphMap}
-      size={24}
-      color={isActive ? color : '#BDC3C7'}
-    />
-    <Text style={[styles.priorityLabel, isActive && { color }]}>{label}</Text>
+    <ThemedIcon name={icon as keyof typeof Ionicons.glyphMap} size="md" color="primary" />
+    <ThemedText
+      variant="caption"
+      className="mt-1"
+      style={getTextColorStyle(isActive ? color : '#7F8C8D')}
+    >
+      {label}
+    </ThemedText>
   </TouchableOpacity>
 );
 
@@ -69,41 +76,14 @@ const TimeEstimateButton = ({
   onPress,
 }: TimeEstimateButtonProps) => (
   <TouchableOpacity
-    style={[styles.timeButton, isActive && styles.timeButtonActive]}
+    className={`px-5 py-2.5 rounded-full mr-2.5 mb-2.5 border ${isActive ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
     onPress={onPress}
   >
-    <Text style={[styles.timeButtonText, isActive && styles.timeButtonTextActive]}>{label}</Text>
+    <ThemedText variant="body" color={isActive ? 'white' : 'tertiary'} weight="medium">
+      {label}
+    </ThemedText>
   </TouchableOpacity>
 );
-
-interface Styles {
-  container: ViewStyle;
-  header: ViewStyle;
-  headerTitle: TextStyle;
-  headerSpacer: ViewStyle;
-  form: ViewStyle;
-  inputGroup: ViewStyle;
-  label: TextStyle;
-  input: TextStyle;
-  textArea: TextStyle;
-  priorityContainer: ViewStyle;
-  priorityButton: ViewStyle;
-  priorityLabel: TextStyle;
-  timeContainer: ViewStyle;
-  timeButton: ViewStyle;
-  timeButtonActive: ViewStyle;
-  timeButtonText: TextStyle;
-  timeButtonTextActive: TextStyle;
-  dateButton: ViewStyle;
-  dateButtonText: TextStyle;
-  categoryContainer: ViewStyle;
-  categoryButton: ViewStyle;
-  categoryIcon: TextStyle;
-  categoryLabel: TextStyle;
-  assignButton: ViewStyle;
-  assignButtonDisabled: ViewStyle;
-  assignButtonText: TextStyle;
-}
 
 const TaskAssignmentScreen = () => {
   const router = useRouter();
@@ -248,379 +228,264 @@ const TaskAssignmentScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => {
-              router.back();
-            }}
-          >
-            <Ionicons name="close" size={28} color="#2C3E50" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Assign Task</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Task Title *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="What needs to be done?"
-              placeholderTextColor="#BDC3C7"
-              value={title}
-              onChangeText={setTitle}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Add helpful details or context..."
-              placeholderTextColor="#BDC3C7"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Priority</Text>
-            <View style={styles.priorityContainer}>
-              <PriorityButton
-                value={TASK_PRIORITY.LOW}
-                label="Low"
-                icon="flag-outline"
-                color="#27AE60"
-                isActive={priority === TASK_PRIORITY.LOW}
-                onPress={() => {
-                  setPriority(TASK_PRIORITY.LOW);
-                }}
-              />
-              <PriorityButton
-                value={TASK_PRIORITY.MEDIUM}
-                label="Medium"
-                icon="flag-outline"
-                color="#F39C12"
-                isActive={priority === TASK_PRIORITY.MEDIUM}
-                onPress={() => {
-                  setPriority(TASK_PRIORITY.MEDIUM);
-                }}
-              />
-              <PriorityButton
-                value={TASK_PRIORITY.HIGH}
-                label="High"
-                icon="flag"
-                color="#E74C3C"
-                isActive={priority === TASK_PRIORITY.HIGH}
-                onPress={() => {
-                  setPriority(TASK_PRIORITY.HIGH);
-                }}
-              />
-              <PriorityButton
-                value={TASK_PRIORITY.URGENT}
-                label="Urgent"
-                icon="warning"
-                color="#C0392B"
-                isActive={priority === TASK_PRIORITY.URGENT}
-                onPress={() => {
-                  setPriority(TASK_PRIORITY.URGENT);
-                }}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Time Estimate</Text>
-            <View style={styles.timeContainer}>
-              <TimeEstimateButton
-                minutes={5}
-                label="5 min"
-                isActive={timeEstimate === 5}
-                onPress={() => {
-                  setTimeEstimate(5);
-                }}
-              />
-              <TimeEstimateButton
-                minutes={15}
-                label="15 min"
-                isActive={timeEstimate === 15}
-                onPress={() => {
-                  setTimeEstimate(15);
-                }}
-              />
-              <TimeEstimateButton
-                minutes={30}
-                label="30 min"
-                isActive={timeEstimate === 30}
-                onPress={() => {
-                  setTimeEstimate(30);
-                }}
-              />
-              <TimeEstimateButton
-                minutes={60}
-                label="1 hour"
-                isActive={timeEstimate === 60}
-                onPress={() => {
-                  setTimeEstimate(60);
-                }}
-              />
-              <TimeEstimateButton
-                minutes={120}
-                label="2 hours"
-                isActive={timeEstimate === 120}
-                onPress={() => {
-                  setTimeEstimate(120);
-                }}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Due Date</Text>
+    <ThemedContainer variant="screen" safeArea>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View className="flex-row items-center justify-between px-5 pt-5 pb-5 bg-white border-b border-neutral-200">
             <TouchableOpacity
-              style={styles.dateButton}
               onPress={() => {
-                setShowDueDatePicker(true);
+                router.back();
               }}
             >
-              <Ionicons name="calendar-outline" size={20} color="#7F8C8D" />
-              <Text style={styles.dateButtonText}>
-                {dueDate ? dueDate.toLocaleDateString() : 'Set due date'}
-              </Text>
+              <ThemedIcon name="close" size="lg" color="primary" />
             </TouchableOpacity>
+            <ThemedText variant="h3" color="primary" weight="bold">
+              Assign Task
+            </ThemedText>
+            <View className="w-7" />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Preferred Start Time</Text>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => {
-                setShowStartTimePicker(true);
-              }}
-            >
-              <Ionicons name="time-outline" size={20} color="#7F8C8D" />
-              <Text style={styles.dateButtonText}>
-                {preferredStartTime
-                  ? preferredStartTime.toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : 'Suggest a start time'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Form */}
+          <View className="p-5">
+            {/* Task Title */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Task Title *
+              </ThemedText>
+              <ThemedInput
+                placeholder="What needs to be done?"
+                value={title}
+                onChangeText={setTitle}
+                editable={!loading}
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.categoryContainer}>
-              {Object.values(TASK_CATEGORIES).map((cat: TaskCategory) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryButton,
-                    category === cat.id && { backgroundColor: `${cat.color}20` },
-                  ]}
+            {/* Description */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Description
+              </ThemedText>
+              <ThemedInput
+                placeholder="Add helpful details or context..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+                editable={!loading}
+                className="min-h-[80px]"
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Priority */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Priority
+              </ThemedText>
+              <View className="flex-row">
+                <PriorityButton
+                  value={TASK_PRIORITY.LOW}
+                  label="Low"
+                  icon="flag-outline"
+                  color="#27AE60"
+                  isActive={priority === TASK_PRIORITY.LOW}
                   onPress={() => {
-                    setCategory(category === cat.id ? null : cat.id);
+                    setPriority(TASK_PRIORITY.LOW);
                   }}
-                >
-                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
-                  <Text style={[styles.categoryLabel, category === cat.id && { color: cat.color }]}>
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                />
+                <PriorityButton
+                  value={TASK_PRIORITY.MEDIUM}
+                  label="Medium"
+                  icon="flag-outline"
+                  color="#F39C12"
+                  isActive={priority === TASK_PRIORITY.MEDIUM}
+                  onPress={() => {
+                    setPriority(TASK_PRIORITY.MEDIUM);
+                  }}
+                />
+                <PriorityButton
+                  value={TASK_PRIORITY.HIGH}
+                  label="High"
+                  icon="flag"
+                  color="#E74C3C"
+                  isActive={priority === TASK_PRIORITY.HIGH}
+                  onPress={() => {
+                    setPriority(TASK_PRIORITY.HIGH);
+                  }}
+                />
+                <PriorityButton
+                  value={TASK_PRIORITY.URGENT}
+                  label="Urgent"
+                  icon="warning"
+                  color="#C0392B"
+                  isActive={priority === TASK_PRIORITY.URGENT}
+                  onPress={() => {
+                    setPriority(TASK_PRIORITY.URGENT);
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Time Estimate */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Time Estimate
+              </ThemedText>
+              <View className="flex-row flex-wrap">
+                <TimeEstimateButton
+                  minutes={5}
+                  label="5 min"
+                  isActive={timeEstimate === 5}
+                  onPress={() => {
+                    setTimeEstimate(5);
+                  }}
+                />
+                <TimeEstimateButton
+                  minutes={15}
+                  label="15 min"
+                  isActive={timeEstimate === 15}
+                  onPress={() => {
+                    setTimeEstimate(15);
+                  }}
+                />
+                <TimeEstimateButton
+                  minutes={30}
+                  label="30 min"
+                  isActive={timeEstimate === 30}
+                  onPress={() => {
+                    setTimeEstimate(30);
+                  }}
+                />
+                <TimeEstimateButton
+                  minutes={60}
+                  label="1 hour"
+                  isActive={timeEstimate === 60}
+                  onPress={() => {
+                    setTimeEstimate(60);
+                  }}
+                />
+                <TimeEstimateButton
+                  minutes={120}
+                  label="2 hours"
+                  isActive={timeEstimate === 120}
+                  onPress={() => {
+                    setTimeEstimate(120);
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Due Date */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Due Date
+              </ThemedText>
+              <TouchableOpacity
+                className="flex-row items-center bg-white border border-neutral-200 rounded-xl p-4"
+                onPress={() => {
+                  setShowDueDatePicker(true);
+                }}
+              >
+                <ThemedIcon name="calendar-outline" size="sm" color="tertiary" />
+                <ThemedText variant="body" color="primary" className="ml-2.5">
+                  {dueDate ? dueDate.toLocaleDateString() : 'Set due date'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Preferred Start Time */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Preferred Start Time
+              </ThemedText>
+              <TouchableOpacity
+                className="flex-row items-center bg-white border border-neutral-200 rounded-xl p-4"
+                onPress={() => {
+                  setShowStartTimePicker(true);
+                }}
+              >
+                <ThemedIcon name="time-outline" size="sm" color="tertiary" />
+                <ThemedText variant="body" color="primary" className="ml-2.5">
+                  {preferredStartTime
+                    ? preferredStartTime.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'Suggest a start time'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Category */}
+            <View className="mb-6">
+              <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+                Category
+              </ThemedText>
+              <View className="flex-row">
+                {Object.values(TASK_CATEGORIES).map((cat: TaskCategory) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    className={`flex-1 items-center p-3 mx-1 rounded-xl bg-white border ${category === cat.id ? 'border-transparent' : 'border-neutral-200'}`}
+                    style={category === cat.id ? getCategoryBgStyle(cat.color) : {}}
+                    onPress={() => {
+                      setCategory(category === cat.id ? null : cat.id);
+                    }}
+                  >
+                    <ThemedText variant="h3" className="mb-1">
+                      {cat.icon}
+                    </ThemedText>
+                    <ThemedText
+                      variant="caption"
+                      style={getTextColorStyle(category === cat.id ? cat.color : '#7F8C8D')}
+                    >
+                      {cat.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Assign Button */}
+            <View className="mt-5">
+              <ThemedButton
+                label={loading ? 'Assigning...' : 'Assign Task'}
+                variant="primary"
+                size="large"
+                fullWidth
+                onPress={() => {
+                  handleAssignTask().catch(() => {});
+                }}
+                disabled={loading}
+              />
             </View>
           </View>
+        </ScrollView>
 
-          <TouchableOpacity
-            style={[styles.assignButton, loading && styles.assignButtonDisabled]}
-            onPress={() => {
-              handleAssignTask().catch(() => {});
-            }}
-            disabled={loading}
-          >
-            <Text style={styles.assignButtonText}>{loading ? 'Assigning...' : 'Assign Task'}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        {showDueDatePicker && (
+          <DateTimePicker
+            value={dueDate ?? new Date()}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={handleDueDateChange}
+          />
+        )}
 
-      {showDueDatePicker && (
-        <DateTimePicker
-          value={dueDate ?? new Date()}
-          mode="date"
-          display="default"
-          minimumDate={new Date()}
-          onChange={handleDueDateChange}
-        />
-      )}
-
-      {showStartTimePicker && (
-        <DateTimePicker
-          value={preferredStartTime ?? new Date()}
-          mode="time"
-          display="default"
-          onChange={handleStartTimeChange}
-        />
-      )}
-    </KeyboardAvoidingView>
+        {showStartTimePicker && (
+          <DateTimePicker
+            value={preferredStartTime ?? new Date()}
+            mode="time"
+            display="default"
+            onChange={handleStartTimeChange}
+          />
+        )}
+      </KeyboardAvoidingView>
+    </ThemedContainer>
   );
 };
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  headerSpacer: {
-    width: 28,
-  },
-  form: {
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  priorityContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  priorityButton: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 12,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  priorityLabel: {
-    fontSize: 12,
-    marginTop: 4,
-    color: '#7F8C8D',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  timeButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    marginRight: 10,
-    marginBottom: 10,
-  },
-  timeButtonActive: {
-    backgroundColor: '#3498DB',
-    borderColor: '#3498DB',
-  },
-  timeButtonText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  timeButtonTextActive: {
-    color: 'white',
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 16,
-  },
-  dateButtonText: {
-    fontSize: 16,
-    color: '#2C3E50',
-    marginLeft: 10,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  categoryButton: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 12,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  categoryIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  categoryLabel: {
-    fontSize: 12,
-    color: '#7F8C8D',
-  },
-  assignButton: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  assignButtonDisabled: {
-    backgroundColor: '#BDC3C7',
-  },
-  assignButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
 
 export default TaskAssignmentScreen;
