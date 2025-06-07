@@ -1,8 +1,8 @@
-// ABOUTME: Container component that manages the display of notification banners
-// Handles notification queue, display timing, and integration with NotificationService
+// ABOUTME: Mac-inspired notification container using NativeWind
+// Clean notification queue management with service integration
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import NotificationBanner from './NotificationBanner';
 import NotificationService from '../services/NotificationService';
@@ -139,7 +139,7 @@ const NotificationContainer = () => {
   }
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View className="absolute top-0 left-0 right-0 z-50" pointerEvents="box-none">
       <NotificationBanner
         notification={{
           ...currentNotification,
@@ -151,15 +151,5 @@ const NotificationContainer = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 9999,
-  },
-});
 
 export default NotificationContainer;

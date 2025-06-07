@@ -1,10 +1,9 @@
-// ABOUTME: Badge component for showing unread notification count
-// Displays a bell icon with a red badge showing the number of unread notifications
+// ABOUTME: Mac-inspired notification badge using NativeWind
+// Clean bell icon with red badge for unread notification count
 
 import React from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { ThemedIcon } from './themed';
 
 interface NotificationBadgeProps {
   count: number;
@@ -13,47 +12,15 @@ interface NotificationBadgeProps {
 
 const NotificationBadge = ({ count, onPress }: NotificationBadgeProps) => {
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      <Ionicons name="notifications-outline" size={24} color="#2C3E50" />
+    <TouchableOpacity className="p-2 relative" onPress={onPress} activeOpacity={0.7}>
+      <ThemedIcon name="notifications-outline" size="md" color="primary" />
       {count > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
+        <View className="absolute -top-1 -right-1 bg-danger-500 rounded-full min-w-5 h-5 justify-center items-center px-1 border-2 border-white">
+          <Text className="text-white text-xs font-bold">{count > 99 ? '99+' : count}</Text>
         </View>
       )}
     </TouchableOpacity>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  badge: ViewStyle;
-  badgeText: TextStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    padding: 8,
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#E74C3C',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-});
 
 export default NotificationBadge;

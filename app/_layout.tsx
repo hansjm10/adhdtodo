@@ -3,7 +3,7 @@
 
 import '../global.css';
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AppProvider } from '../src/contexts/AppProvider';
 import { useUser } from '../src/contexts/UserContext';
@@ -12,17 +12,8 @@ import NotificationContainer from '../src/components/NotificationContainer';
 import BiometricAuthScreen from '../src/components/BiometricAuthScreen';
 
 // Loading Screen Component
-const loadingScreenStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-});
-
 const LoadingScreen = () => (
-  <View style={loadingScreenStyles.container}>
+  <View className="flex-1 justify-center items-center bg-neutral-50">
     <ActivityIndicator size="large" color="#3498DB" />
   </View>
 );
@@ -108,7 +99,7 @@ function RootLayoutNav() {
   }
 
   return (
-    <View style={rootStyles.container}>
+    <View className="flex-1">
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
@@ -145,12 +136,6 @@ function RootLayoutNav() {
     </View>
   );
 }
-
-const rootStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default function RootLayout() {
   return (
