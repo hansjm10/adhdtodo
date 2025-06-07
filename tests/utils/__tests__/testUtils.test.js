@@ -3,8 +3,13 @@
 
 import React from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
-import { renderWithProviders, waitForLoadingToFinish, getByTestIdSafe } from '../testUtils';
-import { useNavigation } from '@react-navigation/native';
+import {
+  renderWithProviders,
+  waitForLoadingToFinish,
+  getByTestIdSafe,
+  waitFor,
+} from '../testUtils';
+import { useRouter } from 'expo-router';
 import { useUser } from '../../../src/contexts/UserContext';
 import { useTasks } from '../../../src/contexts/TaskContext';
 import { useNotifications } from '../../../src/contexts/NotificationContext';
@@ -21,10 +26,10 @@ const LoadingComponent = ({ isLoading }) => (
 );
 
 const NavigationTestComponent = () => {
-  const navigation = useNavigation();
+  const router = useRouter();
   return (
     <View>
-      <Text testID="navigation-status">{navigation ? 'Has navigation' : 'No navigation'}</Text>
+      <Text testID="navigation-status">{router ? 'Has router' : 'No router'}</Text>
     </View>
   );
 };
@@ -47,44 +52,53 @@ const ContextTestComponent = () => {
 
 describe('Test Utils', () => {
   describe('renderWithProviders', () => {
-    it('should render component with all providers', () => {
+    it('should render component with all providers', async () => {
       const { getByTestId, getByText } = renderWithProviders(<TestComponent />);
 
-      expect(getByTestId('test-component')).toBeTruthy();
-      expect(getByText('Test Component')).toBeTruthy();
+      await waitFor(() => {
+        expect(getByTestId('test-component')).toBeTruthy();
+        expect(getByText('Test Component')).toBeTruthy();
+      });
     });
 
-    it('should provide navigation context', () => {
+    it('should work with components using expo-router', async () => {
       const { getByTestId } = renderWithProviders(<NavigationTestComponent />);
 
-      expect(getByTestId('navigation-status')).toBeTruthy();
-      expect(getByTestId('navigation-status').props.children).toBe('Has navigation');
+      await waitFor(() => {
+        expect(getByTestId('navigation-status')).toBeTruthy();
+        expect(getByTestId('navigation-status').props.children).toBe('Has router');
+      });
     });
 
-    it('should provide app contexts', () => {
+    it('should provide app contexts', async () => {
       const { getByTestId } = renderWithProviders(<ContextTestComponent />);
 
-      // All contexts should be available
-      expect(getByTestId('user-context')).toBeTruthy();
-      expect(getByTestId('task-context')).toBeTruthy();
-      expect(getByTestId('notification-context')).toBeTruthy();
+      await waitFor(() => {
+        // All contexts should be available
+        expect(getByTestId('user-context')).toBeTruthy();
+        expect(getByTestId('task-context')).toBeTruthy();
+        expect(getByTestId('notification-context')).toBeTruthy();
+      });
     });
 
-    it('should accept custom navigation state', () => {
-      const navigationState = {
-        routes: [{ name: 'CustomScreen', key: 'custom-1' }],
-        index: 0,
+    it('should accept initial state for context providers', async () => {
+      const initialState = {
+        user: { id: 'test-user' },
       };
 
-      const { root } = renderWithProviders(<TestComponent />, { navigationState });
+      const { root } = renderWithProviders(<TestComponent />, { initialState });
 
-      expect(root).toBeTruthy();
+      await waitFor(() => {
+        expect(root).toBeTruthy();
+      });
     });
 
-    it('should accept render options', () => {
+    it('should accept render options', async () => {
       const { root } = renderWithProviders(<TestComponent />, { createNodeMock: () => {} });
 
-      expect(root).toBeTruthy();
+      await waitFor(() => {
+        expect(root).toBeTruthy();
+      });
     });
   });
 
