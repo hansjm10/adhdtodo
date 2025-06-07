@@ -1,13 +1,7 @@
 // ABOUTME: Tests for simplified UserStorageService that only uses Supabase
 // Follows TDD approach - tests written before implementation
 
-// Mock dependencies first
-jest.mock('../SupabaseService', () => ({
-  supabase: {
-    auth: null,
-    from: null,
-  },
-}));
+// SupabaseService is already mocked globally in tests/setup.js
 jest.mock('expo-secure-store');
 jest.mock('../SecureLogger');
 

@@ -47,11 +47,13 @@ describe('TaskListView', () => {
     });
   });
 
-  it('should show empty state when no tasks exist', () => {
+  it('should show empty state when no tasks exist', async () => {
     const { getByText } = render(<TaskListView {...defaultProps} />);
 
-    expect(getByText('No tasks yet')).toBeTruthy();
-    expect(getByText('Tap the + button to create your first task')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('No tasks yet')).toBeTruthy();
+      expect(getByText('Tap the + button to create your first task')).toBeTruthy();
+    });
   });
 
   it('should display list of tasks', () => {
@@ -88,59 +90,75 @@ describe('TaskListView', () => {
   it('should call onAddPress when add button is pressed', () => {
     const onAddPress = jest.fn();
 
-    const { getByTestId } = render(<TaskListView {...defaultProps} onAddPress={onAddPress} />);
+    const { getByLabelText } = render(<TaskListView {...defaultProps} onAddPress={onAddPress} />);
 
-    fireEvent.press(getByTestId('add-task-button'));
+    fireEvent.press(getByLabelText('Add new task'));
     expect(onAddPress).toHaveBeenCalled();
   });
 
-  it('should display category filter', () => {
+  it('should display category filter', async () => {
     const { getByText } = render(<TaskListView {...defaultProps} />);
 
-    expect(getByText('All Tasks')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('All Tasks')).toBeTruthy();
 
-    Object.values(TASK_CATEGORIES).forEach((category) => {
-      expect(getByText(category.label)).toBeTruthy();
+      Object.values(TASK_CATEGORIES).forEach((category) => {
+        expect(getByText(category.label)).toBeTruthy();
+      });
     });
   });
 
-  it('should call onCategorySelect when category is pressed', () => {
+  it('should call onCategorySelect when category is pressed', async () => {
     const onCategorySelect = jest.fn();
 
     const { getByText } = render(
       <TaskListView {...defaultProps} onCategorySelect={onCategorySelect} />,
     );
 
+    await waitFor(() => {
+      expect(getByText(TASK_CATEGORIES.WORK.label)).toBeTruthy();
+    });
+
     fireEvent.press(getByText(TASK_CATEGORIES.WORK.label));
     expect(onCategorySelect).toHaveBeenCalledWith(TASK_CATEGORIES.WORK.id);
   });
 
-  it('should show assigned filter when partner exists', () => {
+  it('should show assigned filter when partner exists', async () => {
     const { getByText } = render(<TaskListView {...defaultProps} partner={mockPartner} />);
 
-    expect(getByText('Assigned')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('Assigned')).toBeTruthy();
+    });
   });
 
-  it('should call onToggleAssigned when assigned filter is pressed', () => {
+  it('should call onToggleAssigned when assigned filter is pressed', async () => {
     const onToggleAssigned = jest.fn();
 
     const { getByText } = render(
       <TaskListView {...defaultProps} partner={mockPartner} onToggleAssigned={onToggleAssigned} />,
     );
 
+    await waitFor(() => {
+      expect(getByText('Assigned')).toBeTruthy();
+    });
+
     fireEvent.press(getByText('Assigned'));
     expect(onToggleAssigned).toHaveBeenCalledWith(true);
   });
 
-  it('should show refreshing state', () => {
-    const { getByTestId } = render(<TaskListView {...defaultProps} refreshing={true} />);
+  it('should show refreshing state', async () => {
+    const tasks = [createMockTask({ id: '1', title: 'Task 1', userId: 'user1' })];
+    const { getByTestId } = render(
+      <TaskListView {...defaultProps} tasks={tasks} refreshing={true} />,
+    );
 
-    const scrollView = getByTestId('task-list');
-    expect(scrollView).toBeTruthy();
+    await waitFor(() => {
+      expect(getByTestId('task-list')).toBeTruthy();
+    });
     // The refresh control would show the refreshing state
   });
 
-  it('should show completed tasks differently', () => {
+  it('should show completed tasks differently', async () => {
     const pendingTask = createMockTask({
       id: '1',
       title: 'Pending Task',
@@ -158,12 +176,10 @@ describe('TaskListView', () => {
       <TaskListView {...defaultProps} tasks={[pendingTask, completedTask]} />,
     );
 
-    const pendingItem = getByTestId('task-item-1');
-    const completedItem = getByTestId('task-item-2');
-
-    // These would need to be implemented in TaskItem component
-    expect(pendingItem).toBeTruthy();
-    expect(completedItem).toBeTruthy();
+    await waitFor(() => {
+      expect(getByTestId('task-item-1')).toBeTruthy();
+      expect(getByTestId('task-item-2')).toBeTruthy();
+    });
   });
 
   describe('Task Limiting', () => {

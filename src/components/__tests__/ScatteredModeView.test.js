@@ -4,10 +4,10 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import ScatteredModeView from '../ScatteredModeView';
-import { createMockTask } from '../../../tests/utils';
+import { testDataFactories } from '../../../tests/utils';
 
 describe('ScatteredModeView', () => {
-  const mockTask = createMockTask({
+  const mockTask = testDataFactories.task({
     id: '1',
     title: 'Quick Task 1',
     description: 'A quick task description',

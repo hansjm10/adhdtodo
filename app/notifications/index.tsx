@@ -1,13 +1,13 @@
-// ABOUTME: Screen for viewing all notifications with history and read status
-// Displays notification list with timestamps and ability to mark as read
+// ABOUTME: Mac-inspired notifications screen using NativeWind
+// Clean notification list with history and read status tracking
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { ListRenderItem } from '@shopify/flash-list';
 import { FlashList } from '@shopify/flash-list';
+import type { Ionicons } from '@expo/vector-icons';
+import { ThemedText, ThemedContainer, ThemedIcon } from '../../src/components/themed';
 import NotificationService from '../../src/services/NotificationService';
 import UserStorageService from '../../src/services/UserStorageService';
 import { NOTIFICATION_TYPES } from '../../src/constants/UserConstants';
@@ -15,28 +15,9 @@ import type { Notification } from '../../src/types/notification.types';
 import type { User } from '../../src/types/user.types';
 
 interface NotificationStyle {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string;
   color: string;
-}
-
-interface Styles {
-  container: ViewStyle;
-  header: ViewStyle;
-  headerTitle: TextStyle;
-  clearButton: ViewStyle;
-  clearButtonText: TextStyle;
-  listContent: ViewStyle;
-  notificationItem: ViewStyle;
-  unreadNotification: ViewStyle;
-  iconContainer: ViewStyle;
-  notificationContent: ViewStyle;
-  notificationMessage: TextStyle;
-  unreadText: TextStyle;
-  timestamp: TextStyle;
-  unreadDot: ViewStyle;
-  emptyState: ViewStyle;
-  emptyStateTitle: TextStyle;
-  emptyStateText: TextStyle;
+  bgColor: string;
 }
 
 const NotificationListScreen = () => {
@@ -101,21 +82,21 @@ const NotificationListScreen = () => {
   const getNotificationStyle = (type: string): NotificationStyle => {
     switch (type) {
       case NOTIFICATION_TYPES.TASK_ASSIGNED:
-        return { icon: 'add-circle', color: '#3498DB' };
+        return { icon: 'add-circle', color: '#3498DB', bgColor: '#EBF5FB' };
       case NOTIFICATION_TYPES.TASK_STARTED:
-        return { icon: 'play-circle', color: '#27AE60' };
+        return { icon: 'play-circle', color: '#27AE60', bgColor: '#E8F8F5' };
       case NOTIFICATION_TYPES.TASK_COMPLETED:
-        return { icon: 'checkmark-circle', color: '#27AE60' };
+        return { icon: 'checkmark-circle', color: '#27AE60', bgColor: '#E8F8F5' };
       case NOTIFICATION_TYPES.TASK_OVERDUE:
-        return { icon: 'alert-circle', color: '#E74C3C' };
+        return { icon: 'alert-circle', color: '#E74C3C', bgColor: '#FADBD8' };
       case NOTIFICATION_TYPES.ENCOURAGEMENT:
-        return { icon: 'heart', color: '#F39C12' };
+        return { icon: 'heart', color: '#F39C12', bgColor: '#FEF5E7' };
       case NOTIFICATION_TYPES.CHECK_IN:
-        return { icon: 'chatbubble-ellipses', color: '#9B59B6' };
+        return { icon: 'chatbubble-ellipses', color: '#9B59B6', bgColor: '#F4ECF7' };
       case NOTIFICATION_TYPES.DEADLINE_CHANGE_REQUEST:
-        return { icon: 'time', color: '#E67E22' };
+        return { icon: 'time', color: '#E67E22', bgColor: '#FDEBD0' };
       default:
-        return { icon: 'notifications', color: '#3498DB' };
+        return { icon: 'notifications', color: '#3498DB', bgColor: '#EBF5FB' };
     }
   };
 
@@ -167,7 +148,7 @@ const NotificationListScreen = () => {
 
     return (
       <TouchableOpacity
-        style={[styles.notificationItem, !item.read && styles.unreadNotification]}
+        className={`flex-row items-center bg-white mx-4 my-1 px-5 py-4 rounded-xl shadow-sm${!item.read ? ' bg-blue-50 border border-blue-100' : ''}`}
         onPress={() => {
           if (!item.read) {
             markAsRead(item.id).catch(() => {});
@@ -179,43 +160,68 @@ const NotificationListScreen = () => {
           }
         }}
       >
-        <View style={[styles.iconContainer, { backgroundColor: `${style.color}20` }]}>
-          <Ionicons name={style.icon} size={24} color={style.color} />
+        <View
+          className="w-12 h-12 rounded-full justify-center items-center mr-4"
+          style={{ backgroundColor: style.bgColor }}
+        >
+          <ThemedIcon
+            name={style.icon as keyof typeof Ionicons.glyphMap}
+            size="md"
+            color="primary"
+          />
         </View>
-        <View style={styles.notificationContent}>
-          <Text style={[styles.notificationMessage, !item.read && styles.unreadText]}>
+        <View className="flex-1">
+          <ThemedText
+            variant="body"
+            color="primary"
+            weight={!item.read ? 'semibold' : 'medium'}
+            className="mb-1"
+          >
             {getMessage(item)}
-          </Text>
-          <Text style={styles.timestamp}>{getTimeAgo(item.timestamp)}</Text>
+          </ThemedText>
+          <ThemedText variant="caption" color="tertiary">
+            {getTimeAgo(item.timestamp)}
+          </ThemedText>
         </View>
-        {!item.read && <View style={styles.unreadDot} />}
+        {!item.read && <View className="w-2 h-2 rounded-full bg-primary-500 ml-3" />}
       </TouchableOpacity>
     );
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="notifications-off-outline" size={80} color="#BDC3C7" />
-      <Text style={styles.emptyStateTitle}>No Notifications</Text>
-      <Text style={styles.emptyStateText}>You&apos;re all caught up!</Text>
+    <View className="flex-1 justify-center items-center px-10">
+      <ThemedIcon name="notifications-off-outline" size="xl" color="tertiary" />
+      <ThemedText variant="h3" color="secondary" weight="bold" align="center" className="mt-4 mb-2">
+        No Notifications
+      </ThemedText>
+      <ThemedText variant="body" color="tertiary" align="center">
+        You&apos;re all caught up!
+      </ThemedText>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+    <ThemedContainer variant="screen" safeArea>
+      {/* Header */}
+      <View className="flex-row justify-between items-center px-5 py-4 bg-white border-b border-neutral-200">
+        <ThemedText variant="h2" color="primary" weight="bold">
+          Notifications
+        </ThemedText>
         {notifications.length > 0 && (
-          <TouchableOpacity onPress={clearAllNotifications} style={styles.clearButton}>
-            <Text style={styles.clearButtonText}>Clear All</Text>
+          <TouchableOpacity onPress={clearAllNotifications} className="p-2">
+            <ThemedText variant="body" color="danger" weight="medium">
+              Clear All
+            </ThemedText>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Notification List */}
       <FlashList
         data={notifications}
         renderItem={renderNotification}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerClassName="py-2"
         estimatedItemSize={100}
         refreshControl={
           <RefreshControl
@@ -228,113 +234,8 @@ const NotificationListScreen = () => {
         }
         ListEmptyComponent={renderEmptyState}
       />
-    </View>
+    </ThemedContainer>
   );
 };
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  clearButton: {
-    padding: 8,
-  },
-  clearButtonText: {
-    color: '#E74C3C',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingVertical: 8,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginHorizontal: 16,
-    marginVertical: 4,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 2,
-  },
-  unreadNotification: {
-    backgroundColor: '#F8FBFF',
-    borderWidth: 1,
-    borderColor: '#E3F2FD',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  notificationContent: {
-    flex: 1,
-  },
-  notificationMessage: {
-    fontSize: 16,
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  unreadText: {
-    fontWeight: '600',
-  },
-  timestamp: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3498DB',
-    marginLeft: 12,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#7F8C8D',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#95A5A6',
-    textAlign: 'center',
-  },
-});
 
 export default NotificationListScreen;

@@ -1,15 +1,11 @@
-// ABOUTME: Animated banner component for displaying in-app notifications
-// Shows notifications at the top of the screen with auto-dismiss and swipe-to-dismiss
+// ABOUTME: Mac-inspired notification banner using NativeWind
+// Clean animated notifications with auto-dismiss and swipe gestures
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import type {
-  GestureResponderEvent,
-  PanResponderGestureState,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, PanResponder } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import type { GestureResponderEvent, PanResponderGestureState } from 'react-native';
+import { View, Animated, TouchableOpacity, PanResponder } from 'react-native';
+import { ThemedText, ThemedIcon } from './themed';
+import type { Ionicons } from '@expo/vector-icons';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
 import type { NotificationTypes } from '../types/user.types';
 
@@ -199,91 +195,47 @@ const NotificationBanner = ({ notification, onDismiss, onPress }: NotificationBa
 
   return (
     <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor: style.backgroundColor,
-          transform: [{ translateY }, { translateX }],
-          opacity,
-        },
-      ]}
+      className="absolute top-0 left-0 right-0 z-50 shadow-lg elevation-10"
+      style={{
+        backgroundColor: style.backgroundColor,
+        transform: [{ translateY }, { translateX }],
+        opacity,
+      }}
       {...panResponder.panHandlers}
     >
       <TouchableOpacity
-        style={styles.content}
+        className={`flex-row items-center px-4 pb-4 pt-10 min-h-[${BANNER_HEIGHT}px]`}
         activeOpacity={0.9}
         onPress={() => {
           if (onPress) onPress();
           dismissBanner();
         }}
       >
-        <View style={[styles.iconContainer, { backgroundColor: style.color }]}>
-          <Ionicons name={style.icon} size={24} color="white" />
+        <View
+          className="w-10 h-10 rounded-full justify-center items-center mr-3"
+          style={{ backgroundColor: style.color }}
+        >
+          <ThemedIcon name={style.icon} size="md" color="white" />
         </View>
-        <Text style={[styles.message, { color: style.color }]} numberOfLines={2}>
+        <ThemedText
+          variant="body"
+          weight="medium"
+          numberOfLines={2}
+          className="flex-1"
+          style={{ color: style.color }}
+        >
           {getMessage()}
-        </Text>
+        </ThemedText>
         <TouchableOpacity
-          style={styles.closeButton}
+          className="ml-2 p-1"
           onPress={dismissBanner}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="close" size={20} color={style.color} />
+          <ThemedIcon name="close" size="sm" color="primary" />
         </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  content: ViewStyle;
-  iconContainer: ViewStyle;
-  message: TextStyle;
-  closeButton: ViewStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 9999,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 40, // Account for status bar
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    minHeight: BANNER_HEIGHT,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  message: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  closeButton: {
-    marginLeft: 8,
-    padding: 4,
-  },
-});
 
 export default NotificationBanner;

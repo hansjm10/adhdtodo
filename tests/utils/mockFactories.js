@@ -5,6 +5,7 @@ import {
   USER_ROLE,
   NOTIFICATION_PREFERENCES,
   NOTIFICATION_TYPES,
+  PARTNERSHIP_STATUS,
 } from '../../src/constants/UserConstants';
 import { TASK_STATUS, TASK_PRIORITY } from '../../src/constants/TaskConstants';
 
@@ -15,7 +16,10 @@ import { TASK_STATUS, TASK_PRIORITY } from '../../src/constants/TaskConstants';
  */
 export const createMockUser = (overrides = {}) => {
   const now = new Date();
-  const userId = overrides.id || `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  // Handle null/undefined overrides
+  const safeOverrides = overrides || {};
+  const userId =
+    safeOverrides.id || `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
   return {
     id: userId,
@@ -48,7 +52,7 @@ export const createMockUser = (overrides = {}) => {
     createdAt: now,
     updatedAt: now,
     lastActiveAt: now,
-    ...overrides,
+    ...safeOverrides,
   };
 };
 
@@ -59,20 +63,36 @@ export const createMockUser = (overrides = {}) => {
  */
 export const createMockTask = (overrides = {}) => {
   const now = new Date();
-  const taskId = overrides.id || `task-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-  const userId = overrides.userId || 'user-123';
+  // Handle null/undefined overrides
+  const safeOverrides = overrides || {};
+  const taskId =
+    safeOverrides.id || `task-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  const userId = safeOverrides.userId || 'user-123';
+
+  // Determine status based on completed flag if provided
+  let status = TASK_STATUS.PENDING;
+  if (safeOverrides.completed === true) {
+    status = TASK_STATUS.COMPLETED;
+  } else if (safeOverrides.completed === false) {
+    status = TASK_STATUS.PENDING;
+  } else if (safeOverrides.status) {
+    status = safeOverrides.status;
+  }
+
+  const completed = safeOverrides.completed !== undefined ? safeOverrides.completed : false;
+  const completedAt = completed ? safeOverrides.completedAt || now : null;
 
   return {
     id: taskId,
     title: 'Test Task',
     description: 'Test Description',
     category: 'personal',
-    status: TASK_STATUS.PENDING,
+    status: status,
     priority: TASK_PRIORITY.MEDIUM,
     timeEstimate: 30, // minutes
     timeSpent: 0,
-    completed: false,
-    completedAt: null,
+    completed: completed,
+    completedAt: completedAt,
     createdAt: now,
     updatedAt: now,
     xpEarned: 0,
@@ -90,7 +110,7 @@ export const createMockTask = (overrides = {}) => {
     },
     encouragementReceived: [],
     userId: userId,
-    ...overrides,
+    ...safeOverrides,
   };
 };
 
@@ -101,13 +121,18 @@ export const createMockTask = (overrides = {}) => {
  */
 export const createMockNotification = (overrides = {}) => {
   const now = new Date();
+  // Handle null/undefined overrides
+  const safeOverrides = overrides || {};
   const notificationId =
-    overrides.id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    safeOverrides.id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
   return {
     id: notificationId,
-    toUserId: 'user-123',
+    userId: safeOverrides.userId || 'user-123',
+    toUserId: safeOverrides.toUserId || 'user-123',
     type: NOTIFICATION_TYPES.TASK_ASSIGNED,
+    title: 'Task Assigned',
+    message: 'You have a new task assigned',
     data: {
       taskId: 'task-123',
       taskTitle: 'Test Task',
@@ -116,8 +141,9 @@ export const createMockNotification = (overrides = {}) => {
       priority: TASK_PRIORITY.MEDIUM,
     },
     timestamp: now,
+    createdAt: now,
     read: false,
-    ...overrides,
+    ...safeOverrides,
   };
 };
 
@@ -198,18 +224,22 @@ export const createMockEncouragementNotification = (overrides = {}) => {
  */
 export const createMockPartnership = (overrides = {}) => {
   const now = new Date();
+  // Handle null/undefined overrides
+  const safeOverrides = overrides || {};
   const partnershipId =
-    overrides.id || `partnership-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    safeOverrides.id || `partnership-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
   const inviteCode =
-    overrides.inviteCode || `INVITE${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    safeOverrides.inviteCode || Math.random().toString(36).substr(2, 6).toUpperCase();
+
+  const status = safeOverrides.status || PARTNERSHIP_STATUS.PENDING;
 
   return {
     id: partnershipId,
-    adhdUserId: overrides.adhdUserId || 'user-123',
-    partnerId: overrides.partnerId || 'partner-123',
-    status: 'active',
+    adhdUserId: safeOverrides.adhdUserId || 'user-123',
+    partnerId: safeOverrides.partnerId || 'partner-123',
+    status: status,
     inviteCode: inviteCode,
-    inviteSentBy: overrides.inviteSentBy || overrides.adhdUserId || 'user-123',
+    inviteSentBy: safeOverrides.inviteSentBy || safeOverrides.adhdUserId || 'user-123',
     settings: {
       allowTaskAssignment: true,
       shareProgress: true,
@@ -227,9 +257,9 @@ export const createMockPartnership = (overrides = {}) => {
     },
     createdAt: now,
     updatedAt: now,
-    acceptedAt: overrides.status === 'active' ? now : null,
-    terminatedAt: null,
-    ...overrides,
+    acceptedAt: status === PARTNERSHIP_STATUS.ACTIVE ? now : null,
+    terminatedAt: status === PARTNERSHIP_STATUS.TERMINATED ? now : null,
+    ...safeOverrides,
   };
 };
 
