@@ -6,6 +6,7 @@ import UserStorageService from '../UserStorageService';
 import * as SecureStore from 'expo-secure-store';
 import { createUser, updateUser } from '../../utils/UserModel';
 import { USER_ROLE } from '../../constants/UserConstants';
+import { testDataFactories } from '../../../tests/utils';
 
 // Mock dependencies
 jest.mock('../CryptoService');
@@ -54,18 +55,20 @@ describe('AuthService', () => {
     UserStorageService.getUserToken.mockResolvedValue(null);
     UserStorageService.logout.mockResolvedValue(true);
 
-    createUser.mockImplementation((data) => ({
-      id: 'user_123',
-      email: data.email,
-      name: data.name,
-      role: data.role,
-      passwordHash: data.passwordHash,
-      passwordSalt: data.passwordSalt,
-      sessionToken: data.sessionToken,
-      lastLoginAt: data.lastLoginAt,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+    createUser.mockImplementation((data) =>
+      testDataFactories.user({
+        id: 'user_123',
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        passwordHash: data.passwordHash,
+        passwordSalt: data.passwordSalt,
+        sessionToken: data.sessionToken,
+        lastLoginAt: data.lastLoginAt,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }),
+    );
 
     updateUser.mockImplementation((user, updates) => ({
       ...user,
@@ -508,7 +511,7 @@ describe('AuthService', () => {
 
   describe('sanitizeUser', () => {
     it('should remove sensitive fields', () => {
-      const user = {
+      const user = testDataFactories.user({
         id: 'user_123',
         email: 'test@example.com',
         name: 'Test User',
@@ -516,7 +519,7 @@ describe('AuthService', () => {
         passwordSalt: 'secret_salt',
         sessionToken: 'secret_token',
         role: USER_ROLE.ADHD_USER,
-      };
+      });
 
       const sanitized = AuthService.sanitizeUser(user);
 

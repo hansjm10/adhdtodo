@@ -11,6 +11,33 @@ import {
   getAllTextContent,
 } from '../componentHelpers';
 
+// SupabaseService is already mocked globally in tests/setup.js
+
+// Mock OfflineQueueManager to prevent initialization logs
+jest.mock('../../../src/services/OfflineQueueManager', () => ({
+  __esModule: true,
+  default: class MockOfflineQueueManager {
+    constructor() {
+      this.operations = [];
+    }
+    initialize() {
+      return Promise.resolve();
+    }
+    enqueue() {
+      return Promise.resolve();
+    }
+    processQueue() {
+      return Promise.resolve();
+    }
+    getQueueSize() {
+      return 0;
+    }
+    clearQueue() {
+      return Promise.resolve();
+    }
+  },
+}));
+
 // Mock components for testing
 const LoadingComponent = ({ isLoading }) => (
   <View>

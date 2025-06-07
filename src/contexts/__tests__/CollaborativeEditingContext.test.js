@@ -8,18 +8,15 @@ import {
   useCollaborativeEditing,
 } from '../CollaborativeEditingContext';
 import CollaborativeEditingService from '../../services/CollaborativeEditingService';
-import { useAuth } from '../AuthContext';
 
 // Mock dependencies
 jest.mock('../../services/CollaborativeEditingService');
-jest.mock('../AuthContext');
+
+// Mock UserContext
 jest.mock('../UserContext', () => ({
-  ...jest.requireActual('../UserContext'),
+  __esModule: true,
   useUser: jest.fn(),
 }));
-
-// Import after mocking
-const { useUser } = require('../UserContext');
 
 // Mock the service methods
 const mockStartEditSession = jest.fn();
@@ -38,6 +35,9 @@ CollaborativeEditingService.toggleTaskLock = mockToggleTaskLock;
 CollaborativeEditingService.createOperation = mockCreateOperation;
 CollaborativeEditingService.getCollaborators = mockGetCollaborators;
 
+// Import after mocking
+const { useUser } = require('../UserContext');
+
 describe('CollaborativeEditingContext', () => {
   const mockUser = {
     id: 'user-123',
@@ -50,7 +50,6 @@ describe('CollaborativeEditingContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.clearAllTimers();
-    useAuth.mockReturnValue({ user: mockUser });
     useUser.mockReturnValue({ user: mockUser });
   });
 
@@ -58,13 +57,22 @@ describe('CollaborativeEditingContext', () => {
     jest.clearAllMocks();
     jest.clearAllTimers();
     jest.useRealTimers();
+    // Reset all mock implementations
+    mockStartEditSession.mockReset();
+    mockStopEditSession.mockReset();
+    mockApplyOperation.mockReset();
+    mockUpdateCursor.mockReset();
+    mockToggleTaskLock.mockReset();
+    mockCreateOperation.mockReset();
+    mockGetCollaborators.mockReset();
   });
 
-  const Wrapper = ({ children }) => (
-    <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
-  );
-
-  const wrapper = Wrapper;
+  const createWrapper = () => {
+    // eslint-disable-next-line react/display-name
+    return ({ children }) => (
+      <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
+    );
+  };
 
   describe('startEditing', () => {
     it('should start editing session and update state', async () => {
@@ -81,7 +89,7 @@ describe('CollaborativeEditingContext', () => {
       mockStartEditSession.mockResolvedValue(mockSession);
       mockGetCollaborators.mockReturnValue([]);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       await act(async () => {
         await result.current.startEditing(mockTaskId);
@@ -96,7 +104,7 @@ describe('CollaborativeEditingContext', () => {
     it('should handle start editing failure', async () => {
       mockStartEditSession.mockRejectedValue(new Error('Connection failed'));
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       await act(async () => {
         await result.current.startEditing(mockTaskId);
@@ -106,10 +114,9 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should not start editing without user', async () => {
-      useAuth.mockReturnValue({ user: null });
       useUser.mockReturnValue({ user: null });
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       await act(async () => {
         await result.current.startEditing(mockTaskId);
@@ -123,7 +130,7 @@ describe('CollaborativeEditingContext', () => {
     it('should stop editing session and update state', async () => {
       mockStopEditSession.mockResolvedValue();
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       // First start editing
       const mockSession = {
@@ -151,10 +158,9 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should not stop editing without user', async () => {
-      useAuth.mockReturnValue({ user: null });
       useUser.mockReturnValue({ user: null });
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       await act(async () => {
         await result.current.stopEditing(mockTaskId);
@@ -179,7 +185,7 @@ describe('CollaborativeEditingContext', () => {
 
       mockApplyOperation.mockResolvedValue(true);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       let success;
       await act(async () => {
@@ -206,7 +212,7 @@ describe('CollaborativeEditingContext', () => {
 
       mockApplyOperation.mockResolvedValue(false);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       let success;
       await act(async () => {
@@ -231,7 +237,7 @@ describe('CollaborativeEditingContext', () => {
       mockGetCollaborators.mockReturnValue([]);
       mockUpdateCursor.mockResolvedValue();
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       // Start editing to set current task
       await act(async () => {
@@ -246,7 +252,7 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should not update cursor without current task', async () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       await act(async () => {
         await result.current.updateCursor('title', 10);
@@ -258,13 +264,22 @@ describe('CollaborativeEditingContext', () => {
 
   describe('toggleTaskLock', () => {
     it('should toggle task lock', async () => {
+      const mockSession = {
+        taskId: mockTaskId,
+        editors: new Map(),
+        operations: [],
+        lastSyncTime: new Date(),
+        isLocked: false,
+      };
+      mockStartEditSession.mockResolvedValue(mockSession);
+      mockGetCollaborators.mockReturnValue([]);
       mockToggleTaskLock.mockResolvedValue(true);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
-      // Set current task
+      // Start editing to set current task
       await act(async () => {
-        result.current.state.currentTaskId = mockTaskId;
+        await result.current.startEditing(mockTaskId);
       });
 
       let success;
@@ -297,7 +312,17 @@ describe('CollaborativeEditingContext', () => {
   });
 
   describe('createTextOperation', () => {
-    it('should create text operation', () => {
+    it('should create text operation', async () => {
+      const mockSession = {
+        taskId: mockTaskId,
+        editors: new Map(),
+        operations: [],
+        lastSyncTime: new Date(),
+        isLocked: false,
+      };
+      mockStartEditSession.mockResolvedValue(mockSession);
+      mockGetCollaborators.mockReturnValue([]);
+
       const mockOperation = {
         id: 'op-123',
         taskId: mockTaskId,
@@ -312,11 +337,11 @@ describe('CollaborativeEditingContext', () => {
 
       mockCreateOperation.mockReturnValue(mockOperation);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
-      // Set current task
-      act(() => {
-        result.current.state.currentTaskId = mockTaskId;
+      // Start editing to set current task
+      await act(async () => {
+        await result.current.startEditing(mockTaskId);
       });
 
       const operation = result.current.createTextOperation('title', 'insert', 'Hello', 0);
@@ -338,26 +363,25 @@ describe('CollaborativeEditingContext', () => {
       // Ensure mockCreateOperation is cleared
       mockCreateOperation.mockClear();
 
-      const isolatedWrapper = ({ children }) => (
-        <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
-      );
+      const { result, unmount } = renderHook(() => useCollaborativeEditing(), {
+        wrapper: createWrapper(),
+      });
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: isolatedWrapper });
-
-      // Verify initial state
+      // Verify initial state (don't set any task)
       expect(result.current.state.currentTaskId).toBeNull();
 
       const operation = result.current.createTextOperation('title', 'insert', 'Hello', 0);
 
       expect(operation).toBeNull();
       expect(mockCreateOperation).not.toHaveBeenCalled();
+
+      unmount();
     });
 
     it('should return null without user', () => {
-      useAuth.mockReturnValue({ user: null });
       useUser.mockReturnValue({ user: null });
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       const operation = result.current.createTextOperation('title', 'insert', 'Hello', 0);
 
@@ -390,7 +414,7 @@ describe('CollaborativeEditingContext', () => {
 
       mockCreateOperation.mockReturnValue(mockOperation);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       // Start editing to set current task
       await act(async () => {
@@ -430,7 +454,7 @@ describe('CollaborativeEditingContext', () => {
       ];
       mockGetCollaborators.mockReturnValue(mockCollaborators);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       // Start editing to set current task
       await act(async () => {
@@ -451,7 +475,7 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should return empty array when no collaborators', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: Wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       const collaborators = result.current.getCurrentCollaborators();
 
@@ -472,7 +496,7 @@ describe('CollaborativeEditingContext', () => {
       mockStartEditSession.mockResolvedValue(mockSession);
       mockGetCollaborators.mockReturnValue([]);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       // Start editing which will set the session
       await act(async () => {
@@ -483,7 +507,7 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should return false when no session', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: Wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       expect(result.current.isTaskLocked()).toBe(false);
     });
@@ -502,7 +526,7 @@ describe('CollaborativeEditingContext', () => {
       mockStartEditSession.mockResolvedValue(mockSession);
       mockGetCollaborators.mockReturnValue([]);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       // Start editing which will set the session
       await act(async () => {
@@ -513,16 +537,14 @@ describe('CollaborativeEditingContext', () => {
     });
 
     it('should return undefined when no session', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: Wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
       expect(result.current.getLockOwner()).toBeUndefined();
     });
   });
 
   describe('state management', () => {
-    it('should handle START_SESSION action', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
-
+    it('should handle START_SESSION action', async () => {
       const mockSession = {
         taskId: mockTaskId,
         editors: new Map(),
@@ -530,22 +552,21 @@ describe('CollaborativeEditingContext', () => {
         lastSyncTime: new Date(),
         isLocked: false,
       };
+      mockStartEditSession.mockResolvedValue(mockSession);
+      mockGetCollaborators.mockReturnValue([]);
 
-      act(() => {
-        // Simulate dispatch through the service
-        result.current.state.activeSessions.set(mockTaskId, mockSession);
-        result.current.state.currentTaskId = mockTaskId;
-        result.current.state.currentSession = mockSession;
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+
+      // Use the startEditing function to properly set state
+      await act(async () => {
+        await result.current.startEditing(mockTaskId);
       });
 
       expect(result.current.state.activeSessions.has(mockTaskId)).toBe(true);
       expect(result.current.state.currentSession).toBe(mockSession);
     });
 
-    it('should handle STOP_SESSION action', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
-
-      // First add a session
+    it('should handle STOP_SESSION action', async () => {
       const mockSession = {
         taskId: mockTaskId,
         editors: new Map(),
@@ -553,40 +574,59 @@ describe('CollaborativeEditingContext', () => {
         lastSyncTime: new Date(),
         isLocked: false,
       };
+      mockStartEditSession.mockResolvedValue(mockSession);
+      mockStopEditSession.mockResolvedValue();
+      mockGetCollaborators.mockReturnValue([]);
 
-      act(() => {
-        result.current.state.activeSessions.set(mockTaskId, mockSession);
-        result.current.state.currentTaskId = mockTaskId;
-        result.current.state.currentSession = mockSession;
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+
+      // First start editing
+      await act(async () => {
+        await result.current.startEditing(mockTaskId);
       });
 
-      // Then remove it
-      act(() => {
-        result.current.state.activeSessions.delete(mockTaskId);
-        result.current.state.currentTaskId = null;
-        result.current.state.currentSession = null;
+      // Then stop editing
+      await act(async () => {
+        await result.current.stopEditing(mockTaskId);
       });
 
       expect(result.current.state.activeSessions.has(mockTaskId)).toBe(false);
       expect(result.current.state.currentSession).toBeNull();
     });
 
-    it('should handle UPDATE_COLLABORATORS action', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+    it('should handle UPDATE_COLLABORATORS action', async () => {
+      jest.useFakeTimers();
+
+      const mockSession = {
+        taskId: mockTaskId,
+        editors: new Map(),
+        operations: [],
+        lastSyncTime: new Date(),
+        isLocked: false,
+      };
+      mockStartEditSession.mockResolvedValue(mockSession);
 
       const mockCollaborators = [{ userId: 'user-456', userName: 'Other User', color: '#4ECDC4' }];
+      mockGetCollaborators.mockReturnValue(mockCollaborators);
 
-      act(() => {
-        result.current.state.currentTaskId = mockTaskId;
-        result.current.state.collaborators = mockCollaborators;
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+
+      // Start editing to set current task
+      await act(async () => {
+        await result.current.startEditing(mockTaskId);
       });
 
-      expect(result.current.state.collaborators).toBe(mockCollaborators);
+      // Wait for collaborator update interval
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+      });
+
+      expect(result.current.state.collaborators).toEqual(mockCollaborators);
+
+      jest.useRealTimers();
     });
 
-    it('should handle ADD_OPERATION action', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
-
+    it('should handle ADD_OPERATION action', async () => {
       const mockOperation = {
         id: 'op-123',
         taskId: mockTaskId,
@@ -597,40 +637,69 @@ describe('CollaborativeEditingContext', () => {
         content: 'Hello',
         timestamp: new Date(),
       };
+      mockApplyOperation.mockResolvedValue(true);
 
-      act(() => {
-        result.current.state.operations = [...result.current.state.operations, mockOperation];
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+
+      // Apply operation through the context method
+      await act(async () => {
+        await result.current.applyOperation(mockOperation);
       });
 
       expect(result.current.state.operations).toContain(mockOperation);
     });
 
-    it('should handle UPDATE_CONNECTION action', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+    it('should handle UPDATE_CONNECTION action', async () => {
+      const mockSession = {
+        taskId: mockTaskId,
+        editors: new Map(),
+        operations: [],
+        lastSyncTime: new Date(),
+        isLocked: false,
+      };
+      mockStartEditSession.mockResolvedValue(mockSession);
+      mockGetCollaborators.mockReturnValue([]);
 
-      act(() => {
-        result.current.state.isConnected = true;
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
+
+      // Starting a session should set isConnected to true
+      await act(async () => {
+        await result.current.startEditing(mockTaskId);
       });
 
       expect(result.current.state.isConnected).toBe(true);
 
-      act(() => {
-        result.current.state.isConnected = false;
+      // Failed start should set isConnected to false
+      mockStartEditSession.mockRejectedValueOnce(new Error('Connection failed'));
+      await act(async () => {
+        await result.current.startEditing('another-task');
       });
 
       expect(result.current.state.isConnected).toBe(false);
     });
 
-    it('should handle SYNC_COMPLETE action', () => {
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+    it('should handle SYNC_COMPLETE action', async () => {
+      const mockOperation = {
+        id: 'op-123',
+        taskId: mockTaskId,
+        userId: mockUser.id,
+        type: 'text',
+        field: 'title',
+        operation: 'insert',
+        content: 'Hello',
+        timestamp: new Date(),
+      };
+      mockApplyOperation.mockResolvedValue(true);
 
-      const timestamp = new Date();
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
-      act(() => {
-        result.current.state.lastSyncTime = timestamp;
+      // Apply operation which should trigger SYNC_COMPLETE
+      await act(async () => {
+        await result.current.applyOperation(mockOperation);
       });
 
-      expect(result.current.state.lastSyncTime).toBe(timestamp);
+      expect(result.current.state.lastSyncTime).toBeDefined();
+      expect(result.current.state.lastSyncTime).toBeInstanceOf(Date);
     });
   });
 
@@ -638,15 +707,23 @@ describe('CollaborativeEditingContext', () => {
     it('should update collaborators periodically', async () => {
       jest.useFakeTimers();
 
-      const mockCollaborators = [{ userId: 'user-456', userName: 'Other User', color: '#4ECDC4' }];
+      const mockSession = {
+        taskId: mockTaskId,
+        editors: new Map(),
+        operations: [],
+        lastSyncTime: new Date(),
+        isLocked: false,
+      };
+      mockStartEditSession.mockResolvedValue(mockSession);
 
+      const mockCollaborators = [{ userId: 'user-456', userName: 'Other User', color: '#4ECDC4' }];
       mockGetCollaborators.mockReturnValue(mockCollaborators);
 
-      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper });
+      const { result } = renderHook(() => useCollaborativeEditing(), { wrapper: createWrapper() });
 
-      // Set current task
-      act(() => {
-        result.current.state.currentTaskId = mockTaskId;
+      // Start editing to set current task
+      await act(async () => {
+        await result.current.startEditing(mockTaskId);
       });
 
       // Fast-forward time to trigger the interval
@@ -664,11 +741,12 @@ describe('CollaborativeEditingContext', () => {
       // Clear all mocks to ensure clean test
       mockGetCollaborators.mockClear();
 
-      const isolatedWrapper = ({ children }) => (
-        <CollaborativeEditingProvider>{children}</CollaborativeEditingProvider>
-      );
+      const { result, unmount } = renderHook(() => useCollaborativeEditing(), {
+        wrapper: createWrapper(),
+      });
 
-      renderHook(() => useCollaborativeEditing(), { wrapper: isolatedWrapper });
+      // Ensure no current task is set
+      expect(result.current.state.currentTaskId).toBeNull();
 
       // Fast-forward time
       act(() => {
@@ -677,6 +755,7 @@ describe('CollaborativeEditingContext', () => {
 
       expect(mockGetCollaborators).not.toHaveBeenCalled();
 
+      unmount();
       jest.useRealTimers();
     });
   });

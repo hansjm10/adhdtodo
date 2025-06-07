@@ -1,9 +1,8 @@
-// ABOUTME: Reusable TaskItem component for displaying individual tasks
-// Provides checkbox for completion and visual feedback for task states
+// ABOUTME: Mac-inspired TaskItem component using NativeWind
+// Provides clean checkbox interaction and visual feedback for task states
 
 import React, { useRef, useEffect, useState } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TASK_CATEGORIES, TASK_PRIORITY } from '../constants/TaskConstants';
 import { completeTask, updateTask, startTask, markPartnerNotified } from '../utils/TaskModel';
@@ -167,12 +166,24 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
   const taskStatus = getTaskStatus();
   const taskAccessibilityLabel = `${task.title}, ${taskStatus}${category ? `, category: ${category.label}` : ''}${task.priority && task.priority !== TASK_PRIORITY.MEDIUM ? `, priority: ${task.priority}` : ''}${task.dueDate ? `, due: ${new Date(task.dueDate).toLocaleDateString()}` : ''}`;
 
+  // Task container classes
+  const containerClasses = `flex-row bg-white mx-4 my-2 p-4 rounded-task-item shadow-card${task.completed ? ' opacity-60' : ''}`;
+
+  // Checkbox classes
+  const checkboxClasses = `w-6 h-6 rounded-full border-2 mr-3 justify-center items-center ${task.completed ? 'bg-success-500 border-success-500' : 'border-neutral-300'}`;
+
+  // Title classes
+  const titleClasses = `text-task-title text-neutral-900 flex-1${task.completed ? ' line-through text-neutral-500' : ''}`;
+
+  // Description classes
+  const descriptionClasses = `text-task-description text-neutral-600 mb-2${task.completed ? ' line-through text-neutral-400' : ''}`;
+
   return (
     <>
       <Animated.View style={{ transform: [{ scale: scaleAnim }], opacity: opacityAnim }}>
         <TouchableOpacity
           testID={`task-item-${task.id}`}
-          style={[styles.container, task.completed && styles.completedContainer]}
+          className={containerClasses}
           onPress={onPress}
           activeOpacity={0.7}
           accessible
@@ -182,7 +193,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
         >
           <TouchableOpacity
             testID="task-checkbox"
-            style={[styles.checkbox, task.completed && styles.checkboxCompleted]}
+            className={checkboxClasses}
             onPress={() => {
               void handleToggleComplete();
             }}
@@ -199,44 +210,40 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
             accessibilityState={{ checked: task.completed }}
           >
             <Animated.Text
-              style={[
-                styles.checkmark,
-                {
-                  transform: [{ scale: checkboxScaleAnim }],
-                  opacity: checkboxScaleAnim,
-                },
-              ]}
+              className="text-white text-base font-bold"
+              style={{
+                transform: [{ scale: checkboxScaleAnim }],
+                opacity: checkboxScaleAnim,
+              }}
             >
               ✓
             </Animated.Text>
           </TouchableOpacity>
 
-          <View style={styles.content} testID="task-content">
-            <View style={styles.header}>
-              <Text style={[styles.title, task.completed && styles.completedText]}>
-                {task.title}
-              </Text>
+          <View className="flex-1" testID="task-content">
+            <View className="flex-row justify-between items-center mb-1">
+              <Text className={titleClasses}>{task.title}</Text>
               {category && (
-                <View style={[styles.categoryBadge, { backgroundColor: category.color }]}>
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
+                <View
+                  className="px-2 py-1 rounded-full ml-2"
+                  style={{ backgroundColor: category.color }}
+                >
+                  <Text className="text-sm">{category.icon}</Text>
                 </View>
               )}
             </View>
 
             {task.description ? (
-              <Text
-                style={[styles.description, task.completed && styles.completedText]}
-                numberOfLines={2}
-              >
+              <Text className={descriptionClasses} numberOfLines={2}>
                 {task.description}
               </Text>
             ) : null}
 
-            <View style={styles.meta}>
+            <View className="flex-row items-center gap-3">
               {task.assignedBy && (
-                <View style={styles.assignedBadge}>
-                  <Ionicons name="person-circle-outline" size={14} color="#3498DB" />
-                  <Text style={styles.assignedText}>
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="person-circle-outline" size={14} color="#3b82f6" />
+                  <Text className="text-xs text-primary-500">
                     {task.assignedBy === currentUser?.id
                       ? 'Assigned'
                       : (partner?.name ?? 'Partner')}
@@ -244,7 +251,10 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
                 </View>
               )}
               {task.priority && task.priority !== TASK_PRIORITY.MEDIUM && (
-                <View style={[styles.priorityBadge, { borderColor: getPriorityColor() }]}>
+                <View
+                  className="w-5 h-5 rounded-full border-2 justify-center items-center"
+                  style={{ borderColor: getPriorityColor() }}
+                >
                   <Ionicons
                     name={task.priority === TASK_PRIORITY.URGENT ? 'warning' : 'flag'}
                     size={12}
@@ -254,26 +264,30 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
               )}
               {task.dueDate && (
                 <Text
-                  style={[styles.dueDate, new Date(task.dueDate) < new Date() && styles.overdue]}
+                  className={`text-xs ${new Date(task.dueDate) < new Date() ? 'text-danger-500 font-semibold' : 'text-neutral-500'}`}
                 >
                   📅 {new Date(task.dueDate).toLocaleDateString()}
                 </Text>
               )}
               {task.timeEstimate && (
-                <Text style={styles.timeEstimate}>⏱️ {formatTimeEstimate(task.timeEstimate)}</Text>
+                <Text className="text-xs text-neutral-500">
+                  ⏱️ {formatTimeEstimate(task.timeEstimate)}
+                </Text>
               )}
               {task.status === 'in_progress' && (
-                <Text style={styles.inProgressBadge}>▶️ In Progress</Text>
+                <Text className="text-xs text-primary-500 font-semibold">▶️ In Progress</Text>
               )}
               {task.completed && task.xpEarned > 0 && (
-                <Text style={styles.xpBadge}>✨ +{task.xpEarned} XP</Text>
+                <Text className="text-xs text-success-500 font-semibold">
+                  ✨ +{task.xpEarned} XP
+                </Text>
               )}
             </View>
           </View>
 
           {!task.completed && task.assignedBy && (
             <TouchableOpacity
-              style={styles.startButton}
+              className="ml-2 justify-center"
               onPress={() => {
                 void handleStartTask();
               }}
@@ -291,7 +305,7 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
               <Ionicons
                 name={task.status === 'in_progress' ? 'pause-circle' : 'play-circle'}
                 size={32}
-                color={task.status === 'in_progress' ? '#7F8C8D' : '#3498DB'}
+                color={task.status === 'in_progress' ? '#6b7280' : '#3b82f6'}
               />
             </TouchableOpacity>
           )}
@@ -307,150 +321,6 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
     </>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  completedContainer: ViewStyle;
-  checkbox: ViewStyle;
-  checkboxCompleted: ViewStyle;
-  checkmark: TextStyle;
-  content: ViewStyle;
-  header: ViewStyle;
-  title: TextStyle;
-  completedText: TextStyle;
-  description: TextStyle;
-  meta: ViewStyle;
-  timeEstimate: TextStyle;
-  xpBadge: TextStyle;
-  categoryBadge: ViewStyle;
-  categoryIcon: TextStyle;
-  assignedBadge: ViewStyle;
-  assignedText: TextStyle;
-  priorityBadge: ViewStyle;
-  dueDate: TextStyle;
-  overdue: TextStyle;
-  inProgressBadge: TextStyle;
-  startButton: ViewStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 8,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  completedContainer: {
-    opacity: 0.6,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxCompleted: {
-    backgroundColor: '#4ECDC4',
-    borderColor: '#4ECDC4',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  content: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    flex: 1,
-  },
-  completedText: {
-    textDecorationLine: 'line-through',
-    color: '#999',
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  timeEstimate: {
-    fontSize: 12,
-    color: '#888',
-  },
-  xpBadge: {
-    fontSize: 12,
-    color: '#4ECDC4',
-    fontWeight: '600',
-  },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  categoryIcon: {
-    fontSize: 14,
-  },
-  assignedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  assignedText: {
-    fontSize: 12,
-    color: '#3498DB',
-  },
-  priorityBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dueDate: {
-    fontSize: 12,
-    color: '#888',
-  },
-  overdue: {
-    color: '#E74C3C',
-    fontWeight: '600',
-  },
-  inProgressBadge: {
-    fontSize: 12,
-    color: '#3498DB',
-    fontWeight: '600',
-  },
-  startButton: {
-    marginLeft: 8,
-    justifyContent: 'center',
-  },
-});
 
 // Custom comparison function for React.memo
 const areEqual = (prevProps: TaskItemProps, nextProps: TaskItemProps): boolean => {
