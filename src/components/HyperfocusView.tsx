@@ -1,12 +1,11 @@
-// ABOUTME: Pure presentation component for hyperfocus timer interface
-// Displays task, timer, and controls without business logic
+// ABOUTME: Mac-inspired distraction-free hyperfocus timer using NativeWind
+// Minimal design for deep focus with clean timer interface
 
 import React from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { ThemedContainer, ThemedText, ThemedIcon } from './themed';
+import { getTimerCircleStyle, getButtonBgStyle } from '../styles/dynamicStyles';
 import type { Task } from '../types/task.types';
-import { getTimerSize, responsiveFontSize, responsivePadding } from '../utils/ResponsiveDimensions';
 
 interface HyperfocusViewProps {
   task: Task | null;
@@ -18,29 +17,6 @@ interface HyperfocusViewProps {
   onPause: () => void;
   onReset: () => void;
   onExit: () => void;
-}
-
-interface Styles {
-  container: ViewStyle;
-  breakContainer: ViewStyle;
-  header: ViewStyle;
-  exitButton: ViewStyle;
-  exitButtonText: TextStyle;
-  content: ViewStyle;
-  modeLabel: TextStyle;
-  taskTitle: TextStyle;
-  timerContainer: ViewStyle;
-  timer: TextStyle;
-  controls: ViewStyle;
-  controlButton: ViewStyle;
-  pauseButton: ViewStyle;
-  resetButton: ViewStyle;
-  controlButtonText: TextStyle;
-  stats: ViewStyle;
-  statsText: TextStyle;
-  motivationContainer: ViewStyle;
-  motivationText: TextStyle;
-  errorText: TextStyle;
 }
 
 export const HyperfocusView: React.FC<HyperfocusViewProps> = ({
@@ -62,175 +38,101 @@ export const HyperfocusView: React.FC<HyperfocusViewProps> = ({
 
   if (!task) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.errorText}>Task not found</Text>
-        </View>
-      </SafeAreaView>
+      <ThemedContainer variant="content" safeArea centered className="bg-neutral-900">
+        <ThemedIcon name="alert-circle-outline" size="xl" color="danger" />
+        <ThemedText variant="h3" color="danger" align="center" className="mt-4">
+          Task not found
+        </ThemedText>
+      </ThemedContainer>
     );
   }
 
-  const containerStyle = isBreak ? styles.breakContainer : styles.container;
+  // Background color based on mode
+  const backgroundColor = isBreak ? '#2E7D32' : '#1a1a1a';
+
+  const motivationMessage = (() => {
+    if (isBreak) return '🌟 Great job! Enjoy your break';
+    if (isRunning) return '🎯 Stay focused, you got this!';
+    return '💪 Ready when you are';
+  })();
 
   return (
-    <SafeAreaView style={containerStyle}>
-      <View style={styles.header}>
-        <TouchableOpacity testID="exit-button" style={styles.exitButton} onPress={onExit}>
-          <Text style={styles.exitButtonText}>Exit</Text>
+    <ThemedContainer variant="content" safeArea style={{ backgroundColor }}>
+      {/* Header with Exit Button */}
+      <View className="flex-row justify-end p-4">
+        <TouchableOpacity testID="exit-button" className="p-3 rounded-lg" onPress={onExit}>
+          <ThemedIcon name="close" size="md" color="tertiary" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.modeLabel}>{isBreak ? 'Break Time' : 'Focus Time'}</Text>
-        <Text style={styles.taskTitle} numberOfLines={2}>
+      {/* Main Content */}
+      <View className="flex-1 justify-center items-center px-6">
+        {/* Mode Label */}
+        <ThemedText variant="body" color="tertiary" align="center" className="mb-2">
+          {isBreak ? 'Break Time' : 'Focus Time'}
+        </ThemedText>
+
+        {/* Task Title */}
+        <Text className="text-2xl font-semibold text-white text-center mb-10" numberOfLines={2}>
           {task.title}
         </Text>
 
-        <View style={styles.timerContainer}>
-          <Text testID="timer-display" style={styles.timer}>
-            {formatTime(timeLeft)}
-          </Text>
+        {/* Timer Circle */}
+        <View className="mb-10">
+          <View
+            className="w-64 h-64 rounded-full border-4 justify-center items-center"
+            style={getTimerCircleStyle(isBreak)}
+          >
+            <Text testID="timer-display" className="text-6xl font-bold text-white">
+              {formatTime(timeLeft)}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.controls}>
+        {/* Control Buttons */}
+        <View className="flex-row gap-4 mb-8">
           {!isRunning ? (
-            <TouchableOpacity testID="start-button" style={styles.controlButton} onPress={onStart}>
-              <Text style={styles.controlButtonText}>Start</Text>
+            <TouchableOpacity
+              className="px-8 py-4 rounded-button"
+              style={getButtonBgStyle('primary', isBreak)}
+              onPress={onStart}
+              testID="start-button"
+            >
+              <Text className="text-white text-lg font-semibold">Start</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              testID="pause-button"
-              style={[styles.controlButton, styles.pauseButton]}
+              className="px-8 py-4 rounded-button"
+              style={getButtonBgStyle('pause')}
               onPress={onPause}
+              testID="pause-button"
             >
-              <Text style={styles.controlButtonText}>Pause</Text>
+              <Text className="text-white text-lg font-semibold">Pause</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            testID="reset-button"
-            style={[styles.controlButton, styles.resetButton]}
+            className="px-8 py-4 rounded-button border-2"
+            style={getButtonBgStyle('transparent')}
             onPress={onReset}
+            testID="reset-button"
           >
-            <Text style={styles.controlButtonText}>Reset</Text>
+            <Text className="text-neutral-400 text-lg font-semibold">Reset</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.stats}>
-          <Text style={styles.statsText}>Sessions: {sessionCount}</Text>
-          <Text style={styles.statsText}>Total: {sessionCount * 25} minutes</Text>
+        {/* Stats */}
+        <View className="flex-row gap-6 mb-6">
+          <Text className="text-neutral-400 text-sm">Sessions: {sessionCount}</Text>
+          <Text className="text-neutral-400 text-sm">Total: {sessionCount * 25} minutes</Text>
         </View>
 
-        <View style={styles.motivationContainer}>
-          <Text style={styles.motivationText}>
-            {(() => {
-              if (isBreak) return '🌟 Great job! Enjoy your break';
-              if (isRunning) return '🎯 Stay focused, you got this!';
-              return '💪 Ready when you are';
-            })()}
-          </Text>
+        {/* Motivation Message */}
+        <View className="mt-6">
+          <Text className="text-lg text-white text-center">{motivationMessage}</Text>
         </View>
       </View>
-    </SafeAreaView>
+    </ThemedContainer>
   );
 };
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  breakContainer: {
-    flex: 1,
-    backgroundColor: '#2E7D32',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: responsivePadding(16),
-  },
-  exitButton: {
-    padding: responsivePadding(10),
-  },
-  exitButtonText: {
-    color: '#666',
-    fontSize: responsiveFontSize(16),
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: responsivePadding(20),
-  },
-  modeLabel: {
-    fontSize: responsiveFontSize(18),
-    color: '#888',
-    marginBottom: responsivePadding(8),
-  },
-  taskTitle: {
-    fontSize: responsiveFontSize(24),
-    fontWeight: '600',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: responsivePadding(40),
-  },
-  timerContainer: {
-    width: getTimerSize(),
-    height: getTimerSize(),
-    borderRadius: getTimerSize() / 2,
-    borderWidth: 4,
-    borderColor: '#4A90E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: responsivePadding(40),
-  },
-  timer: {
-    fontSize: responsiveFontSize(48),
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  controls: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: responsivePadding(30),
-  },
-  controlButton: {
-    backgroundColor: '#4A90E2',
-    paddingVertical: responsivePadding(12),
-    paddingHorizontal: responsivePadding(32),
-    borderRadius: 25,
-  },
-  pauseButton: {
-    backgroundColor: '#FF9800',
-  },
-  resetButton: {
-    backgroundColor: '#666',
-  },
-  controlButtonText: {
-    color: '#fff',
-    fontSize: responsiveFontSize(18),
-    fontWeight: '600',
-  },
-  stats: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: responsivePadding(20),
-  },
-  statsText: {
-    color: '#888',
-    fontSize: responsiveFontSize(14),
-  },
-  motivationContainer: {
-    marginTop: responsivePadding(20),
-  },
-  motivationText: {
-    fontSize: responsiveFontSize(18),
-    color: '#fff',
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: responsiveFontSize(18),
-    color: '#ff6b6b',
-  },
-});
 
 export default HyperfocusView;

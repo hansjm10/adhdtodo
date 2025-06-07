@@ -1,22 +1,21 @@
-// ABOUTME: Profile screen showing user information and account settings
-// Includes logout functionality and password change options
+// ABOUTME: Mac-inspired profile screen using NativeWind
+// Clean user information display with account settings
 
 import React, { useState } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import type { Ionicons } from '@expo/vector-icons';
+import { ThemedText, ThemedContainer, ThemedIcon } from '../../src/components/themed';
 import { useUser } from '../../src/contexts';
 import AuthService from '../../src/services/AuthService';
 import { USER_ROLE } from '../../src/constants/UserConstants';
 import type { UserRole } from '../../src/types/user.types';
 
 interface MenuItemProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string;
   label: string;
   onPress: () => void;
-  color?: string;
+  variant?: 'default' | 'danger';
   showArrow?: boolean;
   disabled?: boolean;
 }
@@ -25,16 +24,30 @@ const MenuItem = ({
   icon,
   label,
   onPress,
-  color = '#333',
+  variant = 'default',
   showArrow = true,
   disabled = false,
 }: MenuItemProps) => (
-  <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={disabled}>
-    <View style={styles.menuItemContent}>
-      <Ionicons name={icon} size={24} color={color} style={styles.menuIcon} />
-      <Text style={[styles.menuLabel, { color }]}>{label}</Text>
+  <TouchableOpacity
+    className="flex-row items-center justify-between px-5 py-4 active:bg-neutral-100"
+    onPress={onPress}
+    disabled={disabled}
+  >
+    <View className="flex-row items-center gap-4">
+      <ThemedIcon
+        name={icon as keyof typeof Ionicons.glyphMap}
+        size="md"
+        color={variant === 'danger' ? 'danger' : 'primary'}
+      />
+      <ThemedText
+        variant="body"
+        color={variant === 'danger' ? 'danger' : 'primary'}
+        weight="medium"
+      >
+        {label}
+      </ThemedText>
     </View>
-    {showArrow && <Ionicons name="chevron-forward" size={20} color="#999" />}
+    {showArrow && <ThemedIcon name="chevron-forward" size="sm" color="tertiary" />}
   </TouchableOpacity>
 );
 
@@ -90,32 +103,49 @@ const ProfileScreen = () => {
 
   if (!currentUser) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>No user data available</Text>
-        </View>
-      </SafeAreaView>
+      <ThemedContainer variant="screen" safeArea centered>
+        <ThemedText variant="body" color="secondary">
+          No user data available
+        </ThemedText>
+      </ThemedContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ThemedContainer variant="screen" safeArea>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
+        {/* Header */}
+        <View className="items-center py-8 bg-white">
+          <View className="w-20 h-20 rounded-full bg-primary-500 justify-center items-center mb-4">
+            <ThemedText variant="h1" color="white" weight="bold">
               {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : '?'}
-            </Text>
+            </ThemedText>
           </View>
-          <Text style={styles.userName}>{currentUser.name || 'Anonymous'}</Text>
-          <Text style={styles.userEmail}>{currentUser.email}</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{getUserRoleLabel(currentUser.role)}</Text>
+          <ThemedText variant="h3" color="primary" weight="semibold" className="mb-1">
+            {currentUser.name || 'Anonymous'}
+          </ThemedText>
+          <ThemedText variant="body" color="secondary" className="mb-3">
+            {currentUser.email}
+          </ThemedText>
+          <View className="bg-primary-50 px-4 py-1.5 rounded-full">
+            <ThemedText variant="caption" color="primary" weight="medium">
+              {getUserRoleLabel(currentUser.role)}
+            </ThemedText>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+        {/* Account Section */}
+        <View className="bg-white mt-4">
+          <View className="px-5 pt-4 pb-2">
+            <ThemedText
+              variant="caption"
+              color="tertiary"
+              weight="semibold"
+              className="uppercase tracking-wide"
+            >
+              Account
+            </ThemedText>
+          </View>
           <MenuItem
             icon="people-outline"
             label="Partnership"
@@ -150,216 +180,108 @@ const ProfileScreen = () => {
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Statistics</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{currentUser.stats?.tasksCompleted || 0}</Text>
-              <Text style={styles.statLabel}>Tasks Done</Text>
+        {/* Statistics Section */}
+        <View className="bg-white mt-4">
+          <View className="px-5 pt-4 pb-2">
+            <ThemedText
+              variant="caption"
+              color="tertiary"
+              weight="semibold"
+              className="uppercase tracking-wide"
+            >
+              Statistics
+            </ThemedText>
+          </View>
+          <View className="flex-row justify-around py-4">
+            <View className="items-center">
+              <ThemedText variant="h2" color="primary" weight="bold">
+                {currentUser.stats?.tasksCompleted || 0}
+              </ThemedText>
+              <ThemedText variant="caption" color="secondary" className="mt-1">
+                Tasks Done
+              </ThemedText>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{currentUser.stats?.currentStreak || 0}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
+            <View className="items-center">
+              <ThemedText variant="h2" color="primary" weight="bold">
+                {currentUser.stats?.currentStreak || 0}
+              </ThemedText>
+              <ThemedText variant="caption" color="secondary" className="mt-1">
+                Day Streak
+              </ThemedText>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{currentUser.stats?.totalXP || 0}</Text>
-              <Text style={styles.statLabel}>Total XP</Text>
+            <View className="items-center">
+              <ThemedText variant="h2" color="primary" weight="bold">
+                {currentUser.stats?.totalXP || 0}
+              </ThemedText>
+              <ThemedText variant="caption" color="secondary" className="mt-1">
+                Total XP
+              </ThemedText>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Info</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Member Since</Text>
-            <Text style={styles.infoValue}>{formatDate(currentUser.createdAt)}</Text>
+        {/* Account Info Section */}
+        <View className="bg-white mt-4">
+          <View className="px-5 pt-4 pb-2">
+            <ThemedText
+              variant="caption"
+              color="tertiary"
+              weight="semibold"
+              className="uppercase tracking-wide"
+            >
+              Account Info
+            </ThemedText>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Last Login</Text>
-            <Text style={styles.infoValue}>{formatDate(currentUser.lastLoginAt)}</Text>
+          <View className="flex-row justify-between px-5 py-3">
+            <ThemedText variant="body" color="secondary">
+              Member Since
+            </ThemedText>
+            <ThemedText variant="body" color="primary" weight="medium">
+              {formatDate(currentUser.createdAt)}
+            </ThemedText>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Account ID</Text>
-            <Text style={styles.infoValue}>{currentUser.id.slice(-8)}</Text>
+          <View className="flex-row justify-between px-5 py-3">
+            <ThemedText variant="body" color="secondary">
+              Last Login
+            </ThemedText>
+            <ThemedText variant="body" color="primary" weight="medium">
+              {formatDate(currentUser.lastLoginAt)}
+            </ThemedText>
+          </View>
+          <View className="flex-row justify-between px-5 py-3">
+            <ThemedText variant="body" color="secondary">
+              Account ID
+            </ThemedText>
+            <ThemedText variant="body" color="primary" weight="medium">
+              {currentUser.id.slice(-8)}
+            </ThemedText>
           </View>
         </View>
 
-        <View style={styles.section}>
+        {/* Logout Section */}
+        <View className="bg-white mt-4">
           <MenuItem
             icon="log-out-outline"
             label="Logout"
             onPress={handleLogout}
-            color="#E74C3C"
+            variant="danger"
             showArrow={false}
             disabled={loading}
           />
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>ADHD Todo v1.0.0</Text>
-          <Text style={styles.footerText}>Your accountability partner app</Text>
+        {/* Footer */}
+        <View className="items-center py-8">
+          <ThemedText variant="caption" color="tertiary" className="mb-1">
+            ADHD Todo v1.0.0
+          </ThemedText>
+          <ThemedText variant="caption" color="tertiary">
+            Your accountability partner app
+          </ThemedText>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ThemedContainer>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  centered: ViewStyle;
-  errorText: TextStyle;
-  header: ViewStyle;
-  avatarContainer: ViewStyle;
-  avatarText: TextStyle;
-  userName: TextStyle;
-  userEmail: TextStyle;
-  roleBadge: ViewStyle;
-  roleText: TextStyle;
-  section: ViewStyle;
-  sectionTitle: TextStyle;
-  menuItem: ViewStyle;
-  menuItemContent: ViewStyle;
-  menuIcon: ViewStyle;
-  menuLabel: TextStyle;
-  statsContainer: ViewStyle;
-  statItem: ViewStyle;
-  statValue: TextStyle;
-  statLabel: TextStyle;
-  infoRow: ViewStyle;
-  infoLabel: TextStyle;
-  infoValue: TextStyle;
-  footer: ViewStyle;
-  footerText: TextStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    backgroundColor: '#fff',
-  },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#3498DB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    marginBottom: 12,
-  },
-  roleBadge: {
-    backgroundColor: '#EBF5FB',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  roleText: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
-  },
-  section: {
-    backgroundColor: '#fff',
-    marginTop: 16,
-    paddingVertical: 8,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7F8C8D',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  menuItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuIcon: {
-    marginRight: 16,
-  },
-  menuLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 16,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginTop: 4,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginBottom: 4,
-  },
-});
 
 export default ProfileScreen;

@@ -1,5 +1,5 @@
-// ABOUTME: ADHD-friendly input component using the new design system
-// Provides clear visual feedback and proper accessibility support
+// ABOUTME: Mac-inspired ADHD-friendly input component using NativeWind
+// Features clean focus states, clear error handling, and accessibility support
 
 import React, { useState } from 'react';
 import type {
@@ -9,8 +9,8 @@ import type {
   NativeSyntheticEvent,
   TextInputFocusEventData,
 } from 'react-native';
-import { TextInput, View, Text, StyleSheet, Animated } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '../../styles/theme';
+import { TextInput, View, Text, Animated } from 'react-native';
+import { cn } from '../../utils/cn';
 
 interface ThemedInputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -58,120 +58,74 @@ export const ThemedInput = ({
     onBlur?.(e);
   };
 
+  // Container classes
+  const containerClasses = cn('mb-4', style && '');
+
+  // Label classes
+  const labelClasses = cn(
+    'text-sm font-medium mb-1 ml-1',
+    error ? 'text-danger-500' : 'text-neutral-600',
+  );
+
+  // Input container classes
+  const inputContainerClasses = cn(
+    'rounded-input min-h-[48px] transition-colors duration-200',
+    variant === 'outlined' && [
+      'border-2 bg-neutral-50',
+      isFocused && !error && 'border-primary-500',
+      !isFocused && !error && 'border-neutral-200',
+      error && 'border-danger-500',
+    ],
+    variant === 'filled' && [
+      'bg-neutral-100',
+      isFocused && 'bg-neutral-50 border-2 border-primary-500',
+      !isFocused && 'border-0',
+      error && 'border-2 border-danger-500',
+    ],
+    !editable && 'opacity-60 bg-neutral-100',
+  );
+
+  // Input text classes
+  const inputClasses = cn(
+    'text-base text-neutral-900 px-4 py-3 min-h-[48px]',
+    variant === 'filled' && isFocused && 'pt-3 pb-3',
+  );
+
+  // Helper text classes
+  const helperClasses = cn('text-xs mt-1 ml-1', error ? 'text-danger-500' : 'text-neutral-500');
+
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [
-      error ? colors.semantic.error : colors.border,
-      error ? colors.semantic.error : colors.primary,
-    ],
+    outputRange: [error ? '#ef4444' : '#e5e7eb', error ? '#ef4444' : '#3b82f6'],
   });
 
   return (
-    <View style={[styles.container, style]}>
+    <View className={containerClasses}>
       {label && (
-        <Text style={[styles.label, error && styles.errorLabel]}>
+        <Text className={labelClasses}>
           {label}
-          {required && <Text style={styles.required}> *</Text>}
+          {required && <Text className="text-danger-500"> *</Text>}
         </Text>
       )}
 
       <Animated.View
-        style={[
-          styles.inputContainer,
-          variant === 'outlined' && { borderColor },
-          variant === 'filled' && styles.filledContainer,
-          isFocused && variant === 'filled' && styles.filledFocused,
-          error && styles.errorContainer,
-          !editable && styles.disabled,
-        ]}
+        className={inputContainerClasses}
+        style={variant === 'outlined' ? { borderColor } : undefined}
       >
         <TextInput
-          style={[styles.input, variant === 'filled' && styles.filledInput, inputStyle]}
-          placeholderTextColor={colors.text.tertiary}
+          className={inputClasses}
+          placeholderTextColor="#9ca3af"
           onFocus={handleFocus}
           onBlur={handleBlur}
           editable={editable}
           accessibilityLabel={label}
           accessibilityHint={helper}
+          style={inputStyle}
           {...props}
         />
       </Animated.View>
 
-      {(error ?? helper) && (
-        <Text style={[styles.helperText, error && styles.errorText]}>{error ?? helper}</Text>
-      )}
+      {(error ?? helper) && <Text className={helperClasses}>{error ?? helper}</Text>}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  } as ViewStyle,
-
-  label: {
-    ...typography.label,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  } as TextStyle,
-
-  errorLabel: {
-    color: colors.semantic.error,
-  } as TextStyle,
-
-  required: {
-    color: colors.semantic.error,
-  } as TextStyle,
-
-  inputContainer: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    minHeight: 48,
-  } as ViewStyle,
-
-  filledContainer: {
-    borderWidth: 0,
-    backgroundColor: colors.states.hover,
-  } as ViewStyle,
-
-  filledFocused: {
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  } as ViewStyle,
-
-  errorContainer: {
-    borderColor: colors.semantic.error,
-  } as ViewStyle,
-
-  disabled: {
-    opacity: 0.6,
-    backgroundColor: colors.states.disabled,
-  } as ViewStyle,
-
-  input: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minHeight: 48,
-  } as TextStyle,
-
-  filledInput: {
-    paddingTop: spacing.sm + 2,
-    paddingBottom: spacing.sm - 2,
-  } as TextStyle,
-
-  helperText: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: spacing.xxs,
-    marginLeft: spacing.xs,
-  } as TextStyle,
-
-  errorText: {
-    color: colors.semantic.error,
-  } as TextStyle,
-});

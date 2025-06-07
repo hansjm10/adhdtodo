@@ -1,25 +1,26 @@
-// ABOUTME: Settings screen for configuring app preferences
-// Allows users to customize Pomodoro timer durations and other settings
+// ABOUTME: Mac-inspired settings screen using NativeWind
+// Clean configuration interface for app preferences and Pomodoro timer
 
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
-  ScrollView,
-  StyleSheet,
   Switch,
   TouchableOpacity,
   Alert,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ThemedContainer,
+  ThemedText,
+  ThemedCard,
+  ThemedInput,
+  ThemedButton,
+  ThemedIcon,
+} from '../src/components/themed';
 import type { AppSettings } from '../src/services/SettingsService';
 import settingsService, { SettingsService } from '../src/services/SettingsService';
-import { colors, typography, spacing, borderRadius } from '../src/styles';
 
 const SettingsScreen = () => {
   const router = useRouter();
@@ -122,25 +123,28 @@ const SettingsScreen = () => {
 
   if (!settings) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading settings...</Text>
-        </View>
-      </SafeAreaView>
+      <ThemedContainer variant="screen" safeArea centered>
+        <ThemedText variant="body" color="secondary">
+          Loading settings...
+        </ThemedText>
+      </ThemedContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ThemedContainer variant="screen" safeArea>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        className="flex-1"
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-neutral-200">
+          <TouchableOpacity onPress={handleBack} className="p-2">
+            <ThemedIcon name="arrow-back" size="md" color="primary" />
           </TouchableOpacity>
-          <Text style={styles.title}>Settings</Text>
+          <ThemedText variant="h3" color="primary">
+            Settings
+          </ThemedText>
           <TouchableOpacity
             onPress={() => {
               handleSave().catch((error) => {
@@ -149,75 +153,61 @@ const SettingsScreen = () => {
                 }
               });
             }}
-            style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
+            className={`px-4 py-2${!hasChanges ? ' opacity-50' : ''}`}
             disabled={!hasChanges}
           >
-            <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>
+            <ThemedText
+              variant="body"
+              color={hasChanges ? 'primary' : 'tertiary'}
+              weight="semibold"
+            >
               Save
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Pomodoro Timer</Text>
+        {/* Content */}
+        <View className="flex-1">
+          {/* Pomodoro Settings */}
+          <View className="mb-4">
+            <ThemedCard variant="elevated" spacing="medium">
+              <ThemedText variant="h4" color="primary" className="mb-4">
+                Pomodoro Timer
+              </ThemedText>
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Work Duration</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
+              <View className="gap-4">
+                <SettingRow
+                  label="Work Duration"
                   value={settings.pomodoro.workDuration.toString()}
                   onChangeText={(value) => {
                     updatePomodoroDuration('workDuration', value);
                   }}
-                  keyboardType="numeric"
-                  maxLength={2}
+                  suffix="min"
+                  hint="5-90 minutes"
                 />
-                <Text style={styles.inputSuffix}>min</Text>
-              </View>
-            </View>
-            <Text style={styles.hint}>5-90 minutes</Text>
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Break Duration</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
+                <SettingRow
+                  label="Break Duration"
                   value={settings.pomodoro.breakDuration.toString()}
                   onChangeText={(value) => {
                     updatePomodoroDuration('breakDuration', value);
                   }}
-                  keyboardType="numeric"
-                  maxLength={2}
+                  suffix="min"
+                  hint="1-30 minutes"
                 />
-                <Text style={styles.inputSuffix}>min</Text>
-              </View>
-            </View>
-            <Text style={styles.hint}>1-30 minutes</Text>
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Long Break Duration</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
+                <SettingRow
+                  label="Long Break Duration"
                   value={settings.pomodoro.longBreakDuration.toString()}
                   onChangeText={(value) => {
                     updatePomodoroDuration('longBreakDuration', value);
                   }}
-                  keyboardType="numeric"
-                  maxLength={2}
+                  suffix="min"
+                  hint="10-60 minutes"
                 />
-                <Text style={styles.inputSuffix}>min</Text>
-              </View>
-            </View>
-            <Text style={styles.hint}>10-60 minutes</Text>
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Long Break After</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
+                <SettingRow
+                  label="Long Break After"
                   value={settings.pomodoro.longBreakAfter.toString()}
                   onChangeText={(value) => {
                     const num = parseInt(value, 10) || 0;
@@ -232,59 +222,48 @@ const SettingsScreen = () => {
                       setHasChanges(true);
                     }
                   }}
-                  keyboardType="numeric"
+                  suffix="sessions"
+                  hint="1-10 sessions"
                   maxLength={1}
                 />
-                <Text style={styles.inputSuffix}>sessions</Text>
               </View>
-            </View>
-            <Text style={styles.hint}>1-10 sessions</Text>
+            </ThemedCard>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>General</Text>
+          {/* General Settings */}
+          <View className="mb-4">
+            <ThemedCard variant="elevated" spacing="medium">
+              <ThemedText variant="h4" color="primary" className="mb-4">
+                General
+              </ThemedText>
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Sound Effects</Text>
-              <Switch
-                value={settings.soundEnabled}
-                onValueChange={() => {
-                  toggleSetting('soundEnabled');
-                }}
-                trackColor={{ false: colors.border, true: colors.semantic.success }}
-                thumbColor={settings.soundEnabled ? colors.background : '#f4f3f4'}
-              />
-            </View>
+              <View className="gap-4">
+                <SwitchRow
+                  label="Sound Effects"
+                  value={settings.soundEnabled}
+                  onValueChange={() => {
+                    toggleSetting('soundEnabled');
+                  }}
+                />
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Haptic Feedback</Text>
-              <Switch
-                value={settings.hapticEnabled}
-                onValueChange={() => {
-                  toggleSetting('hapticEnabled');
-                }}
-                trackColor={{ false: colors.border, true: colors.semantic.success }}
-                thumbColor={settings.hapticEnabled ? colors.background : '#f4f3f4'}
-              />
-            </View>
+                <SwitchRow
+                  label="Haptic Feedback"
+                  value={settings.hapticEnabled}
+                  onValueChange={() => {
+                    toggleSetting('hapticEnabled');
+                  }}
+                />
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Celebration Animations</Text>
-              <Switch
-                value={settings.celebrationAnimations}
-                onValueChange={() => {
-                  toggleSetting('celebrationAnimations');
-                }}
-                trackColor={{ false: colors.border, true: colors.semantic.success }}
-                thumbColor={settings.celebrationAnimations ? colors.background : '#f4f3f4'}
-              />
-            </View>
+                <SwitchRow
+                  label="Celebration Animations"
+                  value={settings.celebrationAnimations}
+                  onValueChange={() => {
+                    toggleSetting('celebrationAnimations');
+                  }}
+                />
 
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Visible Tasks Limit</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
+                <SettingRow
+                  label="Visible Tasks Limit"
                   value={settings.taskLimit.toString()}
                   onChangeText={(value) => {
                     const num = parseInt(value, 10) || 0;
@@ -296,162 +275,116 @@ const SettingsScreen = () => {
                       setHasChanges(true);
                     }
                   }}
-                  keyboardType="numeric"
-                  maxLength={2}
+                  suffix="tasks"
+                  hint="3-10 tasks"
                 />
-                <Text style={styles.inputSuffix}>tasks</Text>
               </View>
-            </View>
-            <Text style={styles.hint}>3-10 tasks</Text>
+            </ThemedCard>
           </View>
 
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={() => {
-              Alert.alert(
-                'Reset Settings',
-                'Are you sure you want to reset all settings to defaults?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Reset',
-                    style: 'destructive',
-                    onPress: (): void => {
-                      settingsService
-                        .resetToDefaults()
-                        .then(() => loadSettings())
-                        .then(() => {
-                          setHasChanges(false);
-                          Alert.alert('Success', 'Settings reset to defaults');
-                        })
-                        .catch((error) => {
-                          if (global.__DEV__) {
-                            console.error('Failed to reset settings:', error);
-                          }
-                          Alert.alert('Error', 'Failed to reset settings');
-                        });
+          {/* Reset Button */}
+          <View className="m-4">
+            <ThemedButton
+              label="Reset to Defaults"
+              variant="danger"
+              size="large"
+              fullWidth
+              onPress={() => {
+                Alert.alert(
+                  'Reset Settings',
+                  'Are you sure you want to reset all settings to defaults?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Reset',
+                      style: 'destructive',
+                      onPress: (): void => {
+                        settingsService
+                          .resetToDefaults()
+                          .then(() => loadSettings())
+                          .then(() => {
+                            setHasChanges(false);
+                            Alert.alert('Success', 'Settings reset to defaults');
+                          })
+                          .catch((error) => {
+                            if (global.__DEV__) {
+                              console.error('Failed to reset settings:', error);
+                            }
+                            Alert.alert('Error', 'Failed to reset settings');
+                          });
+                      },
                     },
-                  },
-                ],
-              );
-            }}
-          >
-            <Text style={styles.resetButtonText}>Reset to Defaults</Text>
-          </TouchableOpacity>
-        </ScrollView>
+                  ],
+                );
+              }}
+            />
+          </View>
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ThemedContainer>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    ...typography.bodyMedium,
-    color: colors.text.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: spacing.sm,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.text.primary,
-  },
-  saveButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    ...typography.bodyMedium,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  saveButtonTextDisabled: {
-    color: colors.text.secondary,
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: spacing.sm,
-  },
-  settingLabel: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-    flex: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    width: 60,
-    textAlign: 'center',
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-  },
-  inputSuffix: {
-    ...typography.bodyMedium,
-    color: colors.text.secondary,
-    marginLeft: spacing.sm,
-  },
-  hint: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: -4,
-    marginBottom: spacing.sm,
-  },
-  resetButton: {
-    margin: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.semantic.error,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    ...typography.bodyMedium,
-    color: colors.background,
-    fontWeight: '600',
-  },
-});
+// Helper Components
+interface SettingRowProps {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  suffix: string;
+  hint: string;
+  maxLength?: number;
+}
+
+const SettingRow: React.FC<SettingRowProps> = ({
+  label,
+  value,
+  onChangeText,
+  suffix,
+  hint,
+  maxLength = 2,
+}) => (
+  <View>
+    <View className="flex-row justify-between items-center mb-2">
+      <ThemedText variant="body" color="primary" className="flex-1">
+        {label}
+      </ThemedText>
+      <View className="flex-row items-center">
+        <ThemedInput
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType="numeric"
+          maxLength={maxLength}
+          className="w-[60px] text-center"
+        />
+        <ThemedText variant="body" color="secondary" className="ml-2">
+          {suffix}
+        </ThemedText>
+      </View>
+    </View>
+    <ThemedText variant="caption" color="tertiary">
+      {hint}
+    </ThemedText>
+  </View>
+);
+
+interface SwitchRowProps {
+  label: string;
+  value: boolean;
+  onValueChange: () => void;
+}
+
+const SwitchRow: React.FC<SwitchRowProps> = ({ label, value, onValueChange }) => (
+  <View className="flex-row justify-between items-center">
+    <ThemedText variant="body" color="primary" className="flex-1">
+      {label}
+    </ThemedText>
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: '#e5e7eb', true: '#22c55e' }}
+      thumbColor={value ? '#ffffff' : '#f4f3f4'}
+    />
+  </View>
+);
 
 export default SettingsScreen;

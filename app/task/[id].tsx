@@ -1,14 +1,10 @@
-// ABOUTME: Screen for editing existing tasks with ADHD-friendly UI
-// Provides form inputs to modify task details and delete functionality
+// ABOUTME: Mac-inspired task editing screen using NativeWind
+// Clean interface for modifying task details with ADHD-friendly design
 
 import React, { useState, useEffect } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +12,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import {
+  ThemedText,
+  ThemedContainer,
+  ThemedButton,
+  ThemedInput,
+} from '../../src/components/themed';
 import type { TaskCategory, TimePreset, Task } from '../../src/types/task.types';
 import { TASK_CATEGORIES, TIME_PRESETS } from '../../src/types/task.types';
 import { useTasks } from '../../src/contexts';
@@ -157,17 +159,21 @@ const EditTaskScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
-      </View>
+      <ThemedContainer variant="screen" safeArea centered>
+        <ActivityIndicator size="large" color="#3498DB" />
+      </ThemedContainer>
     );
   }
 
   if (!task) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Task not found</Text>
-      </View>
+      <ThemedContainer variant="screen" safeArea centered>
+        <View className="p-5">
+          <ThemedText variant="h3" color="secondary">
+            Task not found
+          </ThemedText>
+        </View>
+      </ThemedContainer>
     );
   }
 
@@ -175,247 +181,111 @@ const EditTaskScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1 bg-neutral-50"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.formContainer}>
-          <Text style={styles.label}>Task Title</Text>
-          <TextInput
-            style={styles.input}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="p-5">
+          <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+            Task Title
+          </ThemedText>
+          <ThemedInput
             placeholder="Task title"
             value={title}
             onChangeText={setTitle}
             maxLength={100}
+            className="mb-5"
           />
 
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
+          <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+            Description
+          </ThemedText>
+          <ThemedInput
             placeholder="Task description (optional)"
             value={description}
             onChangeText={setDescription}
             multiline
             numberOfLines={3}
             maxLength={500}
+            className="min-h-[80px] align-top mb-5"
           />
 
-          <Text style={styles.label}>Category</Text>
-          <View style={styles.categoryContainer} testID="category-selector">
+          <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+            Category
+          </ThemedText>
+          <View className="flex-row justify-between mb-5" testID="category-selector">
             {Object.values(TASK_CATEGORIES).map((category: TaskCategory) => (
               <TouchableOpacity
                 key={category.id}
                 testID={`category-${category.id}`}
-                style={[
-                  styles.categoryButton,
-                  { backgroundColor: category.color },
-                  selectedCategory === category.id && styles.selectedCategory,
-                ]}
+                className={`flex-1 items-center p-3 mx-1 rounded-xl border-2 ${selectedCategory === category.id ? 'opacity-100 border-neutral-900' : 'opacity-60 border-transparent'}`}
+                style={{ backgroundColor: category.color }}
                 onPress={() => {
                   setSelectedCategory(category.id);
                 }}
               >
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-                <Text style={styles.categoryText}>{category.label}</Text>
+                <ThemedText variant="h3" className="mb-1">
+                  {category.icon}
+                </ThemedText>
+                <ThemedText variant="caption" color="white" weight="semibold">
+                  {category.label}
+                </ThemedText>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.label}>Time Estimate</Text>
-          <View style={styles.timeContainer} testID="time-preset-selector">
+          <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">
+            Time Estimate
+          </ThemedText>
+          <View className="flex-row flex-wrap mb-5" testID="time-preset-selector">
             {TIME_PRESETS.map((preset: TimePreset) => (
               <TouchableOpacity
                 key={preset.minutes}
                 testID={`time-preset-${preset.minutes}`}
-                style={[
-                  styles.timeButton,
-                  selectedTimePreset === preset.minutes && styles.selectedTime,
-                ]}
+                className={`px-5 py-2.5 rounded-full mr-2.5 mb-2.5 ${selectedTimePreset === preset.minutes ? 'bg-primary-500 opacity-100' : 'bg-neutral-200 opacity-60'}`}
                 onPress={() => {
                   setSelectedTimePreset(preset.minutes);
                 }}
               >
-                <Text style={styles.timeText}>{preset.label}</Text>
+                <ThemedText
+                  variant="body"
+                  color={selectedTimePreset === preset.minutes ? 'white' : 'primary'}
+                  weight="medium"
+                >
+                  {preset.label}
+                </ThemedText>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       </ScrollView>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} testID="delete-button">
-          <Text style={styles.deleteButtonText}>Delete Task</Text>
-        </TouchableOpacity>
+      <View className="flex-row p-5 bg-white border-t border-neutral-200 gap-3">
+        <View className="flex-1">
+          <ThemedButton
+            label="Delete Task"
+            variant="danger"
+            size="large"
+            fullWidth
+            onPress={handleDelete}
+            testID="delete-button"
+          />
+        </View>
 
-        <TouchableOpacity
-          style={[styles.saveButton, isSaveDisabled && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={isSaveDisabled}
-          testID="save-button"
-        >
-          <Text style={styles.saveButtonText}>Update Task</Text>
-        </TouchableOpacity>
+        <View className="flex-1">
+          <ThemedButton
+            label="Update Task"
+            variant="primary"
+            size="large"
+            fullWidth
+            onPress={handleSave}
+            disabled={isSaveDisabled}
+            testID="save-button"
+          />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  scrollView: ViewStyle;
-  formContainer: ViewStyle;
-  loadingContainer: ViewStyle;
-  errorContainer: ViewStyle;
-  errorText: TextStyle;
-  label: TextStyle;
-  input: TextStyle;
-  textArea: TextStyle;
-  categoryContainer: ViewStyle;
-  categoryButton: ViewStyle;
-  selectedCategory: ViewStyle;
-  categoryIcon: TextStyle;
-  categoryText: TextStyle;
-  timeContainer: ViewStyle;
-  timeButton: ViewStyle;
-  selectedTime: ViewStyle;
-  timeText: TextStyle;
-  buttonContainer: ViewStyle;
-  saveButton: ViewStyle;
-  disabledButton: ViewStyle;
-  saveButtonText: TextStyle;
-  deleteButton: ViewStyle;
-  deleteButtonText: TextStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  formContainer: {
-    padding: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#666',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 20,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  categoryButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    opacity: 0.6,
-  },
-  selectedCategory: {
-    opacity: 1,
-    borderWidth: 2,
-    borderColor: '#333',
-  },
-  categoryIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
-  },
-  timeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#e0e0e0',
-    marginRight: 8,
-    marginBottom: 8,
-    opacity: 0.6,
-  },
-  selectedTime: {
-    backgroundColor: '#4ECDC4',
-    opacity: 1,
-  },
-  timeText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    gap: 12,
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#4ECDC4',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: '#FF6B6B',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-});
 
 export default EditTaskScreen;

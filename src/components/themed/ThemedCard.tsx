@@ -1,10 +1,10 @@
-// ABOUTME: ADHD-friendly card component using the new design system
-// Provides consistent card styling with proper spacing and shadows
+// ABOUTME: Mac-inspired ADHD-friendly card component using NativeWind
+// Provides clean card styling with subtle shadows and proper spacing
 
 import React from 'react';
 import type { ViewStyle } from 'react-native';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, spacing, borderRadius, shadows } from '../../styles/theme';
+import { View, TouchableOpacity } from 'react-native';
+import { cn } from '../../utils/cn';
 
 interface ThemedCardProps {
   children: React.ReactNode;
@@ -25,18 +25,35 @@ export const ThemedCard = ({
   testID,
   disabled = false,
 }: ThemedCardProps) => {
-  const cardStyles = [
-    styles.base,
-    styles[variant],
-    styles[cardSpacing],
-    disabled && styles.disabled,
-    style,
-  ];
+  // Base card classes
+  const baseClasses = 'bg-white rounded-card overflow-hidden';
+
+  // Variant classes
+  const variantClasses = {
+    elevated: 'shadow-card',
+    outlined: 'border border-neutral-200',
+    filled: 'bg-neutral-100',
+  };
+
+  // Spacing classes
+  const spacingClasses = {
+    small: 'p-3',
+    medium: 'p-4',
+    large: 'p-6',
+  };
+
+  const cardClasses = cn(
+    baseClasses,
+    variantClasses[variant],
+    spacingClasses[cardSpacing],
+    disabled && 'opacity-60',
+  );
 
   if (onPress) {
     return (
       <TouchableOpacity
-        style={cardStyles}
+        className={cardClasses}
+        style={style}
         onPress={onPress}
         disabled={disabled}
         activeOpacity={0.7}
@@ -49,47 +66,8 @@ export const ThemedCard = ({
   }
 
   return (
-    <View style={cardStyles} testID={testID}>
+    <View className={cardClasses} style={style} testID={testID}>
       {children}
     </View>
   );
 };
-
-/* eslint-disable react-native/no-unused-styles */
-const styles = StyleSheet.create({
-  // Base styles
-  base: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-  } as ViewStyle,
-
-  // Variant styles
-  elevated: {
-    ...shadows.md,
-  } as ViewStyle,
-  outlined: {
-    borderWidth: 1,
-    borderColor: colors.border,
-  } as ViewStyle,
-  filled: {
-    backgroundColor: colors.states.hover,
-  } as ViewStyle,
-
-  // Spacing variants
-  small: {
-    padding: spacing.sm,
-  } as ViewStyle,
-  medium: {
-    padding: spacing.md,
-  } as ViewStyle,
-  large: {
-    padding: spacing.lg,
-  } as ViewStyle,
-
-  // State styles
-  disabled: {
-    opacity: 0.6,
-  } as ViewStyle,
-});
-/* eslint-enable react-native/no-unused-styles */

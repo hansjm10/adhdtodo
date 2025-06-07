@@ -1,11 +1,9 @@
-// ABOUTME: ADHD-friendly button component using the new design system
-// Demonstrates proper use of theme values, accessibility, and haptic feedback
+// ABOUTME: Mac-inspired ADHD-friendly button component using NativeWind
+// Features proper states, haptic feedback, and accessibility
 
 import React from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Animated } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 
 export interface ThemedButtonProps {
   label: string;
@@ -59,16 +57,67 @@ export const ThemedButton = ({
 
   const isDisabled = disabled || loading;
 
+  // Base button classes
+  const baseClasses = 'flex-row items-center justify-center rounded-button';
+
+  // Size classes
+  const sizeClasses = {
+    small: 'px-4 py-2 min-h-[36px]',
+    medium: 'px-6 py-3 min-h-[48px]',
+    large: 'px-8 py-4 min-h-[56px]',
+  };
+
+  // Variant classes
+  const variantClasses = {
+    primary: 'bg-primary-500 shadow-button',
+    secondary: 'bg-neutral-50 border-2 border-primary-500',
+    ghost: 'bg-transparent',
+    danger: 'bg-danger-500 shadow-button',
+  };
+
+  // Text color classes
+  const textColorClasses = {
+    primary: 'text-white',
+    secondary: 'text-primary-500',
+    ghost: 'text-primary-500',
+    danger: 'text-white',
+  };
+
+  // Text size classes
+  const textSizeClasses = {
+    small: 'text-sm font-medium',
+    medium: 'text-base font-semibold',
+    large: 'text-lg font-semibold',
+  };
+
+  const buttonClasses = [
+    baseClasses,
+    sizeClasses[size],
+    variantClasses[variant],
+    fullWidth ? 'w-full' : '',
+    isDisabled ? 'opacity-50' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const textClasses = [
+    'text-center',
+    textSizeClasses[size],
+    textColorClasses[variant],
+    isDisabled ? 'text-neutral-400' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const loadingColor = variant === 'primary' || variant === 'danger' ? '#ffffff' : '#3b82f6';
+
   return (
-    <Animated.View style={[fullWidth && styles.fullWidth, { transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View
+      className={fullWidth ? 'w-full' : ''}
+      style={{ transform: [{ scale: scaleAnim }] }}
+    >
       <TouchableOpacity
-        style={[
-          styles.base,
-          styles[size],
-          styles[variant],
-          isDisabled && styles.disabled,
-          fullWidth && styles.fullWidth,
-        ]}
+        className={buttonClasses}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -80,120 +129,14 @@ export const ThemedButton = ({
         testID={testID}
       >
         {loading ? (
-          <ActivityIndicator
-            size="small"
-            color={variant === 'primary' ? colors.text.inverse : colors.primary}
-          />
+          <ActivityIndicator size="small" color={loadingColor} />
         ) : (
           <>
-            {icon && <Text style={styles.icon}>{icon}</Text>}
-            <Text
-              style={[
-                styles.text,
-                styles[`${size}Text`],
-                styles[`${variant}Text`],
-                isDisabled && styles.disabledText,
-              ]}
-            >
-              {label}
-            </Text>
+            {icon && <Text className="mr-2">{icon}</Text>}
+            <Text className={textClasses}>{label}</Text>
           </>
         )}
       </TouchableOpacity>
     </Animated.View>
   );
 };
-
-/* eslint-disable react-native/no-unused-styles */
-const styles = StyleSheet.create({
-  // Base styles
-  base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: borderRadius.md,
-  } as ViewStyle,
-
-  // Size variants
-  small: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    minHeight: 36,
-  } as ViewStyle,
-  medium: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    minHeight: 48,
-  } as ViewStyle,
-  large: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    minHeight: 56,
-  } as ViewStyle,
-
-  // Style variants
-  primary: {
-    backgroundColor: colors.primary,
-    ...shadows.sm,
-  } as ViewStyle,
-  secondary: {
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  } as ViewStyle,
-  ghost: {
-    backgroundColor: 'transparent',
-  } as ViewStyle,
-  danger: {
-    backgroundColor: colors.semantic.error,
-    ...shadows.sm,
-  } as ViewStyle,
-
-  // State styles
-  disabled: {
-    opacity: 0.5,
-    ...shadows.none,
-  } as ViewStyle,
-
-  // Text styles
-  text: {
-    textAlign: 'center',
-  } as TextStyle,
-  smallText: {
-    ...typography.bodySmall,
-  } as TextStyle,
-  mediumText: {
-    ...typography.button,
-  } as TextStyle,
-  largeText: {
-    ...typography.h3,
-  } as TextStyle,
-
-  // Text color variants
-  primaryText: {
-    color: colors.text.inverse,
-  } as TextStyle,
-  secondaryText: {
-    color: colors.primary,
-  } as TextStyle,
-  ghostText: {
-    color: colors.primary,
-  } as TextStyle,
-  dangerText: {
-    color: colors.text.inverse,
-  } as TextStyle,
-  disabledText: {
-    color: colors.text.tertiary,
-  } as TextStyle,
-
-  // Icon styles
-  icon: {
-    marginRight: spacing.xs,
-  } as TextStyle,
-
-  // Layout styles
-  fullWidth: {
-    width: '100%',
-  } as ViewStyle,
-});
-/* eslint-enable react-native/no-unused-styles */

@@ -1,19 +1,16 @@
-// ABOUTME: Authentication screen for user login and signup
-// Handles user registration, login, and role selection for accountability partnerships
+// ABOUTME: Mac-inspired elegant authentication screen using NativeWind
+// Clean login/signup flow with modern card-based design
 
 import React, { useState } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
-} from 'react-native';
+  ThemedContainer,
+  ThemedText,
+  ThemedCard,
+  ThemedInput,
+  ThemedButton,
+  ThemedIcon,
+} from '../../src/components/themed';
 import AuthService from '../../src/services/AuthService';
 import { useUser } from '../../src/contexts/UserContext';
 import type { User } from '../../src/types/user.types';
@@ -28,16 +25,25 @@ interface RoleButtonProps {
 }
 
 const RoleButton = ({ label, description, isActive, onPress, disabled }: RoleButtonProps) => (
-  <TouchableOpacity
-    style={[styles.roleButton, isActive && styles.roleButtonActive]}
+  <ThemedCard
+    variant="outlined"
+    spacing="medium"
     onPress={onPress}
     disabled={disabled}
+    className="mb-3"
   >
-    <Text style={[styles.roleLabel, isActive && styles.roleLabelActive]}>{label}</Text>
-    <Text style={[styles.roleDescription, isActive && styles.roleDescriptionActive]}>
+    <ThemedText
+      variant="body"
+      color={isActive ? 'primary' : 'secondary'}
+      weight="semibold"
+      className="mb-1"
+    >
+      {label}
+    </ThemedText>
+    <ThemedText variant="caption" color={isActive ? 'primary' : 'tertiary'}>
       {description}
-    </Text>
-  </TouchableOpacity>
+    </ThemedText>
+  </ThemedCard>
 );
 
 const SignInScreen = () => {
@@ -103,74 +109,94 @@ const SignInScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>ADHD Todo</Text>
-          <Text style={styles.subtitle}>Your accountability partner app</Text>
-        </View>
-
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>{isLogin ? 'Welcome Back!' : 'Create Account'}</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#999"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-            editable={!loading}
-          />
-
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Password"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-            />
-            <TouchableOpacity
-              style={styles.passwordToggle}
-              onPress={() => {
-                setShowPassword(!showPassword);
-              }}
-              disabled={loading}
-            >
-              <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
-            </TouchableOpacity>
+    <ThemedContainer variant="screen">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-5 py-10 flex-grow justify-center"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View className="items-center mb-10">
+            <ThemedText variant="h1" color="primary" align="center" className="mb-2">
+              ADHD Todo
+            </ThemedText>
+            <ThemedText variant="body" color="secondary" align="center">
+              Your accountability partner app
+            </ThemedText>
           </View>
 
-          {!isLogin && (
-            <Text style={styles.passwordHint}>
-              Password must be at least 8 characters with uppercase, lowercase, number, and special
-              character
-            </Text>
-          )}
+          {/* Auth Form */}
+          <ThemedCard variant="elevated" spacing="large">
+            <ThemedText variant="h3" color="primary" align="center" className="mb-6">
+              {isLogin ? 'Welcome Back!' : 'Create Account'}
+            </ThemedText>
 
-          {!isLogin && (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Name"
-                placeholderTextColor="#999"
+            {/* Email Input */}
+            <ThemedInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+              editable={!loading}
+              className="mb-4"
+            />
+
+            {/* Password Input */}
+            <View className={`relative ${!isLogin ? 'mb-2' : 'mb-4'}`}>
+              <ThemedInput
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+              />
+              <View className="absolute right-3 top-9.5">
+                <ThemedIcon
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size="sm"
+                  color="secondary"
+                  onPress={() => {
+                    setShowPassword(!showPassword);
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Password Hint */}
+            {!isLogin && (
+              <View className="mb-4 px-1">
+                <ThemedText variant="caption" color="tertiary">
+                  Password must be at least 8 characters with uppercase, lowercase, number, and
+                  special character
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Name Input for Sign Up */}
+            {!isLogin && (
+              <ThemedInput
+                label="Name"
                 value={name}
                 onChangeText={setName}
                 editable={!loading}
+                className="mb-6"
               />
+            )}
 
-              <View style={styles.roleSection}>
-                <Text style={styles.roleSectionTitle}>I am:</Text>
+            {/* Role Selection for Sign Up */}
+            {!isLogin && (
+              <View className="mb-6">
+                <ThemedText variant="body" color="primary" weight="semibold" className="mb-3">
+                  I am:
+                </ThemedText>
                 <RoleButton
                   label="Someone with ADHD"
                   description="I need help staying on track"
@@ -199,211 +225,46 @@ const SignInScreen = () => {
                   disabled={isLogin}
                 />
               </View>
-            </>
-          )}
+            )}
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={() => {
-              handleAuth().catch((error) => {
-                // Error is already handled in handleAuth
-                if (global.__DEV__) {
-                  console.info('Auth error handled internally:', error);
-                }
-              });
-            }}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {(() => {
+            {/* Auth Button */}
+            <ThemedButton
+              label={(() => {
                 if (loading) return 'Please wait...';
                 return isLogin ? 'Login' : 'Sign Up';
               })()}
-            </Text>
-          </TouchableOpacity>
+              variant="primary"
+              size="large"
+              fullWidth
+              disabled={loading}
+              onPress={() => {
+                handleAuth().catch((error) => {
+                  // Error is already handled in handleAuth
+                  if (global.__DEV__) {
+                    console.info('Auth error handled internally:', error);
+                  }
+                });
+              }}
+            />
 
-          <TouchableOpacity style={styles.switchButton} onPress={toggleAuthMode} disabled={loading}>
-            <Text style={styles.switchText}>
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={styles.switchTextBold}>{isLogin ? 'Sign Up' : 'Login'}</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            {/* Switch Auth Mode */}
+            <ThemedButton
+              label={(() => {
+                const prefix = isLogin ? "Don't have an account? " : 'Already have an account? ';
+                const action = isLogin ? 'Sign Up' : 'Login';
+                return prefix + action;
+              })()}
+              variant="ghost"
+              size="medium"
+              fullWidth
+              disabled={loading}
+              onPress={toggleAuthMode}
+            />
+          </ThemedCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ThemedContainer>
   );
 };
-
-interface Styles {
-  container: ViewStyle;
-  scrollContent: ViewStyle;
-  header: ViewStyle;
-  title: TextStyle;
-  subtitle: TextStyle;
-  form: ViewStyle;
-  formTitle: TextStyle;
-  input: TextStyle;
-  passwordContainer: ViewStyle;
-  passwordInput: TextStyle;
-  passwordToggle: ViewStyle;
-  passwordToggleText: TextStyle;
-  passwordHint: TextStyle;
-  roleSection: ViewStyle;
-  roleSectionTitle: TextStyle;
-  roleButton: ViewStyle;
-  roleButtonActive: ViewStyle;
-  roleLabel: TextStyle;
-  roleLabelActive: TextStyle;
-  roleDescription: TextStyle;
-  roleDescriptionActive: TextStyle;
-  button: ViewStyle;
-  buttonDisabled: ViewStyle;
-  buttonText: TextStyle;
-  switchButton: ViewStyle;
-  switchText: TextStyle;
-  switchTextBold: TextStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
-  form: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    color: '#2C3E50',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  passwordInput: {
-    flex: 1,
-    padding: 16,
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  passwordToggle: {
-    padding: 16,
-  },
-  passwordToggleText: {
-    color: '#3498DB',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  passwordHint: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  roleSection: {
-    marginBottom: 24,
-  },
-  roleSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
-  roleButton: {
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  roleButtonActive: {
-    borderColor: '#3498DB',
-    backgroundColor: '#EBF5FB',
-  },
-  roleLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  roleLabelActive: {
-    color: '#3498DB',
-  },
-  roleDescription: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  roleDescriptionActive: {
-    color: '#5DADE2',
-  },
-  button: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  buttonDisabled: {
-    backgroundColor: '#BDC3C7',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  switchButton: {
-    alignItems: 'center',
-  },
-  switchText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  switchTextBold: {
-    fontWeight: 'bold',
-    color: '#3498DB',
-  },
-});
 
 export default SignInScreen;
