@@ -2,7 +2,7 @@
 // Provides confetti, emoji rain, and other visual feedback for ADHD dopamine rewards
 
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, Dimensions, Text } from 'react-native';
+import { View, Animated, Dimensions, Text } from 'react-native';
 import { animationHelpers, duration } from '../styles/animations';
 
 interface RewardAnimationProps {
@@ -129,55 +129,35 @@ export const RewardAnimation: React.FC<RewardAnimationProps> = ({
   if (!visible) return null;
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View className="absolute inset-0 z-50" pointerEvents="none">
       {particles.current.map((particle) => (
         <Animated.View
           key={particle.id}
-          style={[
-            styles.particle,
-            {
-              transform: [
-                { translateX: particle.x },
-                { translateY: particle.y },
-                { scale: particle.scale },
-                {
-                  rotate: particle.rotation.interpolate({
-                    inputRange: [0, 360],
-                    outputRange: ['0deg', '360deg'],
-                  }),
-                },
-              ],
-              opacity: particle.opacity,
-            },
-          ]}
+          className="absolute"
+          style={{
+            transform: [
+              { translateX: particle.x },
+              { translateY: particle.y },
+              { scale: particle.scale },
+              {
+                rotate: particle.rotation.interpolate({
+                  inputRange: [0, 360],
+                  outputRange: ['0deg', '360deg'],
+                }),
+              },
+            ],
+            opacity: particle.opacity,
+          }}
         >
           {type === 'confetti' ? (
-            <View style={[styles.confetti, { backgroundColor: particle.color }]} />
+            <View className="w-2.5 h-5 rounded-sm" style={{ backgroundColor: particle.color }} />
           ) : (
-            <Text style={styles.emoji}>{particle.emoji}</Text>
+            <Text className="text-3xl">{particle.emoji}</Text>
           )}
         </Animated.View>
       ))}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1000,
-  },
-  particle: {
-    position: 'absolute',
-  },
-  confetti: {
-    width: 10,
-    height: 20,
-    borderRadius: 2,
-  },
-  emoji: {
-    fontSize: 30,
-  },
-});
 
 export default RewardAnimation;

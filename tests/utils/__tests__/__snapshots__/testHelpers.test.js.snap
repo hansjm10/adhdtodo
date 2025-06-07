@@ -1,0 +1,30 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Test Helper Functions Helper integration tests should work together in a test scenario: Component Snapshot 1`] = `
+<View>
+  <View>
+    <Text>
+      Item 1
+    </Text>
+    <Text>
+      Item 2
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`Test Helper Functions testSnapshot should create snapshot correctly: Component Snapshot 1`] = `
+<View>
+  <Text>
+    Test
+  </Text>
+</View>
+`;
+
+exports[`Test Helper Functions testSnapshot should handle custom snapshot name: Custom Snapshot 1`] = `
+<View>
+  <Text>
+    Test
+  </Text>
+</View>
+`;

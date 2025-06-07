@@ -13,7 +13,7 @@ import { renderWithProviders } from './testUtils';
  * @returns {Promise<Object>} Render result
  */
 export const testLoadingState = async (Component, props = {}, options = {}) => {
-  const result = renderWithProviders(<Component {...props} isLoading={true} />, options);
+  const result = render(<Component {...props} isLoading={true} />, options);
 
   const { queryByTestId, queryByText, UNSAFE_queryAllByType } = result;
 
@@ -22,6 +22,10 @@ export const testLoadingState = async (Component, props = {}, options = {}) => {
     queryByTestId('loading-indicator') ||
     queryByText(/loading/i) ||
     UNSAFE_queryAllByType('ActivityIndicator')[0];
+
+  if (!loadingIndicator) {
+    throw new Error('No loading indicator found in component');
+  }
 
   expect(loadingIndicator).toBeTruthy();
 
@@ -39,13 +43,17 @@ export const testLoadingState = async (Component, props = {}, options = {}) => {
 export const testErrorState = async (Component, props = {}, error = 'Test error', options = {}) => {
   const errorObj = error instanceof Error ? error : new Error(error);
 
-  const result = renderWithProviders(<Component {...props} error={errorObj} />, options);
+  const result = render(<Component {...props} error={errorObj} />, options);
 
   const { queryByText, queryByTestId } = result;
 
   // Check for error message
   const errorMessage =
     queryByText(/error/i) || queryByText(errorObj.message) || queryByTestId('error-message');
+
+  if (!errorMessage) {
+    throw new Error('No error message found in component');
+  }
 
   expect(errorMessage).toBeTruthy();
 
@@ -59,8 +67,15 @@ export const testErrorState = async (Component, props = {}, error = 'Test error'
  * @param {Object} options - Render options
  * @returns {Promise<Object>} Render result
  */
-export const testEmptyState = async (Component, props = {}, options = {}) => {
-  const result = renderWithProviders(<Component {...props} data={[]} items={[]} />, options);
+export const testEmptyState = async (
+  Component,
+  props = {},
+  dataPropName = 'data',
+  options = {},
+) => {
+  // Create props with empty array for the specified data prop
+  const emptyProps = { ...props, [dataPropName]: [] };
+  const result = render(<Component {...emptyProps} />, options);
 
   const { queryByText, queryByTestId } = result;
 
@@ -70,6 +85,10 @@ export const testEmptyState = async (Component, props = {}, options = {}) => {
     queryByText(/no data/i) ||
     queryByText(/empty/i) ||
     queryByTestId('empty-state');
+
+  if (!emptyMessage) {
+    throw new Error('No empty state message found in component');
+  }
 
   expect(emptyMessage).toBeTruthy();
 
@@ -90,7 +109,7 @@ export const testSnapshot = (
   snapshotName = 'Component Snapshot',
   options = {},
 ) => {
-  const result = renderWithProviders(<Component {...props} />, options);
+  const result = render(<Component {...props} />, options);
 
   const tree = result.toJSON();
   expect(tree).toMatchSnapshot(snapshotName);
@@ -247,13 +266,48 @@ export const testKeyboardInteraction = async (input, expectations) => {
 
 /**
  * Get all text content from a component tree
- * @param {Object} screen - Render result
+ * @param {Object} screenOrRoot - Render result or root element
  * @returns {Array<string>} Array of text content
  */
-export const getAllTextContent = (screen) => {
-  const { UNSAFE_queryAllByType } = screen;
-  const textElements = UNSAFE_queryAllByType('Text');
-  return textElements.map((el) => el.props.children).filter(Boolean);
+export const getAllTextContent = (screenOrRoot) => {
+  // If this is a render result with query methods
+  if (screenOrRoot.UNSAFE_queryAllByType) {
+    const textElements = screenOrRoot.UNSAFE_queryAllByType('Text');
+    return textElements
+      .map((el) => el.props.children)
+      .filter(Boolean)
+      .flat();
+  }
+
+  // If this is a root element directly
+  if (screenOrRoot.findAll) {
+    try {
+      const textElements = screenOrRoot.findAll((el) => el.type === 'Text');
+      return textElements
+        .map((el) => el.props.children)
+        .filter(Boolean)
+        .flat();
+    } catch (error) {
+      // Fallback if findAll doesn't work
+      return [];
+    }
+  }
+
+  // If screen has root property, traverse it
+  if (screenOrRoot.root && screenOrRoot.root.findAll) {
+    try {
+      const textElements = screenOrRoot.root.findAll((el) => el.type === 'Text');
+      return textElements
+        .map((el) => el.props.children)
+        .filter(Boolean)
+        .flat();
+    } catch (error) {
+      // Fallback if findAll doesn't work
+      return [];
+    }
+  }
+
+  return [];
 };
 
 /**
@@ -279,3 +333,6 @@ export const testComponentPerformance = (Component, props = {}, maxRenderTime = 
     result,
   };
 };
+
+// Export renderWithProviders for components that need it
+export { renderWithProviders } from './testUtils';

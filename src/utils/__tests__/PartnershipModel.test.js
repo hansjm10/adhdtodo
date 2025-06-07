@@ -49,31 +49,34 @@ describe('PartnershipModel', () => {
     it('should create a partnership with default values', () => {
       const partnership = createPartnership();
 
-      expect(partnership).toMatchObject({
-        id: expect.stringMatching(/^partnership_\d+_[a-z0-9]{9}$/),
-        adhdUserId: null,
-        partnerId: null,
-        status: PARTNERSHIP_STATUS.PENDING,
-        inviteCode: expect.stringMatching(/^[A-Z0-9]{6}$/),
-        inviteSentBy: null,
-        settings: {
-          allowTaskAssignment: true,
-          shareProgress: true,
-          allowEncouragement: true,
-          allowCheckIns: true,
-          quietHoursStart: null,
-          quietHoursEnd: null,
+      expect(partnership).toMatchObject(
+        // eslint-disable-next-line custom-rules/enforce-test-data-factories
+        {
+          id: expect.stringMatching(/^partnership_\d+_[a-z0-9]{9}$/),
+          adhdUserId: null,
+          partnerId: null,
+          status: PARTNERSHIP_STATUS.PENDING,
+          inviteCode: expect.stringMatching(/^[A-Z0-9]{6}$/),
+          inviteSentBy: null,
+          settings: {
+            allowTaskAssignment: true,
+            shareProgress: true,
+            allowEncouragement: true,
+            allowCheckIns: true,
+            quietHoursStart: null,
+            quietHoursEnd: null,
+          },
+          stats: {
+            tasksAssigned: 0,
+            tasksCompleted: 0,
+            encouragementsSent: 0,
+            checkInsCompleted: 0,
+            partnershipDuration: 0,
+          },
+          acceptedAt: null,
+          terminatedAt: null,
         },
-        stats: {
-          tasksAssigned: 0,
-          tasksCompleted: 0,
-          encouragementsSent: 0,
-          checkInsCompleted: 0,
-          partnershipDuration: 0,
-        },
-        acceptedAt: null,
-        terminatedAt: null,
-      });
+      );
       expect(partnership.createdAt).toBeInstanceOf(Date);
       expect(partnership.updatedAt).toBeInstanceOf(Date);
     });

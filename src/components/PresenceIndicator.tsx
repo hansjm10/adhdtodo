@@ -1,10 +1,16 @@
-// ABOUTME: Component for displaying user presence status (online, away, offline)
-// Shows real-time status with visual indicators and activity descriptions
+// ABOUTME: Mac-inspired presence indicators using NativeWind
+// Clean real-time status display with visual indicators and activity descriptions
 
 import React from 'react';
 import type { ViewStyle } from 'react-native';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
+import { ThemedText } from './themed';
 import { usePresence } from '../contexts/PresenceContext';
+import {
+  getPresenceDotStyle,
+  getAvatarStyle,
+  getBadgePositionStyle,
+} from '../styles/dynamicStyles';
 import type { PresenceState } from '../services/PresenceService';
 
 interface PresenceIndicatorProps {
@@ -28,19 +34,6 @@ const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
   if (!presence) {
     return null;
   }
-
-  const getStatusColor = (status: PresenceState['status']): string => {
-    switch (status) {
-      case 'online':
-        return '#4CAF50'; // Green
-      case 'away':
-        return '#FF9800'; // Orange
-      case 'offline':
-        return '#9E9E9E'; // Gray
-      default:
-        return '#9E9E9E';
-    }
-  };
 
   const getStatusText = (status: PresenceState['status']): string => {
     switch (status) {
@@ -69,40 +62,30 @@ const PresenceIndicator: React.FC<PresenceIndicatorProps> = ({
   };
 
   const dotSize = getDotSize();
-  const statusColor = getStatusColor(presence.status);
 
   return (
-    <View style={[styles.container, style]}>
+    <View className="flex-row items-center py-0.5" style={style}>
       <View
-        style={[
-          styles.statusDot,
-          {
-            width: dotSize,
-            height: dotSize,
-            backgroundColor: statusColor,
-            borderRadius: dotSize / 2,
-          },
-        ]}
+        className="mr-2 border-2 border-white shadow-sm"
+        style={getPresenceDotStyle(presence.status, dotSize)}
       />
       {size !== 'small' && (
-        <View style={styles.textContainer}>
-          <Text
-            style={[
-              styles.statusText,
-              size === 'large' ? styles.statusTextLarge : styles.statusTextMedium,
-            ]}
+        <View className="flex-1">
+          <ThemedText
+            variant={size === 'large' ? 'body' : 'caption'}
+            color="primary"
+            weight="semibold"
           >
             {getStatusText(presence.status)}
-          </Text>
+          </ThemedText>
           {activity && presence.status !== 'offline' && (
-            <Text
-              style={[
-                styles.activityText,
-                size === 'large' ? styles.activityTextLarge : styles.activityTextMedium,
-              ]}
+            <ThemedText
+              variant={size === 'large' ? 'caption' : 'caption'}
+              color="tertiary"
+              className="mt-0.5 italic"
             >
               {activity}
-            </Text>
+            </ThemedText>
           )}
         </View>
       )}
@@ -124,31 +107,10 @@ export const PresenceBadge: React.FC<PresenceBadgeProps> = ({ userId, size = 12,
     return null;
   }
 
-  const getStatusColor = (status: PresenceState['status']): string => {
-    switch (status) {
-      case 'online':
-        return '#4CAF50';
-      case 'away':
-        return '#FF9800';
-      case 'offline':
-        return '#9E9E9E';
-      default:
-        return '#9E9E9E';
-    }
-  };
-
   return (
     <View
-      style={[
-        styles.badge,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: getStatusColor(presence.status),
-        },
-        style,
-      ]}
+      className="border-2 border-white shadow-sm"
+      style={[getPresenceDotStyle(presence.status, size), style]}
     />
   );
 };
@@ -160,9 +122,11 @@ interface PresenceListProps {
 
 export const PresenceList: React.FC<PresenceListProps> = ({ userIds, style }) => {
   return (
-    <View style={[styles.list, style]}>
+    <View className="p-2" style={style}>
       {userIds.map((userId) => (
-        <PresenceIndicator key={userId} userId={userId} size="medium" style={styles.listItem} />
+        <View key={userId} className="mb-2 px-3 py-2 rounded-lg bg-neutral-100">
+          <PresenceIndicator userId={userId} size="medium" />
+        </View>
       ))}
     </View>
   );
@@ -193,25 +157,29 @@ export const TaskPresenceIndicator: React.FC<TaskPresenceIndicatorProps> = ({
   }
 
   return (
-    <View style={[styles.taskPresenceContainer, style]}>
-      <View style={styles.editorsContainer}>
+    <View
+      className="flex-row items-center bg-primary-50 px-2 py-1 rounded-button gap-1.5"
+      style={style}
+    >
+      <View className="flex-row items-center">
         {taskEditors.slice(0, 3).map((presence, index) => (
-          <PresenceBadge
+          <View
             key={presence.userId}
-            userId={presence.userId}
-            size={16}
-            style={[styles.editorBadge, index > 0 && styles.editorBadgeOverlap]}
-          />
+            className="border-2 border-white"
+            style={index > 0 ? getAvatarStyle(16, index) : undefined}
+          >
+            <PresenceBadge userId={presence.userId} size={16} />
+          </View>
         ))}
         {taskEditors.length > 3 && (
-          <View style={styles.overflowBadge}>
-            <Text style={styles.overflowText}>+{taskEditors.length - 3}</Text>
+          <View className="w-4 h-4 rounded-full bg-neutral-500 items-center justify-center border-2 border-white -ml-1.5">
+            <Text className="text-xs text-white font-bold">+{taskEditors.length - 3}</Text>
           </View>
         )}
       </View>
-      <Text style={styles.taskPresenceText}>
+      <ThemedText variant="caption" color="primary" weight="medium">
         {taskEditors.length === 1 ? 'editing' : `${taskEditors.length} editing`}
-      </Text>
+      </ThemedText>
     </View>
   );
 };
@@ -243,184 +211,37 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
   const remainingCount = onlineCollaborators.length - maxDisplay;
 
   return (
-    <View style={[styles.collaboratorContainer, style]}>
+    <View className="flex-row items-center" style={style}>
       {displayCollaborators.map((presence, index) => (
         <View
           key={presence!.userId}
-          style={[
-            styles.collaboratorAvatar,
-            {
-              width: size,
-              height: size,
-              borderRadius: size / 2,
-              zIndex: displayCollaborators.length - index,
-            },
-          ]}
+          className="bg-primary-500 items-center justify-center border-2 border-white relative"
+          style={{
+            ...getAvatarStyle(size),
+            zIndex: displayCollaborators.length - index,
+          }}
         >
-          <Text style={[styles.avatarText, { fontSize: size * 0.4 }]}>
+          <Text className="text-white font-bold text-base">
             {presence!.userId.charAt(0).toUpperCase()}
           </Text>
-          <PresenceBadge userId={presence!.userId} size={size * 0.25} style={styles.avatarBadge} />
+          <PresenceBadge
+            userId={presence!.userId}
+            size={size * 0.25}
+            style={getBadgePositionStyle('bottom-right')}
+          />
         </View>
       ))}
 
       {remainingCount > 0 && (
         <View
-          style={[
-            styles.overflowAvatar,
-            {
-              width: size,
-              height: size,
-              borderRadius: size / 2,
-              marginLeft: -size * 0.3,
-            },
-          ]}
+          className="bg-neutral-500 items-center justify-center border-2 border-white"
+          style={getAvatarStyle(size, 1)}
         >
-          <Text style={[styles.overflowAvatarText, { fontSize: size * 0.3 }]}>
-            +{remainingCount}
-          </Text>
+          <Text className="text-white font-bold text-sm">+{remainingCount}</Text>
         </View>
       )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 2,
-  },
-  statusDot: {
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  statusText: {
-    fontWeight: '600',
-    color: '#333',
-  },
-  activityText: {
-    color: '#666',
-    fontStyle: 'italic',
-    marginTop: 1,
-  },
-  statusTextLarge: {
-    fontSize: 14,
-  },
-  statusTextMedium: {
-    fontSize: 12,
-  },
-  activityTextLarge: {
-    fontSize: 12,
-  },
-  activityTextMedium: {
-    fontSize: 10,
-  },
-  badge: {
-    borderWidth: 2,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
-  },
-  list: {
-    padding: 8,
-  },
-  listItem: {
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-  },
-  taskPresenceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e3f2fd',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
-  },
-  editorsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  editorBadge: {
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  editorBadgeOverlap: {
-    marginLeft: -6,
-  },
-  overflowBadge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#666',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -6,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  overflowText: {
-    fontSize: 8,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  taskPresenceText: {
-    fontSize: 11,
-    color: '#1976d2',
-    fontWeight: '500',
-  },
-  collaboratorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  collaboratorAvatar: {
-    backgroundColor: '#2196f3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-    position: 'relative',
-  },
-  avatarText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-  },
-  overflowAvatar: {
-    backgroundColor: '#666',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  overflowAvatarText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-});
 
 export default PresenceIndicator;

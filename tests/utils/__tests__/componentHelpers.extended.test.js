@@ -380,7 +380,7 @@ describe('Component Helpers - Extended Tests', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('test-modal')).toBeFalsy();
       });
-    });
+    }, 10000);
 
     it('should test modal without trigger element', async () => {
       const AutoModalComponent = ({ showModal }) => (

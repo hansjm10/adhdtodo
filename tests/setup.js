@@ -82,34 +82,38 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 // Mock Expo Router
-jest.mock('expo-router', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    back: jest.fn(),
-    canGoBack: jest.fn(() => true),
-    setParams: jest.fn(),
-  }),
-  useLocalSearchParams: () => ({}),
-  useSearchParams: () => ({}),
-  useSegments: () => [],
-  usePathname: () => '/',
-  useFocusEffect: jest.fn(),
-  router: {
-    push: jest.fn(),
-    replace: jest.fn(),
-    back: jest.fn(),
-    canGoBack: jest.fn(() => true),
-    setParams: jest.fn(),
-  },
-  Link: ({ children }) => children,
-  Stack: {
-    Screen: ({ children }) => children,
-  },
-  Tabs: {
-    Screen: ({ children }) => children,
-  },
-}));
+jest.mock('expo-router', () => {
+  const Tabs = ({ children }) => children;
+  Tabs.Screen = ({ children }) => children;
+
+  const Stack = ({ children }) => children;
+  Stack.Screen = ({ children }) => children;
+
+  return {
+    useRouter: () => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+      canGoBack: jest.fn(() => true),
+      setParams: jest.fn(),
+    }),
+    useLocalSearchParams: () => ({}),
+    useSearchParams: () => ({}),
+    useSegments: () => [],
+    usePathname: () => '/',
+    useFocusEffect: jest.fn(),
+    router: {
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+      canGoBack: jest.fn(() => true),
+      setParams: jest.fn(),
+    },
+    Link: ({ children }) => children,
+    Stack,
+    Tabs,
+  };
+});
 
 // Mock FlashList
 jest.mock('@shopify/flash-list', () => {
@@ -163,3 +167,63 @@ jest.mock('@shopify/flash-list', () => {
     FlashList: MockFlashList,
   };
 });
+
+// Mock Supabase globally to prevent auth errors
+jest.mock('../src/services/SupabaseService', () => {
+  const createMockQueryBuilder = () => {
+    const builder = {
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    builder.then = (resolve) => resolve({ data: [], error: null });
+    return builder;
+  };
+
+  return {
+    supabase: {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+        getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        signIn: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+        signInWithPassword: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+        signInWithOAuth: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+        signUp: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+        signOut: jest.fn().mockResolvedValue({ error: null }),
+        refreshSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        updateUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+        onAuthStateChange: jest.fn(() => ({
+          data: { subscription: { unsubscribe: jest.fn() } },
+        })),
+      },
+      from: jest.fn(() => createMockQueryBuilder()),
+      channel: jest.fn(() => ({
+        on: jest.fn().mockReturnThis(),
+        subscribe: jest.fn().mockReturnThis(),
+        unsubscribe: jest.fn().mockReturnThis(),
+        send: jest.fn().mockResolvedValue({ error: null }),
+      })),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+    },
+  };
+});
+
+// Global console overrides to reduce noise in tests
+global.console = {
+  ...console,
+  // Suppress console.info in tests unless explicitly enabled
+  info: process.env.JEST_VERBOSE === 'true' ? console.info : jest.fn(),
+  // Suppress console.warn in tests unless explicitly enabled
+  warn: process.env.JEST_VERBOSE === 'true' ? console.warn : jest.fn(),
+  // Keep console.error for debugging but allow suppression
+  error: process.env.JEST_VERBOSE === 'true' ? console.error : jest.fn(),
+};

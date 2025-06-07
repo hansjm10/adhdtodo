@@ -1,13 +1,12 @@
-// ABOUTME: Collaborative task editor with real-time sync and cursor tracking
-// Shows live collaborators and handles conflict resolution during editing
+// ABOUTME: Mac-inspired collaborative task editor using NativeWind
+// Clean real-time editing with cursor tracking and conflict resolution
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, TextInput, TouchableOpacity } from 'react-native';
+import { ThemedText, ThemedIcon } from './themed';
 import { useCollaborativeEditing } from '../contexts/CollaborativeEditingContext';
 import type { Task } from '../types/task.types';
 import { TaskStatus, TaskPriority } from '../types/task.types';
-import { colors, typography, spacing } from '../styles';
 
 interface CollaborativeTaskEditorProps {
   task: Task;
@@ -29,29 +28,32 @@ const CollaboratorIndicator: React.FC<CollaboratorIndicatorProps> = ({ collabora
   if (collaborators.length === 0) return null;
 
   return (
-    <View style={styles.collaboratorContainer}>
-      <View style={styles.collaboratorList}>
+    <View className="flex-row items-center gap-2">
+      <View className="flex-row items-center">
         {collaborators.slice(0, 3).map((collaborator) => (
           <View
             key={collaborator.userId}
-            style={[styles.collaboratorAvatar, { backgroundColor: collaborator.color }]}
+            className="w-8 h-8 rounded-full justify-center items-center -ml-2 border-2 border-white"
+            style={{ backgroundColor: collaborator.color }}
           >
-            <Text style={styles.collaboratorInitial}>
+            <ThemedText variant="caption" color="white" weight="bold">
               {collaborator.userName.charAt(0).toUpperCase()}
-            </Text>
+            </ThemedText>
           </View>
         ))}
         {collaborators.length > 3 && (
-          <View style={styles.collaboratorOverflow}>
-            <Text style={styles.collaboratorOverflowText}>+{collaborators.length - 3}</Text>
+          <View className="w-8 h-8 rounded-full bg-neutral-500 justify-center items-center -ml-2 border-2 border-white">
+            <ThemedText variant="caption" color="white" weight="bold">
+              +{collaborators.length - 3}
+            </ThemedText>
           </View>
         )}
       </View>
-      <Text style={styles.collaboratorStatus}>
+      <ThemedText variant="caption" color="secondary">
         {collaborators.length === 1
           ? `${collaborators[0].userName} is editing`
           : `${collaborators.length} people editing`}
-      </Text>
+      </ThemedText>
     </View>
   );
 };
@@ -74,7 +76,7 @@ const FieldCursor: React.FC<FieldCursorProps> = ({ collaborators, fieldName, tex
   if (fieldCollaborators.length === 0) return null;
 
   return (
-    <View style={styles.cursorsContainer}>
+    <View className="absolute inset-0 pointer-events-none">
       {fieldCollaborators.map((collaborator) => {
         // Calculate cursor position (simplified)
         const position = Math.min(collaborator.position, text.length);
@@ -82,16 +84,17 @@ const FieldCursor: React.FC<FieldCursorProps> = ({ collaborators, fieldName, tex
         return (
           <View
             key={collaborator.userId}
-            style={[
-              styles.cursor,
-              {
-                backgroundColor: collaborator.color,
-                // In a real implementation, this would be positioned based on text measurement
-                left: Math.min(position * 8, 200), // Rough character width estimation
-              },
-            ]}
+            className="absolute w-0.5 h-5 top-2"
+            style={{
+              backgroundColor: collaborator.color,
+              left: Math.min(position * 8, 200), // Rough character width estimation
+            }}
           >
-            <Text style={styles.cursorLabel}>{collaborator.userName}</Text>
+            <View className="absolute -top-5 -left-2.5 bg-black/80 px-1 py-0.5 rounded">
+              <ThemedText variant="caption" color="white" className="text-xs">
+                {collaborator.userName}
+              </ThemedText>
+            </View>
           </View>
         );
       })}
@@ -233,35 +236,35 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
       case TaskStatus.COMPLETED:
-        return colors.semantic.success;
+        return '#22c55e'; // success
       case TaskStatus.IN_PROGRESS:
-        return colors.semantic.warning;
+        return '#f59e0b'; // warning
       default:
-        return colors.text.secondary;
+        return '#6b7280'; // secondary
     }
   };
 
   const getPriorityColor = (priority: TaskPriority) => {
     switch (priority) {
       case TaskPriority.HIGH:
-        return colors.semantic.error;
+        return '#ef4444'; // error
       case TaskPriority.MEDIUM:
-        return colors.semantic.warning;
+        return '#f59e0b'; // warning
       default:
-        return colors.semantic.success;
+        return '#22c55e'; // success
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 p-4">
       {/* Collaboration Header */}
-      <View style={styles.header}>
+      <View className="flex-row justify-between items-center mb-4 pb-2 border-b border-neutral-200">
         <CollaboratorIndicator collaborators={collaborators} />
 
-        <View style={styles.headerActions}>
+        <View className="flex-row items-center gap-2">
           {!isEditing ? (
             <TouchableOpacity
-              style={styles.editButton}
+              className="flex-row items-center px-4 py-2 bg-neutral-100 rounded-lg gap-1"
               onPress={() => {
                 handleStartEditing().catch((error) => {
                   if (global.__DEV__) {
@@ -271,12 +274,14 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               }}
               disabled={isReadOnly}
             >
-              <Ionicons name="create-outline" size={20} color={colors.primary} />
-              <Text style={styles.editButtonText}>Edit</Text>
+              <ThemedIcon name="create-outline" size="sm" color="primary" />
+              <ThemedText variant="caption" color="primary" weight="semibold">
+                Edit
+              </ThemedText>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.doneButton}
+              className="flex-row items-center px-4 py-2 bg-success-500 rounded-lg gap-1"
               onPress={() => {
                 handleStopEditing().catch((error) => {
                   if (global.__DEV__) {
@@ -285,22 +290,24 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
                 });
               }}
             >
-              <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
-              <Text style={styles.doneButtonText}>Done</Text>
+              <ThemedIcon name="checkmark" size="sm" color="white" />
+              <ThemedText variant="caption" color="white" weight="semibold">
+                Done
+              </ThemedText>
             </TouchableOpacity>
           )}
 
           {isEditing && (
             <TouchableOpacity
-              style={[styles.lockButton, locked && styles.lockButtonActive]}
+              className={`p-2 rounded-md ${locked ? 'bg-warning-500' : 'bg-neutral-100'}`}
               onPress={() => {
                 setShowLockControls(!showLockControls);
               }}
             >
-              <Ionicons
+              <ThemedIcon
                 name={locked ? 'lock-closed' : 'lock-open'}
-                size={16}
-                color={locked ? colors.text.inverse : colors.text.primary}
+                size="sm"
+                color={locked ? 'white' : 'primary'}
               />
             </TouchableOpacity>
           )}
@@ -309,32 +316,32 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
 
       {/* Lock Controls */}
       {showLockControls && (
-        <View style={styles.lockControls}>
-          <Text style={styles.lockText}>
+        <View className="bg-neutral-100 p-4 rounded-lg mb-4">
+          <ThemedText variant="caption" color="secondary" className="mb-2">
             {locked ? `Locked by ${lockOwner}` : 'Unlock to prevent conflicts'}
-          </Text>
+          </ThemedText>
           <TouchableOpacity
-            style={styles.lockToggleButton}
+            className="self-start px-4 py-2 bg-primary-500 rounded-md"
             onPress={() => {
               handleToggleLock().catch(() => {});
             }}
           >
-            <Text style={styles.lockToggleText}>{locked ? 'Unlock' : 'Lock for editing'}</Text>
+            <ThemedText variant="caption" color="white" weight="semibold">
+              {locked ? 'Unlock' : 'Lock for editing'}
+            </ThemedText>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Task Title */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Title</Text>
-        <View style={styles.inputContainer}>
+      <View className="mb-6">
+        <ThemedText variant="caption" color="primary" weight="semibold" className="mb-2">
+          Title
+        </ThemedText>
+        <View className="relative">
           <TextInput
             ref={titleInputRef}
-            style={[
-              styles.titleInput,
-              !isEditing && styles.readOnlyInput,
-              locked && !isEditing && styles.lockedInput,
-            ]}
+            className={`text-xl font-bold px-4 py-2 rounded-lg border text-slate-700 ${isEditing ? 'bg-neutral-100 border-neutral-200' : 'bg-white border-transparent'}${locked && !isEditing ? ' opacity-60' : ''}`}
             value={localTask.title}
             onChangeText={(text) => {
               handleTextChange('title', text, localTask.title);
@@ -351,16 +358,14 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
       </View>
 
       {/* Task Description */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Description</Text>
-        <View style={styles.inputContainer}>
+      <View className="mb-6">
+        <ThemedText variant="caption" color="primary" weight="semibold" className="mb-2">
+          Description
+        </ThemedText>
+        <View className="relative">
           <TextInput
             ref={descriptionInputRef}
-            style={[
-              styles.descriptionInput,
-              !isEditing && styles.readOnlyInput,
-              locked && !isEditing && styles.lockedInput,
-            ]}
+            className={`text-base px-4 py-2 rounded-lg border text-slate-700 min-h-[100px] align-top ${isEditing ? 'bg-neutral-100 border-neutral-200' : 'bg-white border-transparent'}${locked && !isEditing ? ' opacity-60' : ''}`}
             value={localTask.description}
             onChangeText={(text) => {
               handleTextChange('description', text, localTask.description);
@@ -382,11 +387,14 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
       </View>
 
       {/* Status and Priority */}
-      <View style={styles.metadataContainer}>
-        <View style={styles.metadataField}>
-          <Text style={styles.fieldLabel}>Status</Text>
+      <View className="flex-row gap-4 mb-6">
+        <View className="flex-1">
+          <ThemedText variant="caption" color="primary" weight="semibold" className="mb-2">
+            Status
+          </ThemedText>
           <TouchableOpacity
-            style={[styles.statusButton, { backgroundColor: getStatusColor(localTask.status) }]}
+            className="px-4 py-2 rounded-md items-center"
+            style={{ backgroundColor: getStatusColor(localTask.status) }}
             onPress={() => {
               if (isEditing && (!locked || lockOwner === 'current')) {
                 const statusFlow: Record<TaskStatus, TaskStatus> = {
@@ -404,17 +412,19 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             }}
             disabled={!isEditing || (locked && lockOwner !== 'current')}
           >
-            <Text style={styles.statusButtonText}>{localTask.status}</Text>
+            <ThemedText variant="body" color="white" weight="semibold" className="capitalize">
+              {localTask.status}
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.metadataField}>
-          <Text style={styles.fieldLabel}>Priority</Text>
+        <View className="flex-1">
+          <ThemedText variant="caption" color="primary" weight="semibold" className="mb-2">
+            Priority
+          </ThemedText>
           <TouchableOpacity
-            style={[
-              styles.priorityButton,
-              { backgroundColor: getPriorityColor(localTask.priority) },
-            ]}
+            className="px-4 py-2 rounded-md items-center"
+            style={{ backgroundColor: getPriorityColor(localTask.priority) }}
             onPress={() => {
               if (isEditing && (!locked || lockOwner === 'current')) {
                 const priorityFlow: Record<TaskPriority, TaskPriority> = {
@@ -433,269 +443,25 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             }}
             disabled={!isEditing || (locked && lockOwner !== 'current')}
           >
-            <Text style={styles.priorityText}>{localTask.priority}</Text>
+            <ThemedText variant="body" color="white" weight="semibold" className="capitalize">
+              {localTask.priority}
+            </ThemedText>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Connection Status */}
-      <View style={styles.statusBar}>
+      <View className="flex-row items-center gap-1 pt-4 border-t border-neutral-200">
         <View
-          style={[
-            styles.connectionIndicator,
-            {
-              backgroundColor: state.isConnected ? colors.semantic.success : colors.semantic.error,
-            },
-          ]}
+          className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-success-500' : 'bg-danger-500'}`}
         />
-        <Text style={styles.statusText}>
+        <ThemedText variant="caption" color="secondary">
           {state.isConnected ? 'Connected' : 'Offline'}
           {state.lastSyncTime && ` • Last sync: ${state.lastSyncTime.toLocaleTimeString()}`}
-        </Text>
+        </ThemedText>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.states.hover,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  editButtonText: {
-    color: colors.primary,
-    fontSize: typography.bodySmall.fontSize,
-    fontWeight: '600',
-  },
-  doneButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.semantic.success,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  doneButtonText: {
-    color: colors.text.inverse,
-    fontSize: typography.bodySmall.fontSize,
-    fontWeight: '600',
-  },
-  lockButton: {
-    padding: spacing.sm,
-    borderRadius: 6,
-    backgroundColor: colors.states.hover,
-  },
-  lockButtonActive: {
-    backgroundColor: colors.semantic.warning,
-  },
-  collaboratorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  collaboratorList: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  collaboratorAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: -8,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  collaboratorInitial: {
-    color: colors.text.inverse,
-    fontSize: typography.bodySmall.fontSize,
-    fontWeight: 'bold',
-  },
-  collaboratorOverflow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.text.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: -8,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  collaboratorOverflowText: {
-    color: colors.text.inverse,
-    fontSize: typography.caption.fontSize,
-    fontWeight: 'bold',
-  },
-  collaboratorStatus: {
-    fontSize: typography.bodySmall.fontSize,
-    color: colors.text.secondary,
-  },
-  lockControls: {
-    backgroundColor: colors.states.hover,
-    padding: spacing.md,
-    borderRadius: 8,
-    marginBottom: spacing.md,
-  },
-  lockText: {
-    fontSize: typography.bodySmall.fontSize,
-    color: colors.text.secondary,
-    marginBottom: spacing.sm,
-  },
-  lockToggleButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: 6,
-  },
-  lockToggleText: {
-    color: colors.text.inverse,
-    fontSize: typography.bodySmall.fontSize,
-    fontWeight: '600',
-  },
-  fieldContainer: {
-    marginBottom: spacing.lg,
-  },
-  fieldLabel: {
-    fontSize: typography.bodySmall.fontSize,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  inputContainer: {
-    position: 'relative',
-  },
-  titleInput: {
-    fontSize: typography.h3.fontSize,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.states.hover,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  descriptionInput: {
-    fontSize: typography.bodyMedium.fontSize,
-    color: colors.text.primary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.states.hover,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    textAlignVertical: 'top',
-  },
-  readOnlyInput: {
-    backgroundColor: colors.background,
-    borderColor: 'transparent',
-  },
-  lockedInput: {
-    backgroundColor: colors.states.hover,
-    opacity: 0.6,
-  },
-  cursorsContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-  },
-  cursor: {
-    position: 'absolute',
-    width: 2,
-    height: 20,
-    top: spacing.sm,
-  },
-  cursorLabel: {
-    position: 'absolute',
-    top: -20,
-    left: -10,
-    fontSize: typography.caption.fontSize,
-    color: colors.text.inverse,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  metadataContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  metadataField: {
-    flex: 1,
-  },
-  statusButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  statusButtonText: {
-    color: colors.surface,
-    fontSize: typography.bodyMedium.fontSize,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  priorityButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  priorityText: {
-    color: colors.surface,
-    fontSize: typography.bodyMedium.fontSize,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  statusBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  connectionIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: typography.caption.fontSize,
-    color: colors.text.secondary,
-  },
-});
 
 export default CollaborativeTaskEditor;
