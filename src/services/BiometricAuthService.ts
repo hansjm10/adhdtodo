@@ -3,6 +3,10 @@
 
 import * as LocalAuthentication from 'expo-local-authentication';
 import { SecureStorageService } from './SecureStorageService';
+import type { BiometricAuthResult } from '../types/auth.types';
+
+// Re-exported for backward compatibility - types now live in auth.types.ts
+export { BiometricAuthResult };
 
 export interface BiometricSupport {
   hasHardware: boolean;
@@ -12,12 +16,6 @@ export interface BiometricSupport {
 }
 
 export type BiometricType = 'faceId' | 'fingerprint' | 'iris' | 'none';
-
-export interface AuthResult {
-  success: boolean;
-  error?: string;
-  warning?: string;
-}
 
 export interface SecuritySettings {
   requireAuthOnLaunch: boolean;
@@ -53,7 +51,7 @@ export class BiometricAuthService {
   /**
    * Authenticate user with biometric prompt
    */
-  static async authenticate(reason?: string): Promise<AuthResult> {
+  static async authenticate(reason?: string): Promise<BiometricAuthResult> {
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: reason ?? 'Authenticate to access your ADHD Todo data',

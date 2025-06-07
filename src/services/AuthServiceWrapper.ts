@@ -7,30 +7,13 @@ import SupabaseAuthService from './SupabaseAuthService';
 import FeatureFlags from './FeatureFlags';
 import SecureLogger from './SecureLogger';
 import type { User, UserRole, SecureToken } from '../types/user.types';
-
-interface AuthResult {
-  success: boolean;
-  user?: Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
-  token?: string;
-  error?: string;
-}
-
-interface SessionVerificationResult {
-  isValid: boolean;
-  reason?: string;
-  user?: Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
-}
-
-interface PasswordResetResult {
-  success: boolean;
-  message?: string;
-  error?: string;
-}
-
-interface PasswordValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
+import type {
+  AuthResult,
+  AuthUser,
+  PasswordValidationResult,
+  SessionVerificationResult,
+  PasswordResetResult,
+} from '../types/auth.types';
 
 class AuthServiceWrapper implements IAuthService {
   private localService: IAuthService = LocalAuthService;
@@ -108,7 +91,7 @@ class AuthServiceWrapper implements IAuthService {
     return service.resetPassword(email, newPassword);
   }
 
-  sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'> {
+  sanitizeUser(user: User): AuthUser {
     const service = this.currentService ?? this.localService;
     return service.sanitizeUser(user);
   }

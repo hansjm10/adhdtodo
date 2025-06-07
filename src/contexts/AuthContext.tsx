@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import type { AppStateStatus } from 'react-native';
 import { Alert, AppState } from 'react-native';
-import type { AuthResult, SecuritySettings } from '../services/BiometricAuthService';
+import type { BiometricAuthResult, SecuritySettings } from '../services/BiometricAuthService';
 import { BiometricAuthService } from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 import SecureLogger from '../services/SecureLogger';
@@ -14,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLocked: boolean;
   authSettings: SecuritySettings | null;
-  authenticateWithBiometric: (reason?: string) => Promise<AuthResult>;
+  authenticateWithBiometric: (reason?: string) => Promise<BiometricAuthResult>;
   authenticateWithPIN: (pin: string) => Promise<boolean>;
   protectSensitiveAction: (action: () => Promise<void>, reason: string) => Promise<void>;
   lock: () => void;
@@ -182,13 +182,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const authenticateWithBiometric = useCallback(async (reason?: string): Promise<AuthResult> => {
-    const result = await BiometricAuthService.authenticate(reason);
-    if (result.success) {
-      recordActivity();
-    }
-    return result;
-  }, []);
+  const authenticateWithBiometric = useCallback(
+    async (reason?: string): Promise<BiometricAuthResult> => {
+      const result = await BiometricAuthService.authenticate(reason);
+      if (result.success) {
+        recordActivity();
+      }
+      return result;
+    },
+    [],
+  );
 
   const authenticateWithPIN = useCallback(async (pin: string): Promise<boolean> => {
     const isValid = await PINAuthService.verifyPIN(pin);

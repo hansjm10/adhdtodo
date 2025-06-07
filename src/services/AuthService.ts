@@ -11,31 +11,14 @@ import RateLimiter from './RateLimiter';
 import ValidationService from './ValidationService';
 import { createUser, validateUser, updateUser } from '../utils/UserModel';
 import type { User, UserRole, SecureToken } from '../types/user.types';
+import type {
+  AuthResult,
+  AuthUser,
+  PasswordValidationResult,
+  SessionVerificationResult,
+  PasswordResetResult,
+} from '../types/auth.types';
 import * as SecureStore from 'expo-secure-store';
-
-interface PasswordValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
-
-interface AuthResult {
-  success: boolean;
-  user?: Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
-  token?: string;
-  error?: string;
-}
-
-interface SessionVerificationResult {
-  isValid: boolean;
-  reason?: string;
-  user?: Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
-}
-
-interface PasswordResetResult {
-  success: boolean;
-  message?: string;
-  error?: string;
-}
 
 export interface IAuthService {
   validatePassword(password: string): PasswordValidationResult;
@@ -45,7 +28,7 @@ export interface IAuthService {
   logout(): Promise<{ success: boolean; error?: string }>;
   changePassword(currentPassword: string, newPassword: string): Promise<AuthResult>;
   resetPassword(email: string, newPassword: string): Promise<PasswordResetResult>;
-  sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'>;
+  sanitizeUser(user: User): AuthUser;
   // Secure token methods
   createSecureToken(userId: string): Promise<SecureToken>;
   validateSecureToken(secureToken: SecureToken, providedToken: string): Promise<boolean>;
