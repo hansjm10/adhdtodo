@@ -67,15 +67,15 @@ export const ThemedButton = ({
     large: 'px-8 py-4 min-h-[56px]',
   };
 
-  // Variant classes
+  // Variant classes for dark theme
   const variantClasses = {
     primary: 'bg-primary-500 shadow-button',
-    secondary: 'bg-neutral-50 border-2 border-primary-500',
+    secondary: 'bg-surface-2 border-2 border-primary-500',
     ghost: 'bg-transparent',
     danger: 'bg-danger-500 shadow-button',
   };
 
-  // Text color classes
+  // Text color classes for dark theme
   const textColorClasses = {
     primary: 'text-white',
     secondary: 'text-primary-500',
@@ -104,12 +104,12 @@ export const ThemedButton = ({
     'text-center',
     textSizeClasses[size],
     textColorClasses[variant],
-    isDisabled ? 'text-neutral-400' : '',
+    isDisabled ? 'text-text-disabled' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
-  const loadingColor = variant === 'primary' || variant === 'danger' ? '#ffffff' : '#3b82f6';
+  const loadingColor = variant === 'primary' || variant === 'danger' ? '#ffffff' : '#a855f7';
 
   return (
     <Animated.View

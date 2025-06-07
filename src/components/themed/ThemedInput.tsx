@@ -65,44 +65,44 @@ export const ThemedInput = ({
   // Container classes
   const containerClasses = cn('mb-4', className);
 
-  // Label classes
+  // Label classes for dark theme
   const labelClasses = cn(
     'text-sm font-medium mb-1 ml-1',
-    error ? 'text-danger-500' : 'text-neutral-600',
+    error ? 'text-danger-500' : 'text-text-secondary',
   );
 
-  // Input container classes
+  // Input container classes for dark theme
   const inputContainerClasses = cn(
     'rounded-input min-h-[48px] transition-colors duration-200',
     variant === 'outlined' && [
-      'border-2 bg-neutral-50',
+      'border-2 bg-surface-2',
       isFocused && !error && 'border-primary-500',
-      !isFocused && !error && 'border-neutral-200',
+      !isFocused && !error && 'border-border-default',
       error && 'border-danger-500',
     ],
     variant === 'filled' && [
-      'bg-neutral-100',
-      isFocused && 'bg-neutral-50 border-2 border-primary-500',
+      'bg-surface-3',
+      isFocused && 'bg-surface-2 border-2 border-primary-500',
       !isFocused && 'border-0',
       error && 'border-2 border-danger-500',
     ],
-    !editable && 'opacity-60 bg-neutral-100',
+    !editable && 'opacity-60 bg-surface-3',
   );
 
-  // Input text classes
+  // Input text classes for dark theme
   const inputClasses = cn(
-    'text-base text-neutral-900 px-4 py-3 min-h-[48px]',
+    'text-base text-text-primary px-4 py-3 min-h-[48px]',
     variant === 'filled' && isFocused && 'pt-3 pb-3',
     // Custom inputClassName (applied last for override capability)
     inputClassName,
   );
 
-  // Helper text classes
-  const helperClasses = cn('text-xs mt-1 ml-1', error ? 'text-danger-500' : 'text-neutral-500');
+  // Helper text classes for dark theme
+  const helperClasses = cn('text-xs mt-1 ml-1', error ? 'text-danger-500' : 'text-text-tertiary');
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [error ? '#ef4444' : '#e5e7eb', error ? '#ef4444' : '#3b82f6'],
+    outputRange: [error ? '#ef4444' : '#27272A', error ? '#ef4444' : '#a855f7'],
   });
 
   return (
@@ -120,7 +120,7 @@ export const ThemedInput = ({
       >
         <TextInput
           className={inputClasses}
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#71717A"
           onFocus={handleFocus}
           onBlur={handleBlur}
           editable={editable}

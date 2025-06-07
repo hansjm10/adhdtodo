@@ -29,10 +29,10 @@ export const ThemedContainer = ({
   // Base container classes
   const baseClasses = 'flex-1';
 
-  // Variant classes
+  // Variant classes with dark theme
   const variantClasses = {
-    screen: 'bg-neutral-50 p-screen-padding',
-    section: 'bg-white rounded-lg p-4 mb-4',
+    screen: 'bg-background-primary p-screen-padding',
+    section: 'bg-surface-1 rounded-card p-4 mb-4',
     content: 'flex-1',
   };
 

@@ -43,11 +43,11 @@ export const ThemedText = ({
     button: 'text-base font-semibold',
   };
 
-  // Color classes
+  // Color classes for dark theme
   const colorClasses = {
-    primary: 'text-neutral-900',
-    secondary: 'text-neutral-600',
-    tertiary: 'text-neutral-400',
+    primary: 'text-text-primary',
+    secondary: 'text-text-secondary',
+    tertiary: 'text-text-tertiary',
     success: 'text-success-500',
     warning: 'text-warning-500',
     danger: 'text-danger-500',
