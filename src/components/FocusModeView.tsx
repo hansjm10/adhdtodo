@@ -40,8 +40,8 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({
           onTaskSelect(item);
         }}
         testID={`task-${item.id}`}
-        style={getModeCardStyle(isSelected)}
         className="mb-2"
+        style={getModeCardStyle(isSelected)}
       >
         <View className="flex-row justify-between items-center">
           <ThemedText variant="body" color="primary" numberOfLines={1} className="flex-1 mr-2">

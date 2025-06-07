@@ -207,7 +207,8 @@ const EditTaskScreen = () => {
             multiline
             numberOfLines={3}
             maxLength={500}
-            className="min-h-[80px] align-top mb-5"
+            className="min-h-[80px] mb-5"
+            inputClassName="align-top"
           />
 
           <ThemedText variant="body" color="primary" weight="semibold" className="mb-2">

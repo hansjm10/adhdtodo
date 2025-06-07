@@ -204,8 +204,7 @@ const NotificationBanner = ({ notification, onDismiss, onPress }: NotificationBa
       {...panResponder.panHandlers}
     >
       <TouchableOpacity
-        className="flex-row items-center px-4 pb-4 pt-10"
-        style={{ minHeight: BANNER_HEIGHT }}
+        className={`flex-row items-center px-4 pb-4 pt-10 min-h-[${BANNER_HEIGHT}px]`}
         activeOpacity={0.9}
         onPress={() => {
           if (onPress) onPress();

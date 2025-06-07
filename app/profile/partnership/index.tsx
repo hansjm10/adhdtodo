@@ -221,7 +221,7 @@ const PartnershipScreen = () => {
                 variant="h1"
                 color="primary"
                 weight="bold"
-                className="tracking-wider mb-4"
+                className="mb-4 tracking-wider"
               >
                 {inviteCode}
               </ThemedText>

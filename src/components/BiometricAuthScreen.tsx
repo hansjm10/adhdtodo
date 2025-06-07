@@ -251,7 +251,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
 
   // Show biometric authentication
   return (
-    <ThemedContainer variant="screen" safeArea centered className="bg-neutral-50">
+    <ThemedContainer variant="screen" safeArea centered className="bg-[#F9FAFB]">
       <ThemedCard variant="elevated" spacing="large" className="max-w-[400px] w-full">
         <View className="items-center mb-6">
           <View className="mb-4">

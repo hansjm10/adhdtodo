@@ -152,7 +152,8 @@ const EncouragementModal = ({
               numberOfLines={3}
               maxLength={200}
               editable={!sending}
-              className="mx-5 min-h-[80px] align-top"
+              className="mx-5 min-h-[80px]"
+              inputClassName="align-top"
             />
             <ThemedText variant="caption" color="tertiary" align="right" className="mt-1 mr-5 mb-5">
               {customMessage.length}/200

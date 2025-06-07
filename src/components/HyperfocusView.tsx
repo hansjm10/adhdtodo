@@ -38,7 +38,7 @@ export const HyperfocusView: React.FC<HyperfocusViewProps> = ({
 
   if (!task) {
     return (
-      <ThemedContainer variant="content" safeArea centered className="bg-neutral-900">
+      <ThemedContainer variant="content" safeArea centered className="bg-[#171717]">
         <ThemedIcon name="alert-circle-outline" size="xl" color="danger" />
         <ThemedText variant="h3" color="danger" align="center" className="mt-4">
           Task not found
@@ -48,7 +48,7 @@ export const HyperfocusView: React.FC<HyperfocusViewProps> = ({
   }
 
   // Background color based on mode
-  const backgroundColor = isBreak ? '#2E7D32' : '#1a1a1a';
+  const _backgroundColor = isBreak ? '#2E7D32' : '#1a1a1a';
 
   const motivationMessage = (() => {
     if (isBreak) return '🌟 Great job! Enjoy your break';
@@ -57,7 +57,11 @@ export const HyperfocusView: React.FC<HyperfocusViewProps> = ({
   })();
 
   return (
-    <ThemedContainer variant="content" safeArea style={{ backgroundColor }}>
+    <ThemedContainer
+      variant="content"
+      safeArea
+      className={isBreak ? 'bg-[#2E7D32]' : 'bg-[#1a1a1a]'}
+    >
       {/* Header with Exit Button */}
       <View className="flex-row justify-end p-4">
         <TouchableOpacity testID="exit-button" className="p-3 rounded-lg" onPress={onExit}>

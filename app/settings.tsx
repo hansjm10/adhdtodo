@@ -354,7 +354,8 @@ const SettingRow: React.FC<SettingRowProps> = ({
           onChangeText={onChangeText}
           keyboardType="numeric"
           maxLength={maxLength}
-          className="w-[60px] text-center"
+          className="w-[60px]"
+          inputClassName="text-center"
         />
         <ThemedText variant="body" color="secondary" className="ml-2">
           {suffix}
