@@ -7,7 +7,7 @@ import type { AppStateStatus } from 'react-native';
 import { Alert, AppState } from 'react-native';
 import type { BiometricAuthResult, SecuritySettings } from '../services/BiometricAuthService';
 import BiometricAuthService from '../services/BiometricAuthService';
-import { PINAuthService } from '../services/PINAuthService';
+import PINAuthService from '../services/PINAuthService';
 import SecureLogger from '../services/SecureLogger';
 
 interface AuthContextType {
@@ -194,7 +194,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 
   const authenticateWithPIN = useCallback(async (pin: string): Promise<boolean> => {
-    const isValid = await PINAuthService.verifyPIN(pin);
+    const result = await PINAuthService.verifyPIN(pin);
+    const isValid = result.success && result.data === true;
+
     if (isValid) {
       await PINAuthService.resetFailedPINAttempts();
       recordActivity();

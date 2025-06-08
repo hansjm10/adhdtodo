@@ -1,8 +1,10 @@
 // ABOUTME: Connection monitoring service for network state management
 // Provides connection status, error handling, and automatic retry mechanisms
 
+import { BaseService } from './BaseService';
 // import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { supabase } from './SupabaseService';
+import type { Result } from '../types/common.types';
 
 interface NetInfoState {
   isConnected: boolean | null;
@@ -49,7 +51,7 @@ export interface ConnectionEvent {
 
 type ConnectionCallback = (event: ConnectionEvent) => void;
 
-class ConnectionMonitor {
+class ConnectionMonitor extends BaseService {
   private currentState: ConnectionState | null = null;
   private callbacks: Set<ConnectionCallback> = new Set();
   private isMonitoring = false;
@@ -67,6 +69,10 @@ class ConnectionMonitor {
   // Health check state
   private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
   private readonly HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+
+  constructor() {
+    super('ConnectionMonitor');
+  }
 
   /**
    * Start monitoring connection state
@@ -102,7 +108,9 @@ class ConnectionMonitor {
 
     this.stopHealthChecks();
 
-    console.info('📡 Connection monitoring stopped');
+    this.logger.info('📡 Connection monitoring stopped', {
+      code: 'CONNECTION_MONITOR_001',
+    });
   }
 
   /**
@@ -149,14 +157,16 @@ class ConnectionMonitor {
   /**
    * Manual connection test
    */
-  async testConnection(): Promise<{
-    success: boolean;
-    latency?: number;
-    error?: Error;
-  }> {
-    const startTime = Date.now();
+  async testConnection(): Promise<
+    Result<{
+      success: boolean;
+      latency?: number;
+      error?: Error;
+    }>
+  > {
+    return this.wrapAsync('testConnection', async () => {
+      const startTime = Date.now();
 
-    try {
       // Test Supabase connection
       const { error } = await supabase.from('users').select('id').limit(1);
 
@@ -172,14 +182,7 @@ class ConnectionMonitor {
         success: true,
         latency,
       };
-    } catch (error) {
-      this.onConnectionFailure(error as Error);
-
-      return {
-        success: false,
-        error: error as Error,
-      };
-    }
+    });
   }
 
   /**
@@ -285,12 +288,16 @@ class ConnectionMonitor {
     this.healthCheckInterval = setInterval(() => {
       if (this.isConnected()) {
         void this.testConnection().then((result) => {
-          if (result.success && result.latency && result.latency > this.SLOW_CONNECTION_THRESHOLD) {
+          if (
+            result.success &&
+            result.data?.latency &&
+            result.data.latency > this.SLOW_CONNECTION_THRESHOLD
+          ) {
             this.emitEvent({
               type: 'slow',
               timestamp: new Date(),
               connectionState: this.currentState!,
-              metadata: { latency: result.latency },
+              metadata: { latency: result.data.latency },
             });
           }
         });
@@ -317,7 +324,9 @@ class ConnectionMonitor {
 
     if (this.isCircuitOpen) {
       this.isCircuitOpen = false;
-      console.info('🔓 Circuit breaker closed - connection restored');
+      this.logger.info('🔓 Circuit breaker closed - connection restored', {
+        code: 'CONNECTION_MONITOR_002',
+      });
     }
   }
 
@@ -330,12 +339,17 @@ class ConnectionMonitor {
 
     if (this.failureCount >= this.FAILURE_THRESHOLD) {
       this.isCircuitOpen = true;
-      console.info('🔒 Circuit breaker opened due to repeated failures');
+      this.logger.info('🔒 Circuit breaker opened due to repeated failures', {
+        code: 'CONNECTION_MONITOR_003',
+        context: JSON.stringify({ failureCount: this.failureCount }),
+      });
 
       // Set timeout to try again later
       setTimeout(() => {
         this.isCircuitOpen = false;
-        console.info('⏰ Circuit breaker timeout - attempting to close');
+        this.logger.info('⏰ Circuit breaker timeout - attempting to close', {
+          code: 'CONNECTION_MONITOR_004',
+        });
       }, this.CIRCUIT_TIMEOUT);
     }
 
@@ -365,7 +379,7 @@ class ConnectionMonitor {
       try {
         callback(event);
       } catch (error) {
-        console.error('Error in connection event callback:', error);
+        this.logError('emitEvent', error);
       }
     });
   }

@@ -179,10 +179,15 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
     if (!user) return;
 
     try {
-      const session = await CollaborativeEditingService.startEditSession(taskId, user.id);
-      dispatch({ type: 'START_SESSION', payload: { taskId, session } });
-      dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId } });
-      dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: true } });
+      const sessionResult = await CollaborativeEditingService.startEditSession(taskId, user.id);
+      if (sessionResult.success && sessionResult.data) {
+        dispatch({ type: 'START_SESSION', payload: { taskId, session: sessionResult.data } });
+        dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId } });
+        dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: true } });
+      } else {
+        console.error('Failed to start editing session');
+        dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: false } });
+      }
     } catch (error) {
       console.error('Failed to start editing session:', error);
       dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: false } });
@@ -206,7 +211,8 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
 
   const applyOperation = async (operation: EditOperation): Promise<boolean> => {
     try {
-      const success = await CollaborativeEditingService.applyOperation(operation);
+      const result = await CollaborativeEditingService.applyOperation(operation);
+      const success = result.success && result.data === true;
       if (success) {
         dispatch({ type: 'ADD_OPERATION', payload: { operation } });
         dispatch({ type: 'SYNC_COMPLETE', payload: { timestamp: new Date() } });
@@ -232,7 +238,12 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
     if (!user || !state.currentTaskId) return false;
 
     try {
-      return await CollaborativeEditingService.toggleTaskLock(state.currentTaskId, user.id, lock);
+      const result = await CollaborativeEditingService.toggleTaskLock(
+        state.currentTaskId,
+        user.id,
+        lock,
+      );
+      return result.success && result.data === true;
     } catch (error) {
       console.error('Failed to toggle task lock:', error);
       return false;

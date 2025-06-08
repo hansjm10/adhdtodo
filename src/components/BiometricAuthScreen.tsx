@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import type { BiometricSupport, SecuritySettings } from '../services/BiometricAuthService';
 import BiometricAuthService from '../services/BiometricAuthService';
-import { PINAuthService } from '../services/PINAuthService';
+import PINAuthService from '../services/PINAuthService';
 
 interface BiometricAuthScreenProps {
   onSuccess: () => void;
@@ -44,12 +44,13 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
 
   const checkAuthMethods = async () => {
     try {
-      const [support, pinEnabled, settings] = await Promise.all([
+      const [support, pinEnabledResult, settings] = await Promise.all([
         BiometricAuthService.checkBiometricSupport(),
         PINAuthService.isPINEnabled(),
         BiometricAuthService.getSecuritySettings(),
       ]);
 
+      const pinEnabled = pinEnabledResult.success && pinEnabledResult.data === true;
       setBiometricSupport(support);
       setIsPINEnabled(pinEnabled);
       setSecuritySettings(settings);
@@ -104,12 +105,15 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
 
     setLoading(true);
     try {
-      const isValid = await PINAuthService.verifyPIN(pin);
+      const verifyResult = await PINAuthService.verifyPIN(pin);
+      const isValid = verifyResult.success && verifyResult.data === true;
+
       if (isValid) {
         await PINAuthService.resetFailedPINAttempts();
         onSuccess();
       } else {
-        const attempts = await PINAuthService.recordFailedPINAttempt();
+        const attemptsResult = await PINAuthService.recordFailedPINAttempt();
+        const attempts = attemptsResult.success ? (attemptsResult.data ?? 0) : 0;
         const maxAttempts = securitySettings?.maxFailedAttempts ?? 5;
         const remaining = maxAttempts - attempts;
 

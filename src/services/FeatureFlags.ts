@@ -1,7 +1,9 @@
 // ABOUTME: Feature flag service for controlling rollout of new features
 // Controls which services use Supabase vs local implementations
 
+import { BaseService } from './BaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Result } from '../types/common.types';
 
 export interface FeatureFlags {
   useSupabaseAuth: boolean;
@@ -17,60 +19,68 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enableRealTimeSync: false,
 };
 
-class FeatureFlagService {
+class FeatureFlagService extends BaseService {
   private static STORAGE_KEY = '@feature_flags';
   private flags: FeatureFlags = { ...DEFAULT_FLAGS };
   private initialized = false;
 
-  async initialize(): Promise<void> {
-    if (this.initialized) return;
+  constructor() {
+    super('FeatureFlags');
+  }
 
-    try {
+  async initialize(): Promise<Result<void>> {
+    if (this.initialized) return { success: true, data: undefined };
+
+    return this.wrapAsync('initialize', async () => {
       const stored = await AsyncStorage.getItem(FeatureFlagService.STORAGE_KEY);
       if (stored) {
         this.flags = { ...DEFAULT_FLAGS, ...(JSON.parse(stored) as Partial<FeatureFlags>) };
       }
       this.initialized = true;
-    } catch (error) {
-      console.error('Failed to load feature flags:', error);
+    });
+  }
+
+  async setFlag(flag: keyof FeatureFlags, value: boolean): Promise<Result<void>> {
+    return this.wrapAsync(
+      'setFlag',
+      async () => {
+        await this.initialize();
+        this.flags[flag] = value;
+        await AsyncStorage.setItem(FeatureFlagService.STORAGE_KEY, JSON.stringify(this.flags));
+      },
+      { flag, value },
+    );
+  }
+
+  async getFlag(flag: keyof FeatureFlags): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'getFlag',
+      async () => {
+        await this.initialize();
+        return this.flags[flag];
+      },
+      { flag },
+    );
+  }
+
+  async getAllFlags(): Promise<Result<FeatureFlags>> {
+    return this.wrapAsync('getAllFlags', async () => {
+      await this.initialize();
+      return { ...this.flags };
+    });
+  }
+
+  async resetToDefaults(): Promise<Result<void>> {
+    return this.wrapAsync('resetToDefaults', async () => {
       this.flags = { ...DEFAULT_FLAGS };
-      this.initialized = true;
-    }
-  }
-
-  async setFlag(flag: keyof FeatureFlags, value: boolean): Promise<void> {
-    await this.initialize();
-    this.flags[flag] = value;
-
-    try {
-      await AsyncStorage.setItem(FeatureFlagService.STORAGE_KEY, JSON.stringify(this.flags));
-    } catch (error) {
-      console.error('Failed to save feature flags:', error);
-    }
-  }
-
-  async getFlag(flag: keyof FeatureFlags): Promise<boolean> {
-    await this.initialize();
-    return this.flags[flag];
-  }
-
-  async getAllFlags(): Promise<FeatureFlags> {
-    await this.initialize();
-    return { ...this.flags };
-  }
-
-  async resetToDefaults(): Promise<void> {
-    this.flags = { ...DEFAULT_FLAGS };
-    try {
       await AsyncStorage.removeItem(FeatureFlagService.STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to reset feature flags:', error);
-    }
+    });
   }
 
   // Convenience methods for specific features
   async isSupabaseAuthEnabled(): Promise<boolean> {
-    return this.getFlag('useSupabaseAuth');
+    const result = await this.getFlag('useSupabaseAuth');
+    return result.success && result.data ? result.data : false;
   }
 
   isDataMigrationEnabled(): boolean {
@@ -79,19 +89,22 @@ class FeatureFlagService {
   }
 
   async isRealTimeSyncEnabled(): Promise<boolean> {
-    return this.getFlag('enableRealTimeSync');
+    const result = await this.getFlag('enableRealTimeSync');
+    return result.success && result.data ? result.data : false;
   }
 
   // Enable Supabase features gradually
-  async enableSupabaseAuth(): Promise<void> {
-    await this.setFlag('useSupabaseAuth', true);
+  async enableSupabaseAuth(): Promise<Result<void>> {
+    return this.setFlag('useSupabaseAuth', true);
   }
 
-  async enableAllSupabaseFeatures(): Promise<void> {
-    await this.setFlag('useSupabaseAuth', true);
-    await this.setFlag('useSupabaseTaskStorage', true);
-    await this.setFlag('useSupabaseNotifications', true);
-    await this.setFlag('enableRealTimeSync', true);
+  async enableAllSupabaseFeatures(): Promise<Result<void>> {
+    return this.wrapAsync('enableAllSupabaseFeatures', async () => {
+      await this.setFlag('useSupabaseAuth', true);
+      await this.setFlag('useSupabaseTaskStorage', true);
+      await this.setFlag('useSupabaseNotifications', true);
+      await this.setFlag('enableRealTimeSync', true);
+    });
   }
 }
 

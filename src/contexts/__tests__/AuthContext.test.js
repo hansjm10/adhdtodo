@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { AuthProvider, useAuth } from '../AuthContext';
 import BiometricAuthService from '../../services/BiometricAuthService';
-import { PINAuthService } from '../../services/PINAuthService';
+import PINAuthService from '../../services/PINAuthService';
 import SecureLogger from '../../services/SecureLogger';
 
 // Mock services
