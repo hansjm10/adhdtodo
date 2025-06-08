@@ -1,12 +1,18 @@
 // ABOUTME: Async error boundary component for handling promise rejections
 // Provides error recovery for async operations with ADHD-friendly UI
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
-
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Button, ActivityIndicator } from 'react-native';
 import { logError } from '../utils/ErrorHandler';
 import { theme } from '../styles';
+
+// Declare window for React Native Web compatibility
+declare const window:
+  | {
+      addEventListener?: (type: string, listener: (event: Event) => void) => void;
+      removeEventListener?: (type: string, listener: (event: Event) => void) => void;
+    }
+  | undefined;
 
 interface Props {
   children: ReactNode;
@@ -30,8 +36,14 @@ const AsyncErrorBoundary: React.FC<Props> = ({
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const handleUnhandledRejection = (event: any): void => {
-      const reason = event?.reason as { message?: string } | string | undefined;
+    const handleUnhandledRejection = (event: Event): void => {
+      // Handle as PromiseRejectionEvent - reason might be undefined
+      const promiseEvent = event as PromiseRejectionEvent;
+      const reason = ('reason' in event ? promiseEvent.reason : undefined) as
+        | Error
+        | { message?: string }
+        | string
+        | undefined;
 
       let errorMessage = 'Unhandled promise rejection';
       if (typeof reason === 'string') {
@@ -50,26 +62,17 @@ const AsyncErrorBoundary: React.FC<Props> = ({
       }
 
       // Prevent default error handling
-
-      if (event && typeof event.preventDefault === 'function') {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        event.preventDefault();
-      }
+      promiseEvent.preventDefault();
     };
 
     // Use global window object for web compatibility
-
-    const globalWindow = (global as any).window ?? ({} as any);
-
-    if (globalWindow.addEventListener) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      globalWindow.addEventListener('unhandledrejection', handleUnhandledRejection);
+    if (window?.addEventListener) {
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
     }
 
     return () => {
-      if (globalWindow.removeEventListener) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        globalWindow.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      if (window?.removeEventListener) {
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       }
     };
   }, [onError]);
@@ -140,7 +143,7 @@ const AsyncErrorBoundary: React.FC<Props> = ({
   return children as React.ReactElement;
 };
 
-const styles: any = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -207,5 +210,3 @@ const styles: any = StyleSheet.create({
 });
 
 export default AsyncErrorBoundary;
-
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */

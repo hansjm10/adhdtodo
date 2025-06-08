@@ -7,6 +7,28 @@ import type { ErrorResponse, Result } from '../types/common.types';
 /**
  * Abstract base service class that provides centralized error handling
  * All services should extend this class to ensure consistent error handling
+ *
+ * @example
+ * ```typescript
+ * class MyService extends BaseService {
+ *   constructor() {
+ *     super('MyService');
+ *   }
+ *
+ *   async fetchData(): Promise<Result<Data>> {
+ *     return this.wrapAsync('fetchData', async () => {
+ *       const response = await api.getData();
+ *       return response.data;
+ *     });
+ *   }
+ * }
+ * ```
+ *
+ * Error Code Convention:
+ * - Format: `{SERVICE_NAME}_{OPERATION}_ERROR`
+ * - Example: `AUTHSERVICE_LOGIN_ERROR`
+ * - All error codes are uppercase with underscores
+ * - Service name and operation are derived from method parameters
  */
 export abstract class BaseService {
   protected readonly logger = SecureLogger;
@@ -18,10 +40,22 @@ export abstract class BaseService {
 
   /**
    * Handles errors in a consistent way across all services
-   * @param error The error that occurred
-   * @param operation The operation that was being performed
-   * @param context Additional context about the error
-   * @returns Standardized error response
+   * Logs the error and returns a sanitized error response
+   *
+   * @param error - The error that occurred (can be any type)
+   * @param operation - The operation that was being performed (e.g., 'login', 'save')
+   * @param context - Additional context about the error (e.g., userId, taskId)
+   * @returns Standardized error response with code, message, and optional details
+   *
+   * @example
+   * ```typescript
+   * const error = this.handleError(
+   *   new Error('Network timeout'),
+   *   'fetchTasks',
+   *   { userId: '123' }
+   * );
+   * // Returns: { code: 'TASKSERVICE_FETCHTASKS_ERROR', message: '...', details: {...} }
+   * ```
    */
   protected handleError(
     error: unknown,
@@ -68,10 +102,22 @@ export abstract class BaseService {
 
   /**
    * Wraps an async operation with error handling
-   * @param operation The operation name
-   * @param fn The async function to execute
-   * @param context Additional context
-   * @returns Result with data or error
+   * Automatically catches and handles any errors that occur
+   *
+   * @param operation - The operation name for error tracking
+   * @param fn - The async function to execute
+   * @param context - Additional context for error logging
+   * @returns Result with data on success or error on failure
+   *
+   * @example
+   * ```typescript
+   * async saveTask(task: Task): Promise<Result<Task>> {
+   *   return this.wrapAsync('saveTask', async () => {
+   *     const saved = await database.save(task);
+   *     return saved;
+   *   }, { taskId: task.id });
+   * }
+   * ```
    */
   protected async wrapAsync<T>(
     operation: string,
@@ -91,10 +137,22 @@ export abstract class BaseService {
 
   /**
    * Wraps a sync operation with error handling
-   * @param operation The operation name
-   * @param fn The function to execute
-   * @param context Additional context
-   * @returns Result with data or error
+   * Automatically catches and handles any errors that occur
+   *
+   * @param operation - The operation name for error tracking
+   * @param fn - The synchronous function to execute
+   * @param context - Additional context for error logging
+   * @returns Result with data on success or error on failure
+   *
+   * @example
+   * ```typescript
+   * validateInput(input: string): Result<boolean> {
+   *   return this.wrapSync('validateInput', () => {
+   *     if (!input) throw new Error('Input required');
+   *     return true;
+   *   });
+   * }
+   * ```
    */
   protected wrapSync<T>(
     operation: string,

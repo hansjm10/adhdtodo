@@ -11,6 +11,9 @@ type RetryFunction = () => void;
 
 class ErrorHandler {
   private static logger = SecureLogger;
+  private static errorCounts = new Map<string, { count: number; lastReset: number }>();
+  private static readonly RATE_LIMIT_WINDOW = 60000; // 1 minute
+  private static readonly MAX_ERRORS_PER_WINDOW = 10;
 
   /**
    * Converts various error types to a standardized ErrorResponse
@@ -55,10 +58,40 @@ class ErrorHandler {
 
   /**
    * Centralized error logging that respects environment settings
+   * Includes rate limiting to prevent log flooding
    * @param context The context where the error occurred
    * @param error The error to log
    */
   static logError(context: string, error: unknown): void {
+    // Check rate limit
+    const now = Date.now();
+    const errorKey = context;
+    const errorData = this.errorCounts.get(errorKey);
+
+    if (errorData) {
+      if (now - errorData.lastReset > this.RATE_LIMIT_WINDOW) {
+        // Reset counter after window expires
+        this.errorCounts.set(errorKey, { count: 1, lastReset: now });
+      } else if (errorData.count >= this.MAX_ERRORS_PER_WINDOW) {
+        // Rate limit exceeded, skip logging
+        if (errorData.count === this.MAX_ERRORS_PER_WINDOW) {
+          // Log once that we're rate limiting
+          this.logger.warn(
+            `Rate limit exceeded for ${context} errors. Suppressing further logs for this window.`,
+            {
+              code: 'RATE_LIMIT_EXCEEDED',
+            },
+          );
+        }
+        errorData.count++;
+        return;
+      } else {
+        errorData.count++;
+      }
+    } else {
+      this.errorCounts.set(errorKey, { count: 1, lastReset: now });
+    }
+
     if (global.__DEV__) {
       console.error(`[${context}] Error:`, error);
     }

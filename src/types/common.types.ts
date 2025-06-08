@@ -144,7 +144,14 @@ export function isValidationResult(value: unknown): value is ValidationResult {
   }
 
   // All items in errors array must be valid ValidationError objects
-  return obj.errors.every(isValidationError);
+  // For performance, only validate up to MAX_VALIDATION_ERRORS items
+  const itemsToValidate = Math.min(obj.errors.length, MAX_VALIDATION_ERRORS);
+  for (let i = 0; i < itemsToValidate; i++) {
+    if (!isValidationError(obj.errors[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

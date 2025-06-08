@@ -1,8 +1,6 @@
 // ABOUTME: React error boundary component for catching and displaying runtime errors
 // Provides ADHD-friendly error messages and recovery options
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
-
 import React, { Component, type ReactNode, type ErrorInfo } from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { logError } from '../utils/ErrorHandler';
@@ -96,7 +94,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-const styles: any = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -158,5 +156,3 @@ const styles: any = StyleSheet.create({
 });
 
 export default ErrorBoundary;
-
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
