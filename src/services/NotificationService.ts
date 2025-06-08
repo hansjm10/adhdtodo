@@ -278,12 +278,10 @@ export class NotificationService extends BaseService implements INotificationSer
     return this.wrapAsync(
       'sendEncouragement',
       async () => {
-        const fromUserResult = await UserStorageService.getUserById(fromUserId);
-        if (!fromUserResult.success || !fromUserResult.data) {
+        const fromUser = await UserStorageService.getUserById(fromUserId);
+        if (!fromUser) {
           return false;
         }
-
-        const fromUser = fromUserResult.data;
         const result = await this.sendNotification(toUserId, NOTIFICATION_TYPES.ENCOURAGEMENT, {
           fromUserId,
           fromUserName: fromUser.name ?? 'Unknown User',
@@ -305,12 +303,10 @@ export class NotificationService extends BaseService implements INotificationSer
     return this.wrapAsync(
       'sendCheckIn',
       async () => {
-        const fromUserResult = await UserStorageService.getUserById(fromUserId);
-        if (!fromUserResult.success || !fromUserResult.data) {
+        const fromUser = await UserStorageService.getUserById(fromUserId);
+        if (!fromUser) {
           return false;
         }
-
-        const fromUser = fromUserResult.data;
         const result = await this.sendNotification(toUserId, NOTIFICATION_TYPES.CHECK_IN, {
           fromUserId,
           fromUserName: fromUser.name ?? 'Unknown User',

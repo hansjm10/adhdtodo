@@ -35,8 +35,10 @@ const SettingsScreen = () => {
   }, []);
 
   const loadSettings = async () => {
-    const loaded = await settingsService.loadSettings();
-    setSettings(loaded);
+    const result = await settingsService.loadSettings();
+    if (result.success && result.data) {
+      setSettings(result.data);
+    }
   };
 
   const handleSave = async () => {

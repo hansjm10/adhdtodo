@@ -421,7 +421,7 @@ export class SupabaseAuthService extends BaseService implements IAuthService {
   async resetPassword(_email: string, _newPassword: string): Promise<PasswordResetResult> {
     const result = await this.wrapAsync(
       'resetPassword',
-      () => {
+      async () => {
         // In a real implementation, this would send a reset email
         // For now, we'll implement direct reset for development
 
@@ -429,24 +429,28 @@ export class SupabaseAuthService extends BaseService implements IAuthService {
         // 1. Send reset email: await supabase.auth.resetPasswordForEmail(email)
         // 2. Update password with token from email
 
+        // Simulate async operation
+        await Promise.resolve();
+
         this.logger.info('Password reset requested', {
           code: 'SUPABASE_RESET_001',
         });
 
-        return {
+        const resetResult: PasswordResetResult = {
           success: true,
           message: 'If an account exists, a password reset email has been sent',
         };
+        return resetResult;
       },
       { email: _email },
     );
 
-    if (result.success) {
-      return result.data!;
+    if (result.success && result.data) {
+      return result.data;
     }
     return {
       success: false,
-      error: result.error!.message,
+      message: result.error?.message ?? 'Password reset failed',
     };
   }
 

@@ -63,9 +63,13 @@ export default function TabLayout() {
     try {
       const user = await UserStorageService.getCurrentUser();
       if (user) {
-        const notifications = await NotificationService.getNotificationsForUser(user.id);
-        const unread = notifications.filter((n) => !n.read).length;
-        setUnreadCount(unread);
+        const result = await NotificationService.getNotificationsForUser(user.id);
+        if (result.success && result.data) {
+          const unread = result.data.filter((n) => !n.read).length;
+          setUnreadCount(unread);
+        } else {
+          setUnreadCount(0);
+        }
       }
     } catch (error) {
       // Log error but don't disrupt UI - notification count is non-critical

@@ -210,8 +210,10 @@ const TaskListView: React.FC<TaskListViewProps> = ({
 
   useEffect(() => {
     const loadSettings = async () => {
-      const settings = await settingsService.loadSettings();
-      setTaskLimit(settings.taskLimit);
+      const result = await settingsService.loadSettings();
+      if (result.success && result.data) {
+        setTaskLimit(result.data.taskLimit);
+      }
     };
     void loadSettings();
   }, []);

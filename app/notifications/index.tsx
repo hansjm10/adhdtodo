@@ -50,12 +50,16 @@ const NotificationListScreen = () => {
       const user = await UserStorageService.getCurrentUser();
       if (user) {
         setCurrentUser(user);
-        const userNotifications = await NotificationService.getNotificationsForUser(user.id);
-        // Sort by timestamp, newest first
-        const sortedNotifications = userNotifications.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-        );
-        setNotifications(sortedNotifications);
+        const result = await NotificationService.getNotificationsForUser(user.id);
+        if (result.success && result.data) {
+          // Sort by timestamp, newest first
+          const sortedNotifications = result.data.sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+          );
+          setNotifications(sortedNotifications);
+        } else {
+          setNotifications([]);
+        }
       }
     } catch (error) {
       // Error loading notifications
