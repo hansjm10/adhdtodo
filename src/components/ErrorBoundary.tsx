@@ -69,7 +69,6 @@ class ErrorBoundary extends Component<Props, State> {
       // Default error UI
       return (
         <View style={styles.container}>
-          <Text style={styles.emoji}>😵</Text>
           <Text style={styles.title}>Oops! Something went wrong</Text>
           <Text style={styles.message}>Don&apos;t worry, it happens! Let&apos;s try again.</Text>
 
@@ -103,11 +102,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
 
     backgroundColor: theme.colors.background,
-  },
-  emoji: {
-    fontSize: 72,
-
-    marginBottom: theme.spacing.lg,
   },
   title: {
     fontSize: theme.typography.h1.fontSize,

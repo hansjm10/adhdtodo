@@ -101,7 +101,6 @@ const AsyncErrorBoundary: React.FC<Props> = ({
   if (error) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emoji}>🔄</Text>
         <Text style={styles.title}>Connection Issue</Text>
         <Text style={styles.message}>
           Having trouble connecting. Let&apos;s give it another shot!
@@ -148,11 +147,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
 
     backgroundColor: theme.colors.background,
-  },
-  emoji: {
-    fontSize: 72,
-
-    marginBottom: theme.spacing.lg,
   },
   title: {
     fontSize: theme.typography.h1.fontSize,
