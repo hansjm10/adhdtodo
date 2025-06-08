@@ -2,8 +2,10 @@
 // including Face ID, Touch ID, and PIN fallback functionality
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { BiometricAuthService } from '../BiometricAuthService';
-import { SecureStorageService } from '../SecureStorageService';
+
+// Import the actual class for testing
+const BiometricAuthServiceModule = jest.requireActual('../BiometricAuthService');
+const { BiometricAuthService } = BiometricAuthServiceModule;
 
 // Mock dependencies
 jest.mock('expo-local-authentication', () => ({
@@ -18,17 +20,54 @@ jest.mock('expo-local-authentication', () => ({
   },
 }));
 
+// Create mock functions
+const mockSaveSecure = jest.fn();
+const mockGetSecure = jest.fn();
+const mockDeleteSecure = jest.fn();
+
 jest.mock('../SecureStorageService', () => ({
-  SecureStorageService: {
-    saveSecure: jest.fn(),
-    getSecure: jest.fn(),
-    deleteSecure: jest.fn(),
+  default: {
+    saveSecure: mockSaveSecure,
+    getSecure: mockGetSecure,
+    deleteSecure: mockDeleteSecure,
+  },
+}));
+
+// Mock BaseService to avoid complex inheritance issues in tests
+jest.mock('../BaseService', () => ({
+  BaseService: class {
+    constructor(serviceName) {
+      this.serviceName = serviceName;
+      this.logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    }
+
+    async wrapAsync(_operation, fn, _context) {
+      try {
+        const data = await fn();
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: { message: error.message } };
+      }
+    }
+
+    logError(_operation, _error) {
+      // Mock implementation
+    }
   },
 }));
 
 describe('BiometricAuthService', () => {
+  let biometricAuthService;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Create a new instance for each test with mocked dependencies
+    const mockSecureStorageService = {
+      saveSecure: mockSaveSecure,
+      getSecure: mockGetSecure,
+      deleteSecure: mockDeleteSecure,
+    };
+    biometricAuthService = new BiometricAuthService(mockSecureStorageService);
   });
 
   describe('checkBiometricSupport', () => {
@@ -39,7 +78,7 @@ describe('BiometricAuthService', () => {
       ]);
       LocalAuthentication.isEnrolledAsync.mockResolvedValue(true);
 
-      const support = await BiometricAuthService.checkBiometricSupport();
+      const support = await biometricAuthService.checkBiometricSupport();
 
       expect(support).toEqual({
         hasHardware: true,
@@ -56,7 +95,7 @@ describe('BiometricAuthService', () => {
       ]);
       LocalAuthentication.isEnrolledAsync.mockResolvedValue(true);
 
-      const support = await BiometricAuthService.checkBiometricSupport();
+      const support = await biometricAuthService.checkBiometricSupport();
 
       expect(support.biometricType).toBe('fingerprint');
     });
@@ -68,7 +107,7 @@ describe('BiometricAuthService', () => {
       ]);
       LocalAuthentication.isEnrolledAsync.mockResolvedValue(true);
 
-      const support = await BiometricAuthService.checkBiometricSupport();
+      const support = await biometricAuthService.checkBiometricSupport();
 
       expect(support.biometricType).toBe('iris');
     });
@@ -78,7 +117,7 @@ describe('BiometricAuthService', () => {
       LocalAuthentication.supportedAuthenticationTypesAsync.mockResolvedValue([]);
       LocalAuthentication.isEnrolledAsync.mockResolvedValue(false);
 
-      const support = await BiometricAuthService.checkBiometricSupport();
+      const support = await biometricAuthService.checkBiometricSupport();
 
       expect(support.biometricType).toBe('none');
     });
@@ -89,9 +128,9 @@ describe('BiometricAuthService', () => {
       LocalAuthentication.authenticateAsync.mockResolvedValue({
         success: true,
       });
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockSaveSecure.mockResolvedValue();
 
-      const result = await BiometricAuthService.authenticate();
+      const result = await biometricAuthService.authenticate();
 
       expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith({
         promptMessage: 'Authenticate to access your ADHD Todo data',
@@ -100,10 +139,7 @@ describe('BiometricAuthService', () => {
         disableDeviceFallback: false,
       });
       expect(result).toEqual({ success: true });
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith(
-        'LAST_AUTH_SUCCESS',
-        expect.any(String),
-      );
+      expect(mockSaveSecure).toHaveBeenCalledWith('LAST_AUTH_SUCCESS', expect.any(String));
     });
 
     it('should use custom prompt message when provided', async () => {
@@ -111,7 +147,7 @@ describe('BiometricAuthService', () => {
         success: true,
       });
 
-      await BiometricAuthService.authenticate('Access medication data');
+      await biometricAuthService.authenticate('Access medication data');
 
       expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -127,24 +163,24 @@ describe('BiometricAuthService', () => {
         warning: 'User cancelled authentication',
       });
 
-      const result = await BiometricAuthService.authenticate();
+      const result = await biometricAuthService.authenticate();
 
       expect(result).toEqual({
         success: false,
         error: 'user_cancel',
         warning: 'User cancelled authentication',
       });
-      expect(SecureStorageService.saveSecure).not.toHaveBeenCalled();
+      expect(mockSaveSecure).not.toHaveBeenCalled();
     });
 
     it('should handle authentication exceptions', async () => {
       LocalAuthentication.authenticateAsync.mockRejectedValue(new Error('Hardware error'));
 
-      const result = await BiometricAuthService.authenticate();
+      const result = await biometricAuthService.authenticate();
 
       expect(result).toEqual({
         success: false,
-        error: 'Authentication failed',
+        error: 'Hardware error',
       });
     });
   });
@@ -158,55 +194,46 @@ describe('BiometricAuthService', () => {
     };
 
     it('should save security settings', async () => {
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockSaveSecure.mockResolvedValue();
 
-      await BiometricAuthService.setupAppSecurity(mockSettings);
+      await biometricAuthService.setupAppSecurity(mockSettings);
 
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith(
-        'SECURITY_SETTINGS',
-        mockSettings,
-      );
+      expect(mockSaveSecure).toHaveBeenCalledWith('SECURITY_SETTINGS', mockSettings);
     });
 
     it('should enable launch authentication when required', async () => {
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockSaveSecure.mockResolvedValue();
 
-      await BiometricAuthService.setupAppSecurity({
+      await biometricAuthService.setupAppSecurity({
         ...mockSettings,
         requireAuthOnLaunch: true,
       });
 
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('LAUNCH_AUTH_ENABLED', true);
+      expect(mockSaveSecure).toHaveBeenCalledWith('LAUNCH_AUTH_ENABLED', true);
     });
 
     it('should enable sensitive data protection when required', async () => {
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockSaveSecure.mockResolvedValue();
 
-      await BiometricAuthService.setupAppSecurity({
+      await biometricAuthService.setupAppSecurity({
         ...mockSettings,
         sensitiveDataAuth: true,
       });
 
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith(
-        'SENSITIVE_DATA_AUTH_ENABLED',
-        true,
-      );
+      expect(mockSaveSecure).toHaveBeenCalledWith('SENSITIVE_DATA_AUTH_ENABLED', true);
     });
 
     it('should not enable features when disabled in settings', async () => {
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockSaveSecure.mockResolvedValue();
 
-      await BiometricAuthService.setupAppSecurity({
+      await biometricAuthService.setupAppSecurity({
         ...mockSettings,
         requireAuthOnLaunch: false,
         sensitiveDataAuth: false,
       });
 
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledTimes(1);
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith(
-        'SECURITY_SETTINGS',
-        expect.any(Object),
-      );
+      expect(mockSaveSecure).toHaveBeenCalledTimes(1);
+      expect(mockSaveSecure).toHaveBeenCalledWith('SECURITY_SETTINGS', expect.any(Object));
     });
   });
 
@@ -218,18 +245,18 @@ describe('BiometricAuthService', () => {
         autoLockTimeout: 300000,
         maxFailedAttempts: 3,
       };
-      SecureStorageService.getSecure.mockResolvedValue(mockSettings);
+      mockGetSecure.mockResolvedValue(mockSettings);
 
-      const settings = await BiometricAuthService.getSecuritySettings();
+      const settings = await biometricAuthService.getSecuritySettings();
 
       expect(settings).toEqual(mockSettings);
-      expect(SecureStorageService.getSecure).toHaveBeenCalledWith('SECURITY_SETTINGS');
+      expect(mockGetSecure).toHaveBeenCalledWith('SECURITY_SETTINGS');
     });
 
     it('should return default settings when none saved', async () => {
-      SecureStorageService.getSecure.mockResolvedValue(null);
+      mockGetSecure.mockResolvedValue(null);
 
-      const settings = await BiometricAuthService.getSecuritySettings();
+      const settings = await biometricAuthService.getSecuritySettings();
 
       expect(settings).toEqual({
         requireAuthOnLaunch: false,
@@ -242,63 +269,63 @@ describe('BiometricAuthService', () => {
 
   describe('recordFailedAttempt', () => {
     it('should increment failed attempt counter', async () => {
-      SecureStorageService.getSecure.mockResolvedValue(2);
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockGetSecure.mockResolvedValue(2);
+      mockSaveSecure.mockResolvedValue();
 
-      const count = await BiometricAuthService.recordFailedAttempt();
+      const count = await biometricAuthService.recordFailedAttempt();
 
       expect(count).toBe(3);
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('FAILED_AUTH_ATTEMPTS', 3);
+      expect(mockSaveSecure).toHaveBeenCalledWith('FAILED_AUTH_ATTEMPTS', 3);
     });
 
     it('should start counter at 1 for first failure', async () => {
-      SecureStorageService.getSecure.mockResolvedValue(null);
-      SecureStorageService.saveSecure.mockResolvedValue();
+      mockGetSecure.mockResolvedValue(null);
+      mockSaveSecure.mockResolvedValue();
 
-      const count = await BiometricAuthService.recordFailedAttempt();
+      const count = await biometricAuthService.recordFailedAttempt();
 
       expect(count).toBe(1);
-      expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('FAILED_AUTH_ATTEMPTS', 1);
+      expect(mockSaveSecure).toHaveBeenCalledWith('FAILED_AUTH_ATTEMPTS', 1);
     });
   });
 
   describe('resetFailedAttempts', () => {
     it('should delete failed attempt counter', async () => {
-      SecureStorageService.deleteSecure.mockResolvedValue();
+      mockDeleteSecure.mockResolvedValue();
 
-      await BiometricAuthService.resetFailedAttempts();
+      await biometricAuthService.resetFailedAttempts();
 
-      expect(SecureStorageService.deleteSecure).toHaveBeenCalledWith('FAILED_AUTH_ATTEMPTS');
+      expect(mockDeleteSecure).toHaveBeenCalledWith('FAILED_AUTH_ATTEMPTS');
     });
   });
 
   describe('checkIfLocked', () => {
     it('should return true when max attempts exceeded', async () => {
-      SecureStorageService.getSecure
+      mockGetSecure
         .mockResolvedValueOnce(5) // failed attempts
         .mockResolvedValueOnce({ maxFailedAttempts: 3 }); // settings
 
-      const isLocked = await BiometricAuthService.checkIfLocked();
+      const isLocked = await biometricAuthService.checkIfLocked();
 
       expect(isLocked).toBe(true);
     });
 
     it('should return false when under max attempts', async () => {
-      SecureStorageService.getSecure
+      mockGetSecure
         .mockResolvedValueOnce(2) // failed attempts
         .mockResolvedValueOnce({ maxFailedAttempts: 5 }); // settings
 
-      const isLocked = await BiometricAuthService.checkIfLocked();
+      const isLocked = await biometricAuthService.checkIfLocked();
 
       expect(isLocked).toBe(false);
     });
 
     it('should return false when no failed attempts', async () => {
-      SecureStorageService.getSecure
+      mockGetSecure
         .mockResolvedValueOnce(null) // no failed attempts
         .mockResolvedValueOnce({ maxFailedAttempts: 3 }); // settings
 
-      const isLocked = await BiometricAuthService.checkIfLocked();
+      const isLocked = await biometricAuthService.checkIfLocked();
 
       expect(isLocked).toBe(false);
     });
