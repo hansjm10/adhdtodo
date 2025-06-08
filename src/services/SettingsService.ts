@@ -129,9 +129,8 @@ class SettingsService extends BaseService {
     const result = await this.loadSettings();
     if (result.success && result.data) {
       return result.data;
-    } 
-      return DEFAULT_SETTINGS;
-    
+    }
+    return DEFAULT_SETTINGS;
   }
 
   async saveSettingsCompat(settings: AppSettings): Promise<boolean> {

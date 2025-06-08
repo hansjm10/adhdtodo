@@ -102,10 +102,7 @@ class SecureStorageService extends BaseService implements ISecureStorageService 
   getAllKeys(): Promise<string[]> {
     // SecureStore does not support getting all keys
     // Return empty array for compatibility
-    const result = this.wrapSync(
-      'getAllKeys',
-      () => [],
-    );
+    const result = this.wrapSync('getAllKeys', () => []);
 
     if (!result.success) {
       throw new Error(result.error!.message);
@@ -116,12 +113,9 @@ class SecureStorageService extends BaseService implements ISecureStorageService 
 
   clear(): Promise<void> {
     // SecureStore does not support clearing all items
-    const result = this.wrapSync(
-      'clear',
-      () => {
-        throw new Error('SecureStore does not support clearing all items');
-      },
-    );
+    const result = this.wrapSync('clear', () => {
+      throw new Error('SecureStore does not support clearing all items');
+    });
 
     if (!result.success) {
       throw new Error(result.error!.message);

@@ -192,12 +192,11 @@ export class SupabaseAuthService extends BaseService implements IAuthService {
 
     if (result.success) {
       return result.data!;
-    } 
-      return {
-        success: false,
-        error: result.error!.message,
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Login an existing user
@@ -267,171 +266,158 @@ export class SupabaseAuthService extends BaseService implements IAuthService {
 
     if (result.success) {
       return result.data!;
-    } 
-      return {
-        success: false,
-        error: result.error!.message,
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Verify current session
   async verifySession(): Promise<SessionVerificationResult> {
-    const result = await this.wrapAsync(
-      'verifySession',
-      async () => {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+    const result = await this.wrapAsync('verifySession', async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
 
-        if (error || !session) {
-          return { isValid: false, reason: 'No valid session' };
+      if (error || !session) {
+        return { isValid: false, reason: 'No valid session' };
+      }
+
+      // Verify token expiry
+      const tokenExpiry = session.expires_at ? new Date(session.expires_at * 1000) : null;
+      if (tokenExpiry && tokenExpiry < new Date()) {
+        // Attempt to refresh
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+        if (refreshError || !refreshData.session) {
+          return { isValid: false, reason: 'Session expired and refresh failed' };
+        }
+      }
+
+      // Get secure token for device validation
+      const secureToken = await this.getSecureToken(session.user.id);
+      if (secureToken) {
+        // Validate device binding
+        const deviceId = await this.getDeviceId();
+        if (secureToken.deviceId !== deviceId) {
+          this.logger.warn('Session accessed from different device', {
+            code: 'SUPABASE_SESSION_001',
+          });
         }
 
-        // Verify token expiry
-        const tokenExpiry = session.expires_at ? new Date(session.expires_at * 1000) : null;
-        if (tokenExpiry && tokenExpiry < new Date()) {
-          // Attempt to refresh
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        // Update last used time
+        secureToken.lastUsedAt = new Date();
+        await this.storeSecureToken(session.user.id, secureToken);
+      }
 
-          if (refreshError || !refreshData.session) {
-            return { isValid: false, reason: 'Session expired and refresh failed' };
-          }
-        }
+      // Update last active time
+      await supabase
+        .from('users')
+        .update({ last_active: new Date().toISOString() })
+        .eq('id', session.user.id);
 
-        // Get secure token for device validation
-        const secureToken = await this.getSecureToken(session.user.id);
-        if (secureToken) {
-          // Validate device binding
-          const deviceId = await this.getDeviceId();
-          if (secureToken.deviceId !== deviceId) {
-            this.logger.warn('Session accessed from different device', {
-              code: 'SUPABASE_SESSION_001',
-            });
-          }
+      // Get user profile
+      const profile = await this.getUserProfile(session.user.id);
+      const user = this.transformSupabaseUser(session.user, profile);
 
-          // Update last used time
-          secureToken.lastUsedAt = new Date();
-          await this.storeSecureToken(session.user.id, secureToken);
-        }
-
-        // Update last active time
-        await supabase
-          .from('users')
-          .update({ last_active: new Date().toISOString() })
-          .eq('id', session.user.id);
-
-        // Get user profile
-        const profile = await this.getUserProfile(session.user.id);
-        const user = this.transformSupabaseUser(session.user, profile);
-
-        return {
-          isValid: true,
-          user: this.sanitizeUser(user),
-        };
-      },
-    );
+      return {
+        isValid: true,
+        user: this.sanitizeUser(user),
+      };
+    });
 
     if (result.success) {
       return result.data!;
-    } 
-      return { isValid: false, reason: 'Verification error' };
-    
+    }
+    return { isValid: false, reason: 'Verification error' };
   }
 
   // Logout current user
   async logout(): Promise<{ success: boolean; error?: string }> {
-    const result = await this.wrapAsync(
-      'logout',
-      async () => {
-        const { error } = await supabase.auth.signOut();
+    const result = await this.wrapAsync('logout', async () => {
+      const { error } = await supabase.auth.signOut();
 
-        if (error) {
-          throw error;
-        }
+      if (error) {
+        throw error;
+      }
 
-        // Clear local secure tokens
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          await SecureStore.deleteItemAsync(`auth_token_${user.id}`);
-        }
+      // Clear local secure tokens
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await SecureStore.deleteItemAsync(`auth_token_${user.id}`);
+      }
 
-        // Clear any local user data
-        await UserStorageService.logout();
+      // Clear any local user data
+      await UserStorageService.logout();
 
-        return { success: true };
-      },
-    );
+      return { success: true };
+    });
 
     if (result.success) {
       return result.data!;
-    } 
-      return {
-        success: false,
-        error: result.error!.message,
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Change password for current user
   async changePassword(currentPassword: string, newPassword: string): Promise<AuthResult> {
-    const result = await this.wrapAsync(
-      'changePassword',
-      async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('No user logged in');
-        }
+    const result = await this.wrapAsync('changePassword', async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No user logged in');
+      }
 
-        // Validate new password
-        const passwordValidation = this.validatePassword(newPassword);
-        if (!passwordValidation.isValid) {
-          throw new Error(passwordValidation.errors.join('. '));
-        }
+      // Validate new password
+      const passwordValidation = this.validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.errors.join('. '));
+      }
 
-        // Verify current password by re-authenticating
-        const { error: verifyError } = await supabase.auth.signInWithPassword({
-          email: user.email!,
-          password: currentPassword,
-        });
+      // Verify current password by re-authenticating
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: currentPassword,
+      });
 
-        if (verifyError) {
-          throw new Error('Current password is incorrect');
-        }
+      if (verifyError) {
+        throw new Error('Current password is incorrect');
+      }
 
-        // Update password
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
 
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
 
-        // Rotate secure token
-        await this.rotateToken(user.id);
+      // Rotate secure token
+      await this.rotateToken(user.id);
 
-        return { success: true };
-      },
-    );
+      return { success: true };
+    });
 
     if (result.success) {
       return result.data!;
-    } 
-      return {
-        success: false,
-        error: result.error!.message,
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Reset password (for forgot password flow)
-   
+
   async resetPassword(_email: string, _newPassword: string): Promise<PasswordResetResult> {
     const result = await this.wrapAsync(
       'resetPassword',
@@ -457,12 +443,11 @@ export class SupabaseAuthService extends BaseService implements IAuthService {
 
     if (result.success) {
       return result.data!;
-    } 
-      return {
-        success: false,
-        error: result.error!.message,
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Remove sensitive fields from user object

@@ -179,7 +179,7 @@ describe('PartnershipService', () => {
     it('should return empty array if no partnerships', async () => {
       // Clear cache by calling clearAllPartnerships first
       await PartnershipService.clearAllPartnerships();
-      
+
       mockSupabaseQuery.select.mockResolvedValue({
         error: null,
         data: [],
@@ -194,7 +194,7 @@ describe('PartnershipService', () => {
     it('should handle Supabase errors', async () => {
       // Clear cache first
       await PartnershipService.clearAllPartnerships();
-      
+
       mockSupabaseQuery.select.mockResolvedValue({
         error: new Error('Database error'),
         data: null,
@@ -408,13 +408,15 @@ describe('PartnershipService', () => {
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data).toHaveLength(1);
-      expect(mockSupabaseQuery.or).toHaveBeenCalledWith('adhd_user_id.eq.user_123,partner_id.eq.user_123');
+      expect(mockSupabaseQuery.or).toHaveBeenCalledWith(
+        'adhd_user_id.eq.user_123,partner_id.eq.user_123',
+      );
     });
 
     it('should return empty array if no partnerships', async () => {
       // Clear cache first
       await PartnershipService.clearAllPartnerships();
-      
+
       mockSupabaseQuery.select.mockResolvedValueOnce({
         error: null,
         data: [],
@@ -462,7 +464,10 @@ describe('PartnershipService', () => {
     it('should increment partnership stat by 1', async () => {
       supabase.rpc.mockReturnValue({ error: null });
 
-      const result = await PartnershipService.incrementPartnershipStat('partnership_123', 'tasksCompleted');
+      const result = await PartnershipService.incrementPartnershipStat(
+        'partnership_123',
+        'tasksCompleted',
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toBe(true);
@@ -476,7 +481,11 @@ describe('PartnershipService', () => {
     it('should increment partnership stat by custom amount', async () => {
       supabase.rpc.mockReturnValue({ error: null });
 
-      const result = await PartnershipService.incrementPartnershipStat('partnership_123', 'tasksCompleted', 5);
+      const result = await PartnershipService.incrementPartnershipStat(
+        'partnership_123',
+        'tasksCompleted',
+        5,
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toBe(true);
@@ -490,7 +499,10 @@ describe('PartnershipService', () => {
     it('should handle errors', async () => {
       supabase.rpc.mockReturnValue({ error: new Error('RPC error') });
 
-      const result = await PartnershipService.incrementPartnershipStat('partnership_123', 'tasksCompleted');
+      const result = await PartnershipService.incrementPartnershipStat(
+        'partnership_123',
+        'tasksCompleted',
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -513,7 +525,10 @@ describe('PartnershipService', () => {
       expect(result.success).toBe(true);
       expect(result.data).toBe(true);
       expect(mockSupabaseQuery.delete).toHaveBeenCalled();
-      expect(mockSupabaseQuery.neq).toHaveBeenCalledWith('id', '00000000-0000-0000-0000-000000000000');
+      expect(mockSupabaseQuery.neq).toHaveBeenCalledWith(
+        'id',
+        '00000000-0000-0000-0000-000000000000',
+      );
     });
 
     it('should handle clear errors', async () => {

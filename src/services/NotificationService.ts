@@ -163,12 +163,16 @@ export class NotificationService extends BaseService implements INotificationSer
           return false;
         }
 
-        const result = await this.sendNotification(task.assignedTo, NOTIFICATION_TYPES.TASK_ASSIGNED, {
-          taskId: task.id,
-          taskTitle: task.title,
-          assignedByUserId: assignedByUser.id,
-          fromUserName: assignedByUser.name,
-        });
+        const result = await this.sendNotification(
+          task.assignedTo,
+          NOTIFICATION_TYPES.TASK_ASSIGNED,
+          {
+            taskId: task.id,
+            taskTitle: task.title,
+            assignedByUserId: assignedByUser.id,
+            fromUserName: assignedByUser.name,
+          },
+        );
 
         return result.success ? result.data! : false;
       },
@@ -184,12 +188,16 @@ export class NotificationService extends BaseService implements INotificationSer
           return true;
         }
 
-        const result = await this.sendNotification(task.assignedBy, NOTIFICATION_TYPES.TASK_STARTED, {
-          taskId: task.id,
-          taskTitle: task.title,
-          startedByUserId: startedByUser.id,
-          fromUserName: startedByUser.name,
-        });
+        const result = await this.sendNotification(
+          task.assignedBy,
+          NOTIFICATION_TYPES.TASK_STARTED,
+          {
+            taskId: task.id,
+            taskTitle: task.title,
+            startedByUserId: startedByUser.id,
+            fromUserName: startedByUser.name,
+          },
+        );
 
         return result.success ? result.data! : false;
       },
@@ -205,13 +213,17 @@ export class NotificationService extends BaseService implements INotificationSer
           return true;
         }
 
-        const result = await this.sendNotification(task.assignedBy, NOTIFICATION_TYPES.TASK_COMPLETED, {
-          taskId: task.id,
-          taskTitle: task.title,
-          completedByUserId: completedByUser.id,
-          fromUserName: completedByUser.name,
-          xpEarned: task.xpEarned,
-        });
+        const result = await this.sendNotification(
+          task.assignedBy,
+          NOTIFICATION_TYPES.TASK_COMPLETED,
+          {
+            taskId: task.id,
+            taskTitle: task.title,
+            completedByUserId: completedByUser.id,
+            fromUserName: completedByUser.name,
+            xpEarned: task.xpEarned,
+          },
+        );
 
         return result.success ? result.data! : false;
       },
@@ -271,9 +283,10 @@ export class NotificationService extends BaseService implements INotificationSer
           return false;
         }
 
+        const fromUser = fromUserResult.data;
         const result = await this.sendNotification(toUserId, NOTIFICATION_TYPES.ENCOURAGEMENT, {
           fromUserId,
-          fromUserName: fromUserResult.data?.name ?? 'Unknown User',
+          fromUserName: fromUser.name ?? 'Unknown User',
           message,
           taskId,
         });
@@ -284,7 +297,11 @@ export class NotificationService extends BaseService implements INotificationSer
     );
   }
 
-  async sendCheckIn(fromUserId: string, toUserId: string, message: string): Promise<Result<boolean>> {
+  async sendCheckIn(
+    fromUserId: string,
+    toUserId: string,
+    message: string,
+  ): Promise<Result<boolean>> {
     return this.wrapAsync(
       'sendCheckIn',
       async () => {
@@ -293,9 +310,10 @@ export class NotificationService extends BaseService implements INotificationSer
           return false;
         }
 
+        const fromUser = fromUserResult.data;
         const result = await this.sendNotification(toUserId, NOTIFICATION_TYPES.CHECK_IN, {
           fromUserId,
-          fromUserName: fromUserResult.data?.name ?? 'Unknown User',
+          fromUserName: fromUser.name ?? 'Unknown User',
           message,
         });
 

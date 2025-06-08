@@ -172,12 +172,12 @@ class AuthService extends BaseService implements IAuthService {
         user: result.data.user,
         token: result.data.token,
       };
-    } 
-      return {
-        success: false,
-        error: result.error?.message ?? 'Unknown error occurred',
-      };
-    
+    }
+
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Login an existing user
@@ -260,12 +260,12 @@ class AuthService extends BaseService implements IAuthService {
         user: result.data.user,
         token: result.data.token,
       };
-    } 
-      return {
-        success: false,
-        error: result.error?.message ?? 'Unknown error occurred',
-      };
-    
+    }
+
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Verify current session
@@ -325,12 +325,12 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success && result.data) {
       return result.data;
-    } 
-      if (result.error) {
-        this.logError('verifySession', result.error);
-      }
-      return { isValid: false, reason: 'Verification error' };
-    
+    }
+
+    if (result.error) {
+      this.logError('verifySession', result.error);
+    }
+    return { isValid: false, reason: 'Verification error' };
   }
 
   // Logout current user
@@ -354,12 +354,11 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success) {
       return { success: true };
-    } 
-      return {
-        success: false,
-        error: result.error?.message ?? 'Unknown error occurred',
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Change password for current user
@@ -415,12 +414,11 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success) {
       return { success: true };
-    } 
-      return {
-        success: false,
-        error: result.error?.message ?? 'Unknown error occurred',
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Reset password (for forgot password flow - simplified version)
@@ -464,12 +462,11 @@ class AuthService extends BaseService implements IAuthService {
         success: true,
         message: result.data.message,
       };
-    } 
-      return {
-        success: false,
-        error: result.error?.message ?? 'Unknown error occurred',
-      };
-    
+    }
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Remove sensitive fields from user object
@@ -552,9 +549,8 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success && result.data !== undefined) {
       return result.data;
-    } 
-      return false;
-    
+    }
+    return false;
   }
 
   // Store token separately from user data
@@ -592,9 +588,8 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success && result.data !== undefined) {
       return result.data;
-    } 
-      return null;
-    
+    }
+    return null;
   }
 
   // Rotate token and invalidate old sessions
@@ -648,9 +643,8 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success && result.data) {
       return result.data;
-    } 
-      throw new Error('Failed to manage device encryption key');
-    
+    }
+    throw new Error('Failed to manage device encryption key');
   }
 
   // Get unique device identifier
@@ -674,9 +668,8 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success && result.data) {
       return result.data;
-    } 
-      return 'unknown-device';
-    
+    }
+    return 'unknown-device';
   }
 
   // Get installation ID
@@ -698,9 +691,8 @@ class AuthService extends BaseService implements IAuthService {
 
     if (result.success && result.data) {
       return result.data;
-    } 
-      return 'unknown-installation';
-    
+    }
+    return 'unknown-installation';
   }
 
   // Invalidate other sessions (placeholder for future implementation)
@@ -765,4 +757,5 @@ class AuthService extends BaseService implements IAuthService {
   }
 }
 
+export { AuthService };
 export default new AuthService();

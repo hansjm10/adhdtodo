@@ -261,7 +261,10 @@ class SupabasePartnershipService extends BaseService implements IPartnershipServ
     );
   }
 
-  async getPartnershipByUsers(userId1: string, userId2: string): Promise<Result<Partnership | null>> {
+  async getPartnershipByUsers(
+    userId1: string,
+    userId2: string,
+  ): Promise<Result<Partnership | null>> {
     return this.wrapAsync(
       'getPartnershipByUsers',
       async () => {
@@ -470,4 +473,5 @@ class SupabasePartnershipService extends BaseService implements IPartnershipServ
   }
 }
 
+export { SupabasePartnershipService };
 export default new SupabasePartnershipService();

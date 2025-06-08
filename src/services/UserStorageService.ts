@@ -100,35 +100,39 @@ class UserStorageService extends BaseService implements IUserStorageService {
   }
 
   async setCurrentUser(user: User): Promise<boolean> {
-    const result = await this.wrapAsync('setCurrentUser', async () => {
-      // Update cache
-      this.currentUserCache = user;
-      this.cacheTimestamp = Date.now();
+    const result = await this.wrapAsync(
+      'setCurrentUser',
+      async () => {
+        // Update cache
+        this.currentUserCache = user;
+        this.cacheTimestamp = Date.now();
 
-      // Update user profile in database
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: user.name,
-          theme: user.theme ?? 'system',
-          notification_preferences: user.notificationPreferences ?? {
-            global: NotificationPreference.ALL,
-          },
-          encouragement_messages: user.encouragementMessages ?? [],
-          partner_id: user.partnerId,
-          xp_total: user.stats?.totalXP ?? 0,
-          current_streak: user.stats?.currentStreak ?? 0,
-          longest_streak: user.stats?.longestStreak ?? 0,
-          last_active: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        // Update user profile in database
+        const { error } = await supabase
+          .from('users')
+          .update({
+            name: user.name,
+            theme: user.theme ?? 'system',
+            notification_preferences: user.notificationPreferences ?? {
+              global: NotificationPreference.ALL,
+            },
+            encouragement_messages: user.encouragementMessages ?? [],
+            partner_id: user.partnerId,
+            xp_total: user.stats?.totalXP ?? 0,
+            current_streak: user.stats?.currentStreak ?? 0,
+            longest_streak: user.stats?.longestStreak ?? 0,
+            last_active: new Date().toISOString(),
+          })
+          .eq('id', user.id);
 
-      if (error) {
-        throw error;
-      }
+        if (error) {
+          throw error;
+        }
 
-      return true;
-    }, { userId: user.id });
+        return true;
+      },
+      { userId: user.id },
+    );
 
     return result.success && result.data ? result.data : false;
   }
@@ -166,102 +170,118 @@ class UserStorageService extends BaseService implements IUserStorageService {
   }
 
   async saveUser(user: User): Promise<boolean> {
-    const result = await this.wrapAsync('saveUser', async () => {
-      // In Supabase, users are created through auth flow
-      // This method updates existing user data
-      const { error } = await supabase.from('users').upsert({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        theme: user.theme ?? 'system',
-        notification_preferences: user.notificationPreferences ?? {
-          global: NotificationPreference.ALL,
-        },
-        encouragement_messages: user.encouragementMessages ?? [],
-        partner_id: user.partnerId,
-        xp_total: user.stats?.totalXP ?? 0,
-        current_streak: user.stats?.currentStreak ?? 0,
-        longest_streak: user.stats?.longestStreak ?? 0,
-        last_active: new Date().toISOString(),
-      });
+    const result = await this.wrapAsync(
+      'saveUser',
+      async () => {
+        // In Supabase, users are created through auth flow
+        // This method updates existing user data
+        const { error } = await supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          theme: user.theme ?? 'system',
+          notification_preferences: user.notificationPreferences ?? {
+            global: NotificationPreference.ALL,
+          },
+          encouragement_messages: user.encouragementMessages ?? [],
+          partner_id: user.partnerId,
+          xp_total: user.stats?.totalXP ?? 0,
+          current_streak: user.stats?.currentStreak ?? 0,
+          longest_streak: user.stats?.longestStreak ?? 0,
+          last_active: new Date().toISOString(),
+        });
 
-      if (error) {
-        throw error;
-      }
+        if (error) {
+          throw error;
+        }
 
-      return true;
-    }, { userId: user.id });
+        return true;
+      },
+      { userId: user.id },
+    );
 
     return result.success && result.data ? result.data : false;
   }
 
   async updateUser(updatedUser: User): Promise<boolean> {
-    const result = await this.wrapAsync('updateUser', async () => {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: updatedUser.name,
-          theme: updatedUser.theme ?? 'system',
-          notification_preferences: updatedUser.notificationPreferences ?? {
-            global: NotificationPreference.ALL,
-          },
-          encouragement_messages: updatedUser.encouragementMessages ?? [],
-          partner_id: updatedUser.partnerId,
-          xp_total: updatedUser.stats?.totalXP ?? 0,
-          current_streak: updatedUser.stats?.currentStreak ?? 0,
-          longest_streak: updatedUser.stats?.longestStreak ?? 0,
-          last_active: new Date().toISOString(),
-        })
-        .eq('id', updatedUser.id);
+    const result = await this.wrapAsync(
+      'updateUser',
+      async () => {
+        const { error } = await supabase
+          .from('users')
+          .update({
+            name: updatedUser.name,
+            theme: updatedUser.theme ?? 'system',
+            notification_preferences: updatedUser.notificationPreferences ?? {
+              global: NotificationPreference.ALL,
+            },
+            encouragement_messages: updatedUser.encouragementMessages ?? [],
+            partner_id: updatedUser.partnerId,
+            xp_total: updatedUser.stats?.totalXP ?? 0,
+            current_streak: updatedUser.stats?.currentStreak ?? 0,
+            longest_streak: updatedUser.stats?.longestStreak ?? 0,
+            last_active: new Date().toISOString(),
+          })
+          .eq('id', updatedUser.id);
 
-      if (error) {
-        throw error;
-      }
+        if (error) {
+          throw error;
+        }
 
-      // Update cache if it's the current user
-      if (this.currentUserCache?.id === updatedUser.id) {
-        this.currentUserCache = updatedUser;
-        this.cacheTimestamp = Date.now();
-      }
+        // Update cache if it's the current user
+        if (this.currentUserCache?.id === updatedUser.id) {
+          this.currentUserCache = updatedUser;
+          this.cacheTimestamp = Date.now();
+        }
 
-      return true;
-    }, { userId: updatedUser.id });
+        return true;
+      },
+      { userId: updatedUser.id },
+    );
 
     return result.success && result.data ? result.data : false;
   }
 
   async getUserById(userId: string): Promise<User | null> {
-    const result = await this.wrapAsync('getUserById', async () => {
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single<DbUser>();
+    const result = await this.wrapAsync(
+      'getUserById',
+      async () => {
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single<DbUser>();
 
-      if (error || !profile) {
-        return null;
-      }
+        if (error || !profile) {
+          return null;
+        }
 
-      return this.transformDbUserToUser(profile);
-    }, { userId });
+        return this.transformDbUserToUser(profile);
+      },
+      { userId },
+    );
 
     return result.success && result.data ? result.data : null;
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const result = await this.wrapAsync('getUserByEmail', async () => {
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .single<DbUser>();
+    const result = await this.wrapAsync(
+      'getUserByEmail',
+      async () => {
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email.toLowerCase())
+          .single<DbUser>();
 
-      if (error || !profile) {
-        return null;
-      }
+        if (error || !profile) {
+          return null;
+        }
 
-      return this.transformDbUserToUser(profile);
-    }, { email });
+        return this.transformDbUserToUser(profile);
+      },
+      { email },
+    );
 
     return result.success && result.data ? result.data : null;
   }
@@ -377,47 +397,51 @@ class UserStorageService extends BaseService implements IUserStorageService {
 
   subscribeToUserUpdates(userId: string, callback: (user: User) => void): Promise<() => void> {
     return new Promise((resolve) => {
-      const result = this.wrapSync('subscribeToUserUpdates', () => {
-        // Create channel for user updates
-        const channel = supabase
-          .channel(`user:${userId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'users',
-              filter: `id=eq.${userId}`,
-            },
-            (payload: RealtimePostgresChangesPayload<DbUser>) => {
-              if (payload.new) {
-                const updatedUser = this.transformDbUserToUser(payload.new as DbUser);
+      const result = this.wrapSync(
+        'subscribeToUserUpdates',
+        () => {
+          // Create channel for user updates
+          const channel = supabase
+            .channel(`user:${userId}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'users',
+                filter: `id=eq.${userId}`,
+              },
+              (payload: RealtimePostgresChangesPayload<DbUser>) => {
+                if (payload.new) {
+                  const updatedUser = this.transformDbUserToUser(payload.new as DbUser);
 
-                // Update cache if it's the current user
-                if (this.currentUserCache?.id === userId) {
-                  this.currentUserCache = updatedUser;
-                  this.cacheTimestamp = Date.now();
+                  // Update cache if it's the current user
+                  if (this.currentUserCache?.id === userId) {
+                    this.currentUserCache = updatedUser;
+                    this.cacheTimestamp = Date.now();
+                  }
+
+                  // Notify callback
+                  callback(updatedUser);
                 }
+              },
+            )
+            .subscribe();
 
-                // Notify callback
-                callback(updatedUser);
-              }
-            },
-          )
-          .subscribe();
+          // Store subscription
+          this.subscriptions.set(userId, channel);
 
-        // Store subscription
-        this.subscriptions.set(userId, channel);
-
-        // Return unsubscribe function
-        return () => {
-          const sub = this.subscriptions.get(userId);
-          if (sub) {
-            void sub.unsubscribe();
-            this.subscriptions.delete(userId);
-          }
-        };
-      }, { userId });
+          // Return unsubscribe function
+          return () => {
+            const sub = this.subscriptions.get(userId);
+            if (sub) {
+              void sub.unsubscribe();
+              this.subscriptions.delete(userId);
+            }
+          };
+        },
+        { userId },
+      );
 
       // Return the unsubscribe function or a no-op function on error
       resolve(result.success && result.data ? result.data : () => {});
@@ -425,5 +449,6 @@ class UserStorageService extends BaseService implements IUserStorageService {
   }
 }
 
-// Export singleton instance
+// Export both class and singleton instance
+export { UserStorageService };
 export default new UserStorageService();

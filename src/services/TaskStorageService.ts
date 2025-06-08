@@ -184,80 +184,92 @@ class TaskStorageService extends BaseService implements ITaskStorageService {
   }
 
   async saveTask(task: Task): Promise<boolean> {
-    const result = await this.wrapAsync('saveTask', async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return false;
+    const result = await this.wrapAsync(
+      'saveTask',
+      async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return false;
 
-      const dbTask = this.transformTaskToDb(task);
-      dbTask.user_id = user.id;
+        const dbTask = this.transformTaskToDb(task);
+        dbTask.user_id = user.id;
 
-      const { error } = await supabase.from('tasks').insert(dbTask).select().single();
+        const { error } = await supabase.from('tasks').insert(dbTask).select().single();
 
-      if (error) {
-        throw new Error(`Failed to save task: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to save task: ${error.message}`);
+        }
 
-      // Invalidate cache for this user
-      this.invalidateCache(user.id);
+        // Invalidate cache for this user
+        this.invalidateCache(user.id);
 
-      return true;
-    }, { taskId: task.id, title: task.title });
+        return true;
+      },
+      { taskId: task.id, title: task.title },
+    );
 
     return result.success && result.data === true;
   }
 
   async updateTask(updatedTask: Task): Promise<boolean> {
-    const result = await this.wrapAsync('updateTask', async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return false;
+    const result = await this.wrapAsync(
+      'updateTask',
+      async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return false;
 
-      const dbTask = this.transformTaskToDb(updatedTask);
+        const dbTask = this.transformTaskToDb(updatedTask);
 
-      const { error } = await supabase
-        .from('tasks')
-        .update(dbTask)
-        .eq('id', updatedTask.id)
-        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`);
+        const { error } = await supabase
+          .from('tasks')
+          .update(dbTask)
+          .eq('id', updatedTask.id)
+          .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`);
 
-      if (error) {
-        throw new Error(`Failed to update task: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to update task: ${error.message}`);
+        }
 
-      // Invalidate cache for this user
-      this.invalidateCache(user.id);
+        // Invalidate cache for this user
+        this.invalidateCache(user.id);
 
-      return true;
-    }, { taskId: updatedTask.id, title: updatedTask.title });
+        return true;
+      },
+      { taskId: updatedTask.id, title: updatedTask.title },
+    );
 
     return result.success && result.data === true;
   }
 
   async deleteTask(taskId: string): Promise<boolean> {
-    const result = await this.wrapAsync('deleteTask', async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return false;
+    const result = await this.wrapAsync(
+      'deleteTask',
+      async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return false;
 
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
-        .eq('user_id', user.id);
+        const { error } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', taskId)
+          .eq('user_id', user.id);
 
-      if (error) {
-        throw new Error(`Failed to delete task: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to delete task: ${error.message}`);
+        }
 
-      // Invalidate cache for this user
-      this.invalidateCache(user.id);
+        // Invalidate cache for this user
+        this.invalidateCache(user.id);
 
-      return true;
-    }, { taskId });
+        return true;
+      },
+      { taskId },
+    );
 
     return result.success && result.data === true;
   }
@@ -285,43 +297,47 @@ class TaskStorageService extends BaseService implements ITaskStorageService {
   }
 
   async getTasksByCategory(categoryId: string, options?: TaskStorageOptions): Promise<Task[]> {
-    const result = await this.wrapAsync('getTasksByCategory', async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
+    const result = await this.wrapAsync(
+      'getTasksByCategory',
+      async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return [];
 
-      const cacheKey = `category:${user.id}:${categoryId}`;
-      if (this.isCacheValid(cacheKey) && !options?.page) {
-        return this.taskCache.get(cacheKey) ?? [];
-      }
+        const cacheKey = `category:${user.id}:${categoryId}`;
+        if (this.isCacheValid(cacheKey) && !options?.page) {
+          return this.taskCache.get(cacheKey) ?? [];
+        }
 
-      let query = supabase
-        .from('tasks')
-        .select('*')
-        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
-        .eq('category', categoryId)
-        .order('created_at', { ascending: false });
+        let query = supabase
+          .from('tasks')
+          .select('*')
+          .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
+          .eq('category', categoryId)
+          .order('created_at', { ascending: false });
 
-      if (options?.page && options?.pageSize) {
-        const offset = (options.page - 1) * options.pageSize;
-        query = query.range(offset, offset + options.pageSize - 1);
-      }
+        if (options?.page && options?.pageSize) {
+          const offset = (options.page - 1) * options.pageSize;
+          query = query.range(offset, offset + options.pageSize - 1);
+        }
 
-      const { data, error } = await query;
+        const { data, error } = await query;
 
-      if (error) {
-        throw new Error(`Failed to fetch tasks by category: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch tasks by category: ${error.message}`);
+        }
 
-      const tasks = (data ?? []).map(this.transformDbTaskToTask);
+        const tasks = (data ?? []).map(this.transformDbTaskToTask);
 
-      if (!options?.page) {
-        this.updateCache(cacheKey, tasks);
-      }
+        if (!options?.page) {
+          this.updateCache(cacheKey, tasks);
+        }
 
-      return tasks;
-    }, { categoryId, options });
+        return tasks;
+      },
+      { categoryId, options },
+    );
 
     return result.success && result.data ? result.data : [];
   }
@@ -403,124 +419,150 @@ class TaskStorageService extends BaseService implements ITaskStorageService {
       return stats;
     });
 
-    return result.success && result.data ? result.data : { total: 0, completed: 0, pending: 0, totalXP: 0 };
+    return result.success && result.data
+      ? result.data
+      : { total: 0, completed: 0, pending: 0, totalXP: 0 };
   }
 
   async getTasksForUser(userId: string): Promise<Task[]> {
-    const result = await this.wrapAsync('getTasksForUser', async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+    const result = await this.wrapAsync(
+      'getTasksForUser',
+      async () => {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new Error(`Failed to fetch tasks for user: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch tasks for user: ${error.message}`);
+        }
 
-      return (data ?? []).map(this.transformDbTaskToTask);
-    }, { userId });
+        return (data ?? []).map(this.transformDbTaskToTask);
+      },
+      { userId },
+    );
 
     return result.success && result.data ? result.data : [];
   }
 
   async getTasksAssignedByUser(userId: string): Promise<Task[]> {
-    const result = await this.wrapAsync('getTasksAssignedByUser', async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('assigned_by', userId)
-        .order('created_at', { ascending: false });
+    const result = await this.wrapAsync(
+      'getTasksAssignedByUser',
+      async () => {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('assigned_by', userId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new Error(`Failed to fetch tasks assigned by user: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch tasks assigned by user: ${error.message}`);
+        }
 
-      return (data ?? []).map(this.transformDbTaskToTask);
-    }, { userId });
+        return (data ?? []).map(this.transformDbTaskToTask);
+      },
+      { userId },
+    );
 
     return result.success && result.data ? result.data : [];
   }
 
   async getAssignedTasks(userId: string): Promise<Task[]> {
-    const result = await this.wrapAsync('getAssignedTasks', async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('assigned_to', userId)
-        .order('created_at', { ascending: false });
+    const result = await this.wrapAsync(
+      'getAssignedTasks',
+      async () => {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('assigned_to', userId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new Error(`Failed to fetch assigned tasks: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch assigned tasks: ${error.message}`);
+        }
 
-      return (data ?? []).map(this.transformDbTaskToTask);
-    }, { userId });
+        return (data ?? []).map(this.transformDbTaskToTask);
+      },
+      { userId },
+    );
 
     return result.success && result.data ? result.data : [];
   }
 
   async getPartnerTasks(userId: string): Promise<Task[]> {
-    const result = await this.wrapAsync('getPartnerTasks', async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .or(`assigned_by.eq.${userId},assigned_to.eq.${userId}`)
-        .neq('user_id', userId)
-        .order('created_at', { ascending: false });
+    const result = await this.wrapAsync(
+      'getPartnerTasks',
+      async () => {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .or(`assigned_by.eq.${userId},assigned_to.eq.${userId}`)
+          .neq('user_id', userId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new Error(`Failed to fetch partner tasks: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch partner tasks: ${error.message}`);
+        }
 
-      return (data ?? []).map(this.transformDbTaskToTask);
-    }, { userId });
+        return (data ?? []).map(this.transformDbTaskToTask);
+      },
+      { userId },
+    );
 
     return result.success && result.data ? result.data : [];
   }
 
   async getOverdueTasks(userId: string): Promise<Task[]> {
-    const result = await this.wrapAsync('getOverdueTasks', async () => {
-      const now = new Date().toISOString();
+    const result = await this.wrapAsync(
+      'getOverdueTasks',
+      async () => {
+        const now = new Date().toISOString();
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
-        .lt('due_date', now)
-        .neq('status', TaskStatus.COMPLETED)
-        .order('due_date', { ascending: true });
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
+          .lt('due_date', now)
+          .neq('status', TaskStatus.COMPLETED)
+          .order('due_date', { ascending: true });
 
-      if (error) {
-        throw new Error(`Failed to fetch overdue tasks: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch overdue tasks: ${error.message}`);
+        }
 
-      return (data ?? []).map(this.transformDbTaskToTask);
-    }, { userId });
+        return (data ?? []).map(this.transformDbTaskToTask);
+      },
+      { userId },
+    );
 
     return result.success && result.data ? result.data : [];
   }
 
   async getUpcomingTasks(userId: string, hoursAhead: number = 24): Promise<Task[]> {
-    const result = await this.wrapAsync('getUpcomingTasks', async () => {
-      const now = new Date();
-      const future = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
+    const result = await this.wrapAsync(
+      'getUpcomingTasks',
+      async () => {
+        const now = new Date();
+        const future = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
-        .gte('due_date', now.toISOString())
-        .lte('due_date', future.toISOString())
-        .neq('status', TaskStatus.COMPLETED)
-        .order('due_date', { ascending: true });
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .or(`user_id.eq.${userId},assigned_to.eq.${userId}`)
+          .gte('due_date', now.toISOString())
+          .lte('due_date', future.toISOString())
+          .neq('status', TaskStatus.COMPLETED)
+          .order('due_date', { ascending: true });
 
-      if (error) {
-        throw new Error(`Failed to fetch upcoming tasks: ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch upcoming tasks: ${error.message}`);
+        }
 
-      return (data ?? []).map(this.transformDbTaskToTask);
-    }, { userId, hoursAhead });
+        return (data ?? []).map(this.transformDbTaskToTask);
+      },
+      { userId, hoursAhead },
+    );
 
     return result.success && result.data ? result.data : [];
   }
