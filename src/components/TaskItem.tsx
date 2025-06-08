@@ -114,9 +114,12 @@ const TaskItem = ({ task, onUpdate, onPress, currentUser, partner }: TaskItemPro
         await NotificationService.notifyTaskCompleted(updatedTask, currentUser);
 
         // Update partnership stats
-        const partnership = await PartnershipService.getActivePartnership(currentUser.id);
-        if (partnership) {
-          await PartnershipService.incrementPartnershipStat(partnership.id, 'tasksCompleted');
+        const partnershipResult = await PartnershipService.getActivePartnership(currentUser.id);
+        if (partnershipResult.success && partnershipResult.data) {
+          await PartnershipService.incrementPartnershipStat(
+            partnershipResult.data.id,
+            'tasksCompleted',
+          );
         }
       }
     }

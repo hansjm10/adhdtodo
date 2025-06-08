@@ -126,8 +126,10 @@ const TaskAssignmentScreen = () => {
       setCurrentUser(user);
 
       if (user) {
-        const activePartnership = await PartnershipService.getActivePartnership(user.id);
-        setPartnership(activePartnership);
+        const partnershipResult = await PartnershipService.getActivePartnership(user.id);
+        if (partnershipResult.success && partnershipResult.data !== undefined) {
+          setPartnership(partnershipResult.data);
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to load user data');

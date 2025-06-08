@@ -1,6 +1,10 @@
 // ABOUTME: Tests for simplified UserStorageService that only uses Supabase
 // Follows TDD approach - tests written before implementation
 
+import { createMockUser } from '../../../tests/utils';
+import { NotificationPreference } from '../../types/user.types';
+import * as SecureStore from 'expo-secure-store';
+
 // Mock dependencies first
 jest.mock('../SupabaseService', () => ({
   supabase: {
@@ -12,9 +16,6 @@ jest.mock('expo-secure-store');
 jest.mock('../SecureLogger');
 
 import { supabase } from '../SupabaseService';
-import * as SecureStore from 'expo-secure-store';
-import { createMockUser } from '../../../tests/utils';
-import { NotificationPreference } from '../../types/user.types';
 import UserStorageService from '../UserStorageService';
 
 describe('UserStorageService (Simplified Supabase-only)', () => {
@@ -29,9 +30,6 @@ describe('UserStorageService (Simplified Supabase-only)', () => {
     SecureStore.setItemAsync.mockResolvedValue();
     SecureStore.getItemAsync.mockResolvedValue(null);
     SecureStore.deleteItemAsync.mockResolvedValue();
-
-    // Clear the service cache by calling logout
-    await UserStorageService.logout();
 
     // Setup mock user
     mockUser = createMockUser({

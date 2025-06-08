@@ -148,6 +148,9 @@ export abstract class BaseService {
         update: 'Failed to update. Please try again.',
         sync: 'Sync failed. Please check your connection.',
         auth: 'Authentication failed. Please try again.',
+        partnership: 'Partnership operation failed. Please try again.',
+        notification: 'Notification failed. Please check your settings.',
+        biometric: 'Biometric authentication failed. Please try again.',
       };
 
       // Return operation-specific message or generic one

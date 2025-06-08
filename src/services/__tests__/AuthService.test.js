@@ -1,8 +1,7 @@
 // ABOUTME: Tests for AuthService authentication functionality
 
-import AuthService from '../AuthService';
-import CryptoService from '../CryptoService';
-import UserStorageService from '../UserStorageService';
+import { AuthService } from '../AuthService';
+// Service imports for type definitions only
 import * as SecureStore from 'expo-secure-store';
 import { createUser, updateUser } from '../../utils/UserModel';
 import { USER_ROLE } from '../../constants/UserConstants';
@@ -10,6 +9,7 @@ import { USER_ROLE } from '../../constants/UserConstants';
 // Mock dependencies
 jest.mock('../CryptoService');
 jest.mock('../UserStorageService');
+jest.mock('../RateLimiter');
 jest.mock('../../utils/UserModel', () => ({
   ...jest.requireActual('../../utils/UserModel'),
   createUser: jest.fn(),
@@ -21,38 +21,53 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 describe('AuthService', () => {
+  let authService;
+  let mockCryptoService;
+  let mockUserStorageService;
+  let mockRateLimiter;
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default mock implementations
-    CryptoService.generateSalt.mockResolvedValue('mocksalt');
-    CryptoService.hashPassword.mockResolvedValue('mockhash');
-    CryptoService.generateSessionToken.mockResolvedValue('mocktoken.1234567890');
-    CryptoService.verifyPassword.mockResolvedValue(true);
-    CryptoService.isTokenExpired.mockReturnValue(false);
-    CryptoService.parseSessionToken.mockReturnValue({
-      token: 'mocktoken',
-      timestamp: 1234567890,
-      isValid: true,
-    });
-    CryptoService.generateToken.mockResolvedValue('reference-token');
-    CryptoService.generateSecureBytes.mockResolvedValue(new Uint8Array(32));
-    CryptoService.encrypt.mockResolvedValue('encrypted-token');
-    CryptoService.decrypt.mockResolvedValue('reference-token');
-    CryptoService.hash.mockResolvedValue('token-fingerprint');
+    // Create mock service instances
+    mockCryptoService = {
+      generateSalt: jest.fn().mockResolvedValue('mocksalt'),
+      hashPassword: jest.fn().mockResolvedValue('mockhash'),
+      generateSessionToken: jest.fn().mockResolvedValue('mocktoken.1234567890'),
+      verifyPassword: jest.fn().mockResolvedValue(true),
+      isTokenExpired: jest.fn().mockReturnValue(false),
+      parseSessionToken: jest.fn().mockReturnValue({
+        token: 'mocktoken',
+        timestamp: 1234567890,
+        isValid: true,
+      }),
+      generateToken: jest.fn().mockResolvedValue('reference-token'),
+      generateSecureBytes: jest.fn().mockResolvedValue(new Uint8Array(32)),
+      encrypt: jest.fn().mockResolvedValue('encrypted-token'),
+      decrypt: jest.fn().mockResolvedValue('reference-token'),
+      hash: jest.fn().mockResolvedValue('token-fingerprint'),
+    };
+
+    mockUserStorageService = {
+      getUserByEmail: jest.fn().mockResolvedValue(null),
+      saveUser: jest.fn().mockResolvedValue(true),
+      updateUser: jest.fn().mockResolvedValue(true),
+      setCurrentUser: jest.fn().mockResolvedValue(true),
+      saveUserToken: jest.fn().mockResolvedValue(true),
+      getCurrentUser: jest.fn().mockResolvedValue(null),
+      getUserToken: jest.fn().mockResolvedValue(null),
+      logout: jest.fn().mockResolvedValue(true),
+    };
+
+    mockRateLimiter = {
+      canAttemptLogin: jest.fn().mockReturnValue(true),
+      getLockoutEndTime: jest.fn().mockReturnValue(null),
+      recordLoginAttempt: jest.fn(),
+    };
 
     // SecureStore mocks
     SecureStore.getItemAsync.mockResolvedValue(null);
     SecureStore.setItemAsync.mockResolvedValue(undefined);
-
-    UserStorageService.getUserByEmail.mockResolvedValue(null);
-    UserStorageService.saveUser.mockResolvedValue(true);
-    UserStorageService.updateUser.mockResolvedValue(true);
-    UserStorageService.setCurrentUser.mockResolvedValue(true);
-    UserStorageService.saveUserToken.mockResolvedValue(true);
-    UserStorageService.getCurrentUser.mockResolvedValue(null);
-    UserStorageService.getUserToken.mockResolvedValue(null);
-    UserStorageService.logout.mockResolvedValue(true);
 
     createUser.mockImplementation((data) => ({
       id: 'user_123',
@@ -72,47 +87,50 @@ describe('AuthService', () => {
       ...updates,
       updatedAt: new Date(),
     }));
+
+    // Create AuthService instance with mocked dependencies
+    authService = new AuthService(mockCryptoService, mockUserStorageService, mockRateLimiter);
   });
 
   describe('validatePassword', () => {
     it('should validate a strong password', () => {
-      const result = AuthService.validatePassword('Test123!@#');
+      const result = authService.validatePassword('Test123!@#');
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
     it('should reject short passwords', () => {
-      const result = AuthService.validatePassword('Test1!');
+      const result = authService.validatePassword('Test1!');
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Password must be at least 8 characters long');
     });
 
     it('should require uppercase letter', () => {
-      const result = AuthService.validatePassword('test123!@#');
+      const result = authService.validatePassword('test123!@#');
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Password must contain at least one uppercase letter');
     });
 
     it('should require lowercase letter', () => {
-      const result = AuthService.validatePassword('TEST123!@#');
+      const result = authService.validatePassword('TEST123!@#');
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Password must contain at least one lowercase letter');
     });
 
     it('should require number', () => {
-      const result = AuthService.validatePassword('TestTest!@#');
+      const result = authService.validatePassword('TestTest!@#');
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Password must contain at least one number');
     });
 
     it('should require special character', () => {
-      const result = AuthService.validatePassword('TestTest123');
+      const result = authService.validatePassword('TestTest123');
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Password must contain at least one special character');
     });
 
     it('should reject empty password', () => {
-      const result = AuthService.validatePassword('');
+      const result = authService.validatePassword('');
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Password is required');
     });
@@ -120,7 +138,7 @@ describe('AuthService', () => {
 
   describe('signUp', () => {
     it('should successfully sign up a new user', async () => {
-      const result = await AuthService.signUp(
+      const result = await authService.signUp(
         'test@example.com',
         'Test123!@#',
         'Test User',
@@ -131,15 +149,15 @@ describe('AuthService', () => {
       expect(result.user).toBeDefined();
       expect(result.token).toBe('reference-token');
 
-      expect(CryptoService.generateSalt).toHaveBeenCalled();
-      expect(CryptoService.hashPassword).toHaveBeenCalledWith('Test123!@#', 'mocksalt');
-      expect(UserStorageService.saveUser).toHaveBeenCalled();
-      expect(UserStorageService.setCurrentUser).toHaveBeenCalled();
-      expect(UserStorageService.saveUserToken).toHaveBeenCalledWith('reference-token');
+      expect(mockCryptoService.generateSalt).toHaveBeenCalled();
+      expect(mockCryptoService.hashPassword).toHaveBeenCalledWith('Test123!@#', 'mocksalt');
+      expect(mockUserStorageService.saveUser).toHaveBeenCalled();
+      expect(mockUserStorageService.setCurrentUser).toHaveBeenCalled();
+      expect(mockUserStorageService.saveUserToken).toHaveBeenCalledWith('reference-token');
     });
 
     it('should reject invalid email', async () => {
-      const result = await AuthService.signUp(
+      const result = await authService.signUp(
         'invalid-email',
         'Test123!@#',
         'Test User',
@@ -151,9 +169,9 @@ describe('AuthService', () => {
     });
 
     it('should reject existing user', async () => {
-      UserStorageService.getUserByEmail.mockResolvedValue({ id: 'existing_user' });
+      mockUserStorageService.getUserByEmail.mockResolvedValue({ id: 'existing_user' });
 
-      const result = await AuthService.signUp(
+      const result = await authService.signUp(
         'existing@example.com',
         'Test123!@#',
         'Test User',
@@ -165,7 +183,7 @@ describe('AuthService', () => {
     });
 
     it('should reject weak password', async () => {
-      const result = await AuthService.signUp(
+      const result = await authService.signUp(
         'test@example.com',
         'weak',
         'Test User',
@@ -177,7 +195,7 @@ describe('AuthService', () => {
     });
 
     it('should sanitize user data in response', async () => {
-      const result = await AuthService.signUp(
+      const result = await authService.signUp(
         'test@example.com',
         'Test123!@#',
         'Test User',
@@ -202,59 +220,59 @@ describe('AuthService', () => {
     };
 
     beforeEach(() => {
-      UserStorageService.getUserByEmail.mockResolvedValue(mockUser);
+      mockUserStorageService.getUserByEmail.mockResolvedValue(mockUser);
     });
 
     it('should successfully login with correct credentials', async () => {
-      const result = await AuthService.login('test@example.com', 'Test123!@#');
+      const result = await authService.login('test@example.com', 'Test123!@#');
 
       expect(result.success).toBe(true);
       expect(result.user).toBeDefined();
       expect(result.token).toBe('reference-token');
 
-      expect(CryptoService.verifyPassword).toHaveBeenCalledWith(
+      expect(mockCryptoService.verifyPassword).toHaveBeenCalledWith(
         'Test123!@#',
         'existinghash',
         'existingsalt',
       );
-      expect(UserStorageService.updateUser).toHaveBeenCalled();
-      expect(UserStorageService.setCurrentUser).toHaveBeenCalled();
-      expect(UserStorageService.saveUserToken).toHaveBeenCalledWith('reference-token');
+      expect(mockUserStorageService.updateUser).toHaveBeenCalled();
+      expect(mockUserStorageService.setCurrentUser).toHaveBeenCalled();
+      expect(mockUserStorageService.saveUserToken).toHaveBeenCalledWith('reference-token');
     });
 
     it('should reject missing credentials', async () => {
-      const result = await AuthService.login('', '');
+      const result = await authService.login('', '');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Email and password are required');
     });
 
     it('should reject non-existent user', async () => {
-      UserStorageService.getUserByEmail.mockResolvedValue(null);
+      mockUserStorageService.getUserByEmail.mockResolvedValue(null);
 
-      const result = await AuthService.login('nonexistent@example.com', 'Test123!@#');
+      const result = await authService.login('nonexistent@example.com', 'Test123!@#');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Invalid email or password');
     });
 
     it('should reject incorrect password', async () => {
-      CryptoService.verifyPassword.mockResolvedValue(false);
+      mockCryptoService.verifyPassword.mockResolvedValue(false);
 
-      const result = await AuthService.login('test@example.com', 'WrongPassword');
+      const result = await authService.login('test@example.com', 'WrongPassword');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Invalid email or password');
     });
 
     it('should handle users without password (migration needed)', async () => {
-      UserStorageService.getUserByEmail.mockResolvedValue({
+      mockUserStorageService.getUserByEmail.mockResolvedValue({
         ...mockUser,
         passwordHash: null,
         passwordSalt: null,
       });
 
-      const result = await AuthService.login('test@example.com', 'Test123!@#');
+      const result = await authService.login('test@example.com', 'Test123!@#');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Invalid email or password');
@@ -268,8 +286,8 @@ describe('AuthService', () => {
         sessionToken: null, // No longer stored in user
       };
 
-      UserStorageService.getUserToken.mockResolvedValue('reference-token');
-      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      mockUserStorageService.getUserToken.mockResolvedValue('reference-token');
+      mockUserStorageService.getCurrentUser.mockResolvedValue(mockUser);
 
       // Mock secure token retrieval
       const mockSecureToken = {
@@ -293,17 +311,17 @@ describe('AuthService', () => {
         return Promise.resolve(null);
       });
 
-      const result = await AuthService.verifySession();
+      const result = await authService.verifySession();
 
       expect(result.isValid).toBe(true);
       expect(result.user).toBeDefined();
-      expect(UserStorageService.updateUser).toHaveBeenCalled();
+      expect(mockUserStorageService.updateUser).toHaveBeenCalled();
     });
 
     it('should reject missing token', async () => {
-      UserStorageService.getUserToken.mockResolvedValue(null);
+      mockUserStorageService.getUserToken.mockResolvedValue(null);
 
-      const result = await AuthService.verifySession();
+      const result = await authService.verifySession();
 
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('No session token');
@@ -315,8 +333,8 @@ describe('AuthService', () => {
         sessionToken: null,
       };
 
-      UserStorageService.getUserToken.mockResolvedValue('reference-token');
-      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      mockUserStorageService.getUserToken.mockResolvedValue('reference-token');
+      mockUserStorageService.getCurrentUser.mockResolvedValue(mockUser);
 
       // Mock expired secure token
       const expiredToken = {
@@ -337,11 +355,11 @@ describe('AuthService', () => {
         return Promise.resolve(null);
       });
 
-      const result = await AuthService.verifySession();
+      const result = await authService.verifySession();
 
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('Invalid or expired token');
-      expect(UserStorageService.logout).toHaveBeenCalled();
+      expect(mockUserStorageService.logout).toHaveBeenCalled();
     });
 
     it('should reject mismatched token', async () => {
@@ -350,8 +368,8 @@ describe('AuthService', () => {
         sessionToken: null,
       };
 
-      UserStorageService.getUserToken.mockResolvedValue('reference-token');
-      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      mockUserStorageService.getUserToken.mockResolvedValue('reference-token');
+      mockUserStorageService.getCurrentUser.mockResolvedValue(mockUser);
 
       // Mock secure token with different device
       const mismatchedToken = {
@@ -372,11 +390,11 @@ describe('AuthService', () => {
         return Promise.resolve(null);
       });
 
-      const result = await AuthService.verifySession();
+      const result = await authService.verifySession();
 
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('Token used from different device');
-      expect(UserStorageService.logout).toHaveBeenCalled();
+      expect(mockUserStorageService.logout).toHaveBeenCalled();
     });
   });
 
@@ -387,23 +405,23 @@ describe('AuthService', () => {
         sessionToken: 'mocktoken',
       };
 
-      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      mockUserStorageService.getCurrentUser.mockResolvedValue(mockUser);
 
-      const result = await AuthService.logout();
+      const result = await authService.logout();
 
       expect(result.success).toBe(true);
       expect(updateUser).toHaveBeenCalledWith(mockUser, { sessionToken: null });
-      expect(UserStorageService.updateUser).toHaveBeenCalled();
-      expect(UserStorageService.logout).toHaveBeenCalled();
+      expect(mockUserStorageService.updateUser).toHaveBeenCalled();
+      expect(mockUserStorageService.logout).toHaveBeenCalled();
     });
 
     it('should handle logout when no user', async () => {
-      UserStorageService.getCurrentUser.mockResolvedValue(null);
+      mockUserStorageService.getCurrentUser.mockResolvedValue(null);
 
-      const result = await AuthService.logout();
+      const result = await authService.logout();
 
       expect(result.success).toBe(true);
-      expect(UserStorageService.logout).toHaveBeenCalled();
+      expect(mockUserStorageService.logout).toHaveBeenCalled();
     });
   });
 
@@ -415,43 +433,43 @@ describe('AuthService', () => {
     };
 
     beforeEach(() => {
-      UserStorageService.getCurrentUser.mockResolvedValue(mockUser);
+      mockUserStorageService.getCurrentUser.mockResolvedValue(mockUser);
     });
 
     it('should successfully change password', async () => {
-      const result = await AuthService.changePassword('OldPass123!', 'NewPass456!');
+      const result = await authService.changePassword('OldPass123!', 'NewPass456!');
 
       expect(result.success).toBe(true);
-      expect(CryptoService.verifyPassword).toHaveBeenCalledWith(
+      expect(mockCryptoService.verifyPassword).toHaveBeenCalledWith(
         'OldPass123!',
         'oldhash',
         'oldsalt',
       );
-      expect(CryptoService.generateSalt).toHaveBeenCalled();
-      expect(CryptoService.hashPassword).toHaveBeenCalledWith('NewPass456!', 'mocksalt');
-      expect(UserStorageService.updateUser).toHaveBeenCalled();
+      expect(mockCryptoService.generateSalt).toHaveBeenCalled();
+      expect(mockCryptoService.hashPassword).toHaveBeenCalledWith('NewPass456!', 'mocksalt');
+      expect(mockUserStorageService.updateUser).toHaveBeenCalled();
     });
 
     it('should reject incorrect current password', async () => {
-      CryptoService.verifyPassword.mockResolvedValue(false);
+      mockCryptoService.verifyPassword.mockResolvedValue(false);
 
-      const result = await AuthService.changePassword('WrongPass123!', 'NewPass456!');
+      const result = await authService.changePassword('WrongPass123!', 'NewPass456!');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Current password is incorrect');
     });
 
     it('should reject weak new password', async () => {
-      const result = await AuthService.changePassword('OldPass123!', 'weak');
+      const result = await authService.changePassword('OldPass123!', 'weak');
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Password must be at least');
     });
 
     it('should reject when no user logged in', async () => {
-      UserStorageService.getCurrentUser.mockResolvedValue(null);
+      mockUserStorageService.getCurrentUser.mockResolvedValue(null);
 
-      const result = await AuthService.changePassword('OldPass123!', 'NewPass456!');
+      const result = await authService.changePassword('OldPass123!', 'NewPass456!');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('No user logged in');
@@ -465,9 +483,9 @@ describe('AuthService', () => {
         email: 'test@example.com',
       };
 
-      UserStorageService.getUserByEmail.mockResolvedValue(mockUser);
+      mockUserStorageService.getUserByEmail.mockResolvedValue(mockUser);
 
-      const result = await AuthService.resetPassword('test@example.com', 'NewPass123!');
+      const result = await authService.resetPassword('test@example.com', 'NewPass123!');
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('If an account exists, the password has been reset');
@@ -482,13 +500,13 @@ describe('AuthService', () => {
     });
 
     it('should not reveal if user exists', async () => {
-      UserStorageService.getUserByEmail.mockResolvedValue(null);
+      mockUserStorageService.getUserByEmail.mockResolvedValue(null);
 
-      const result = await AuthService.resetPassword('nonexistent@example.com', 'NewPass123!');
+      const result = await authService.resetPassword('nonexistent@example.com', 'NewPass123!');
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('If an account exists, the password has been reset');
-      expect(UserStorageService.updateUser).not.toHaveBeenCalled();
+      expect(mockUserStorageService.updateUser).not.toHaveBeenCalled();
     });
 
     it('should reject weak password', async () => {
@@ -497,9 +515,9 @@ describe('AuthService', () => {
         email: 'test@example.com',
       };
 
-      UserStorageService.getUserByEmail.mockResolvedValue(mockUser);
+      mockUserStorageService.getUserByEmail.mockResolvedValue(mockUser);
 
-      const result = await AuthService.resetPassword('test@example.com', 'weak');
+      const result = await authService.resetPassword('test@example.com', 'weak');
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Password must be at least');
@@ -518,7 +536,7 @@ describe('AuthService', () => {
         role: USER_ROLE.ADHD_USER,
       };
 
-      const sanitized = AuthService.sanitizeUser(user);
+      const sanitized = authService.sanitizeUser(user);
 
       expect(sanitized.id).toBe('user_123');
       expect(sanitized.email).toBe('test@example.com');

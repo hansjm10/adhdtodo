@@ -82,10 +82,10 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
       setLoading(true);
       setError(null);
 
-      const loadedNotifications = await NotificationService.getNotificationsForUser(currentUser.id);
+      const result = await NotificationService.getNotificationsForUser(currentUser.id);
 
-      if (isMountedRef.current) {
-        setNotifications(loadedNotifications);
+      if (isMountedRef.current && result.success && result.data) {
+        setNotifications(result.data);
       }
     } catch (err) {
       if (isMountedRef.current) {

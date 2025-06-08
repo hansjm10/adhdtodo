@@ -136,10 +136,11 @@ const PartnerDashboardScreen = () => {
       setCurrentUser(user);
 
       if (user) {
-        const activePartnership = await PartnershipService.getActivePartnership(user.id);
-        setPartnership(activePartnership);
+        const partnershipResult = await PartnershipService.getActivePartnership(user.id);
+        if (partnershipResult.success && partnershipResult.data) {
+          setPartnership(partnershipResult.data);
 
-        if (activePartnership) {
+          const activePartnership = partnershipResult.data;
           const partnerId =
             activePartnership.adhdUserId === user.id
               ? activePartnership.partnerId

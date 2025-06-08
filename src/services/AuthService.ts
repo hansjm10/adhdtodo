@@ -1,6 +1,7 @@
 // ABOUTME: Service for handling authentication including login, signup, and session management
 // Provides secure password-based authentication with session tokens
 
+import { BaseService } from './BaseService';
 import type { ICryptoService } from './CryptoService';
 import CryptoService from './CryptoService';
 import type { IUserStorageService } from './UserStorageService';
@@ -42,7 +43,7 @@ export interface IAuthService {
   detectAnomalousUsage(secureToken: SecureToken): boolean;
 }
 
-class AuthService implements IAuthService {
+class AuthService extends BaseService implements IAuthService {
   // Password validation rules
   static readonly PASSWORD_MIN_LENGTH = 8;
   static readonly PASSWORD_REQUIRE_UPPERCASE = true;
@@ -59,6 +60,7 @@ class AuthService implements IAuthService {
     userStorageService: IUserStorageService = UserStorageService,
     rateLimiter: IRateLimiter = RateLimiter,
   ) {
+    super('AuthService');
     this.cryptoService = cryptoService;
     this.userStorageService = userStorageService;
     this.rateLimiter = rateLimiter;
@@ -103,150 +105,172 @@ class AuthService implements IAuthService {
 
   // Sign up a new user
   async signUp(email: string, password: string, name: string, role: UserRole): Promise<AuthResult> {
-    try {
-      // Validate email format
-      if (!ValidationService.validateEmail(email)) {
-        throw new Error('Invalid email address');
-      }
+    const result = await this.wrapAsync(
+      'signUp',
+      async () => {
+        // Validate email format
+        if (!ValidationService.validateEmail(email)) {
+          throw new Error('Invalid email address');
+        }
 
-      // Check if user already exists
-      const existingUser = await this.userStorageService.getUserByEmail(email);
-      if (existingUser) {
-        throw new Error('An account already exists with this email');
-      }
+        // Check if user already exists
+        const existingUser = await this.userStorageService.getUserByEmail(email);
+        if (existingUser) {
+          throw new Error('An account already exists with this email');
+        }
 
-      // Validate password
-      const passwordValidation = this.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.errors.join('. '));
-      }
+        // Validate password
+        const passwordValidation = this.validatePassword(password);
+        if (!passwordValidation.isValid) {
+          throw new Error(passwordValidation.errors.join('. '));
+        }
 
-      // Generate salt and hash password
-      const salt = await this.cryptoService.generateSalt();
-      const passwordHash = await this.cryptoService.hashPassword(password, salt);
+        // Generate salt and hash password
+        const salt = await this.cryptoService.generateSalt();
+        const passwordHash = await this.cryptoService.hashPassword(password, salt);
 
-      // Create new user without session token
-      const newUser = createUser({
-        email: email.toLowerCase(),
-        name,
-        role,
-        passwordHash,
-        passwordSalt: salt,
-        sessionToken: null, // Don't store plain token in user
-        lastLoginAt: new Date(),
-      });
+        // Create new user without session token
+        const newUser = createUser({
+          email: email.toLowerCase(),
+          name,
+          role,
+          passwordHash,
+          passwordSalt: salt,
+          sessionToken: null, // Don't store plain token in user
+          lastLoginAt: new Date(),
+        });
 
-      // Validate user data
-      const validation = validateUser(newUser);
-      if (!validation.isValid) {
-        throw new Error(validation.errors.join('. '));
-      }
+        // Validate user data
+        const validation = validateUser(newUser);
+        if (!validation.isValid) {
+          throw new Error(validation.errors.join('. '));
+        }
 
-      // Save user first
-      await this.userStorageService.saveUser(newUser);
-      await this.userStorageService.setCurrentUser(newUser);
+        // Save user first
+        await this.userStorageService.saveUser(newUser);
+        await this.userStorageService.setCurrentUser(newUser);
 
-      // Create secure token for the new user
-      const secureToken = await this.createSecureToken(newUser.id);
-      await this.storeSecureToken(newUser.id, secureToken);
+        // Create secure token for the new user
+        const secureToken = await this.createSecureToken(newUser.id);
+        await this.storeSecureToken(newUser.id, secureToken);
 
-      // Generate reference token for API
-      const referenceToken = await this.cryptoService.generateToken(32);
-      await this.userStorageService.saveUserToken(referenceToken);
+        // Generate reference token for API
+        const referenceToken = await this.cryptoService.generateToken(32);
+        await this.userStorageService.saveUserToken(referenceToken);
 
+        return {
+          user: this.sanitizeUser(newUser),
+          token: referenceToken, // Return reference token for API
+        };
+      },
+      { email: email.toLowerCase(), role },
+    );
+
+    if (result.success && result.data) {
       return {
         success: true,
-        user: this.sanitizeUser(newUser),
-        token: referenceToken, // Return reference token for API
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        user: result.data.user,
+        token: result.data.token,
       };
     }
+
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Login an existing user
   async login(email: string, password: string): Promise<AuthResult> {
-    try {
-      // Validate inputs
-      if (!email || !password) {
-        throw new Error('Email and password are required');
-      }
+    const result = await this.wrapAsync(
+      'login',
+      async () => {
+        // Validate inputs
+        if (!email || !password) {
+          throw new Error('Email and password are required');
+        }
 
-      // Check rate limiting
-      if (!this.rateLimiter.canAttemptLogin(email)) {
-        const lockoutEnd = this.rateLimiter.getLockoutEndTime(email);
-        const minutesRemaining = lockoutEnd ? Math.ceil((lockoutEnd - Date.now()) / 60000) : 15;
-        throw new Error(
-          `Too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
+        // Check rate limiting
+        if (!this.rateLimiter.canAttemptLogin(email)) {
+          const lockoutEnd = this.rateLimiter.getLockoutEndTime(email);
+          const minutesRemaining = lockoutEnd ? Math.ceil((lockoutEnd - Date.now()) / 60000) : 15;
+          throw new Error(
+            `Too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
+          );
+        }
+
+        // Find user by email
+        const user = await this.userStorageService.getUserByEmail(email);
+        if (!user) {
+          throw new Error('Invalid email or password');
+        }
+
+        // Verify user has password credentials
+        if (!user.passwordHash || !user.passwordSalt) {
+          throw new Error('Invalid email or password');
+        }
+
+        // Verify password
+        const isPasswordValid = await this.cryptoService.verifyPassword(
+          password,
+          user.passwordHash,
+          user.passwordSalt,
         );
-      }
 
-      // Find user by email
-      const user = await this.userStorageService.getUserByEmail(email);
-      if (!user) {
-        throw new Error('Invalid email or password');
-      }
+        if (!isPasswordValid) {
+          this.rateLimiter.recordLoginAttempt(email, false);
+          throw new Error('Invalid email or password');
+        }
 
-      // Verify user has password credentials
-      if (!user.passwordHash || !user.passwordSalt) {
-        throw new Error('Invalid email or password');
-      }
+        // Create secure token instead of plain token
+        const secureToken = await this.createSecureToken(user.id);
 
-      // Verify password
-      const isPasswordValid = await this.cryptoService.verifyPassword(
-        password,
-        user.passwordHash,
-        user.passwordSalt,
-      );
+        // Store secure token separately
+        await this.storeSecureToken(user.id, secureToken);
 
-      if (!isPasswordValid) {
-        this.rateLimiter.recordLoginAttempt(email, false);
-        throw new Error('Invalid email or password');
-      }
+        // Update user with timestamp only (no plain token)
+        const updatedUser = updateUser(user, {
+          sessionToken: null, // Don't store plain token in user object
+          lastLoginAt: new Date(),
+          lastActiveAt: new Date(),
+        });
 
-      // Create secure token instead of plain token
-      const secureToken = await this.createSecureToken(user.id);
+        // Save updated user and set as current
+        await this.userStorageService.updateUser(updatedUser);
+        await this.userStorageService.setCurrentUser(updatedUser);
 
-      // Store secure token separately
-      await this.storeSecureToken(user.id, secureToken);
+        // Store a reference token for backward compatibility
+        const referenceToken = await this.cryptoService.generateToken(32);
+        await this.userStorageService.saveUserToken(referenceToken);
 
-      // Update user with timestamp only (no plain token)
-      const updatedUser = updateUser(user, {
-        sessionToken: null, // Don't store plain token in user object
-        lastLoginAt: new Date(),
-        lastActiveAt: new Date(),
-      });
+        // Record successful login
+        this.rateLimiter.recordLoginAttempt(email, true);
 
-      // Save updated user and set as current
-      await this.userStorageService.updateUser(updatedUser);
-      await this.userStorageService.setCurrentUser(updatedUser);
+        return {
+          user: this.sanitizeUser(updatedUser),
+          token: referenceToken, // Return reference token for API calls
+        };
+      },
+      { email: email.toLowerCase() },
+    );
 
-      // Store a reference token for backward compatibility
-      const referenceToken = await this.cryptoService.generateToken(32);
-      await this.userStorageService.saveUserToken(referenceToken);
-
-      // Record successful login
-      this.rateLimiter.recordLoginAttempt(email, true);
-
+    if (result.success && result.data) {
       return {
         success: true,
-        user: this.sanitizeUser(updatedUser),
-        token: referenceToken, // Return reference token for API calls
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        user: result.data.user,
+        token: result.data.token,
       };
     }
+
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Verify current session
   async verifySession(): Promise<SessionVerificationResult> {
-    try {
+    const result = await this.wrapAsync('verifySession', async () => {
       const referenceToken = await this.userStorageService.getUserToken();
       if (!referenceToken) {
         return { isValid: false, reason: 'No session token' };
@@ -297,15 +321,21 @@ class AuthService implements IAuthService {
         isValid: true,
         user: this.sanitizeUser(updatedUser),
       };
-    } catch (error) {
-      SecureLogger.error('Session verification failed', { code: 'AUTH_SESSION_001' });
-      return { isValid: false, reason: 'Verification error' };
+    });
+
+    if (result.success && result.data) {
+      return result.data;
     }
+
+    if (result.error) {
+      this.logError('verifySession', result.error);
+    }
+    return { isValid: false, reason: 'Verification error' };
   }
 
   // Logout current user
   async logout(): Promise<{ success: boolean; error?: string }> {
-    try {
+    const result = await this.wrapAsync('logout', async () => {
       const currentUser = await this.userStorageService.getCurrentUser();
 
       if (currentUser) {
@@ -319,111 +349,132 @@ class AuthService implements IAuthService {
       // Clear stored session
       await this.userStorageService.logout();
 
+      return true;
+    });
+
+    if (result.success) {
       return { success: true };
-    } catch (error) {
-      SecureLogger.error('Logout operation failed', { code: 'AUTH_LOGOUT_001' });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
     }
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Change password for current user
   async changePassword(currentPassword: string, newPassword: string): Promise<AuthResult> {
-    try {
-      const currentUser = await this.userStorageService.getCurrentUser();
-      if (!currentUser) {
-        throw new Error('No user logged in');
-      }
+    // Capture user ID before wrapAsync to avoid async context calculation
+    const currentUser = await this.userStorageService.getCurrentUser();
+    const userId = currentUser?.id;
 
-      // Verify current password
-      const isPasswordValid = await this.cryptoService.verifyPassword(
-        currentPassword,
-        currentUser.passwordHash!,
-        currentUser.passwordSalt!,
-      );
+    const result = await this.wrapAsync(
+      'changePassword',
+      async () => {
+        if (!currentUser) {
+          throw new Error('No user logged in');
+        }
 
-      if (!isPasswordValid) {
-        throw new Error('Current password is incorrect');
-      }
+        // Verify current password
+        const isPasswordValid = await this.cryptoService.verifyPassword(
+          currentPassword,
+          currentUser.passwordHash!,
+          currentUser.passwordSalt!,
+        );
 
-      // Validate new password
-      const passwordValidation = this.validatePassword(newPassword);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.errors.join('. '));
-      }
+        if (!isPasswordValid) {
+          throw new Error('Current password is incorrect');
+        }
 
-      // Generate new salt and hash
-      const salt = await this.cryptoService.generateSalt();
-      const passwordHash = await this.cryptoService.hashPassword(newPassword, salt);
+        // Validate new password
+        const passwordValidation = this.validatePassword(newPassword);
+        if (!passwordValidation.isValid) {
+          throw new Error(passwordValidation.errors.join('. '));
+        }
 
-      // Generate new session token
-      const sessionToken = await this.cryptoService.generateSessionToken();
+        // Generate new salt and hash
+        const salt = await this.cryptoService.generateSalt();
+        const passwordHash = await this.cryptoService.hashPassword(newPassword, salt);
 
-      // Update user
-      const updatedUser = updateUser(currentUser, {
-        passwordHash,
-        passwordSalt: salt,
-        sessionToken,
-        updatedAt: new Date(),
-      });
+        // Generate new session token
+        const sessionToken = await this.cryptoService.generateSessionToken();
 
-      await this.userStorageService.updateUser(updatedUser);
-      await this.userStorageService.setCurrentUser(updatedUser);
-      await this.userStorageService.saveUserToken(sessionToken);
+        // Update user
+        const updatedUser = updateUser(currentUser, {
+          passwordHash,
+          passwordSalt: salt,
+          sessionToken,
+          updatedAt: new Date(),
+        });
 
+        await this.userStorageService.updateUser(updatedUser);
+        await this.userStorageService.setCurrentUser(updatedUser);
+        await this.userStorageService.saveUserToken(sessionToken);
+
+        return true;
+      },
+      { userId },
+    );
+
+    if (result.success) {
       return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
     }
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Reset password (for forgot password flow - simplified version)
   async resetPassword(email: string, newPassword: string): Promise<PasswordResetResult> {
-    try {
-      const user = await this.userStorageService.getUserByEmail(email);
-      if (!user) {
-        // Don't reveal if user exists
-        return { success: true, message: 'If an account exists, the password has been reset' };
-      }
+    const result = await this.wrapAsync(
+      'resetPassword',
+      async () => {
+        const user = await this.userStorageService.getUserByEmail(email);
+        if (!user) {
+          // Don't reveal if user exists
+          return { message: 'If an account exists, the password has been reset' };
+        }
 
-      // Validate new password
-      const passwordValidation = this.validatePassword(newPassword);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.errors.join('. '));
-      }
+        // Validate new password
+        const passwordValidation = this.validatePassword(newPassword);
+        if (!passwordValidation.isValid) {
+          throw new Error(passwordValidation.errors.join('. '));
+        }
 
-      // Generate new salt and hash
-      const salt = await this.cryptoService.generateSalt();
-      const passwordHash = await this.cryptoService.hashPassword(newPassword, salt);
+        // Generate new salt and hash
+        const salt = await this.cryptoService.generateSalt();
+        const passwordHash = await this.cryptoService.hashPassword(newPassword, salt);
 
-      // Update user (clear session token to force re-login)
-      const updatedUser = updateUser(user, {
-        passwordHash,
-        passwordSalt: salt,
-        sessionToken: null,
-        updatedAt: new Date(),
-      });
+        // Update user (clear session token to force re-login)
+        const updatedUser = updateUser(user, {
+          passwordHash,
+          passwordSalt: salt,
+          sessionToken: null,
+          updatedAt: new Date(),
+        });
 
-      await this.userStorageService.updateUser(updatedUser);
+        await this.userStorageService.updateUser(updatedUser);
 
+        return { message: 'If an account exists, the password has been reset' };
+      },
+      { email: email.toLowerCase() },
+    );
+
+    if (result.success && result.data) {
       return {
         success: true,
-        message: 'If an account exists, the password has been reset',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: result.data.message,
       };
     }
+    return {
+      success: false,
+      error: result.error?.message ?? 'Unknown error occurred',
+    };
   }
 
   // Remove sensitive fields from user object
+  // Note: This is a pure synchronous method that performs simple object manipulation,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'> {
     const {
       passwordHash: _passwordHash,
@@ -437,37 +488,48 @@ class AuthService implements IAuthService {
   // Secure Token Methods
 
   // Create a secure token with device binding and encryption
-  async createSecureToken(_userId: string): Promise<SecureToken> {
-    // Generate cryptographically secure token
-    const rawToken = await this.cryptoService.generateSecureBytes(32);
-    // Convert Uint8Array to base64 manually
-    const tokenString = this.uint8ArrayToBase64(rawToken);
+  async createSecureToken(userId: string): Promise<SecureToken> {
+    const result = await this.wrapAsync(
+      'createSecureToken',
+      async () => {
+        // Generate cryptographically secure token
+        const rawToken = await this.cryptoService.generateSecureBytes(32);
+        // Convert Uint8Array to base64 manually
+        const tokenString = this.uint8ArrayToBase64(rawToken);
 
-    // Get device-specific information
-    const deviceId = await this.getDeviceId();
-    const installationId = await this.getInstallationId();
+        // Get device-specific information
+        const deviceId = await this.getDeviceId();
+        const installationId = await this.getInstallationId();
 
-    // Create token fingerprint (hash of token + device info)
-    const fingerprint = await this.cryptoService.hash(
-      `${tokenString}:${deviceId}:${installationId}`,
+        // Create token fingerprint (hash of token + device info)
+        const fingerprint = await this.cryptoService.hash(
+          `${tokenString}:${deviceId}:${installationId}`,
+        );
+
+        // Encrypt token with device-specific key
+        const deviceKey = await this.getOrCreateDeviceKey();
+        const encryptedToken = await this.cryptoService.encrypt(tokenString, deviceKey);
+
+        return {
+          encryptedToken,
+          deviceId,
+          createdAt: new Date(),
+          lastUsedAt: new Date(),
+          fingerprint,
+        };
+      },
+      { userId },
     );
 
-    // Encrypt token with device-specific key
-    const deviceKey = await this.getOrCreateDeviceKey();
-    const encryptedToken = await this.cryptoService.encrypt(tokenString, deviceKey);
-
-    return {
-      encryptedToken,
-      deviceId,
-      createdAt: new Date(),
-      lastUsedAt: new Date(),
-      fingerprint,
-    };
+    if (result.success && result.data) {
+      return result.data;
+    }
+    throw new Error(result.error?.message ?? 'Failed to create secure token');
   }
 
   // Validate a secure token with device binding checks
   async validateSecureToken(secureToken: SecureToken, providedToken: string): Promise<boolean> {
-    try {
+    const result = await this.wrapAsync('validateSecureToken', async () => {
       // Check device binding
       const currentDeviceId = await this.getDeviceId();
       if (secureToken.deviceId !== currentDeviceId) {
@@ -499,26 +561,38 @@ class AuthService implements IAuthService {
       );
 
       return decryptedToken === providedToken;
-    } catch (error) {
-      SecureLogger.error('Token validation failed', { code: 'AUTH_TOKEN_002' });
-      return false;
+    });
+
+    if (result.success && result.data !== undefined) {
+      return result.data;
     }
+    return false;
   }
 
   // Store token separately from user data
   async storeSecureToken(userId: string, secureToken: SecureToken): Promise<void> {
-    const tokenKey = `auth_token_${userId}`;
+    const result = await this.wrapAsync(
+      'storeSecureToken',
+      async () => {
+        const tokenKey = `auth_token_${userId}`;
 
-    // Use SecureStore directly for token storage with authentication
-    await SecureStore.setItemAsync(tokenKey, JSON.stringify(secureToken), {
-      requireAuthentication: true,
-      authenticationPrompt: 'Authenticate to save session',
-    });
+        // Use SecureStore directly for token storage with authentication
+        await SecureStore.setItemAsync(tokenKey, JSON.stringify(secureToken), {
+          requireAuthentication: true,
+          authenticationPrompt: 'Authenticate to save session',
+        });
+      },
+      { userId },
+    );
+
+    if (!result.success) {
+      throw new Error(result.error?.message ?? 'Failed to store secure token');
+    }
   }
 
   // Retrieve secure token
   async getSecureToken(userId: string): Promise<SecureToken | null> {
-    try {
+    const result = await this.wrapAsync('getSecureToken', async () => {
       const tokenKey = `auth_token_${userId}`;
       const tokenData = await SecureStore.getItemAsync(tokenKey, {
         requireAuthentication: true,
@@ -536,40 +610,52 @@ class AuthService implements IAuthService {
       token.lastUsedAt = new Date(token.lastUsedAt);
 
       return token;
-    } catch (error) {
-      SecureLogger.error('Failed to retrieve secure token', { code: 'AUTH_TOKEN_003' });
-      return null;
+    });
+
+    if (result.success && result.data !== undefined) {
+      return result.data;
     }
+    return null;
   }
 
   // Rotate token and invalidate old sessions
   async rotateToken(userId: string): Promise<string> {
-    const newToken = await this.createSecureToken(userId);
-    await this.storeSecureToken(userId, newToken);
+    const result = await this.wrapAsync(
+      'rotateToken',
+      async () => {
+        const newToken = await this.createSecureToken(userId);
+        await this.storeSecureToken(userId, newToken);
 
-    // Fire and forget - we don't need to wait for this
-    // Start the invalidation process but don't wait for it
-    const startInvalidation = async () => {
-      try {
-        await this.invalidateOtherSessions(userId);
-      } catch (err: unknown) {
-        if (global.__DEV__ && err) {
-          console.error('Failed to invalidate other sessions:', String(err));
-        }
-      }
-    };
+        // Fire and forget - we don't need to wait for this
+        // Start the invalidation process but don't wait for it
+        // This is intentionally not wrapped as it's a fire-and-forget operation
+        const startInvalidation = async () => {
+          try {
+            await this.invalidateOtherSessions(userId);
+          } catch (err: unknown) {
+            this.logError('invalidateOtherSessions', err);
+          }
+        };
 
-    // Execute without waiting
-    void startInvalidation();
+        // Execute without waiting
+        void startInvalidation();
 
-    return newToken.encryptedToken;
+        return newToken.encryptedToken;
+      },
+      { userId },
+    );
+
+    if (result.success && result.data) {
+      return result.data;
+    }
+    throw new Error(result.error?.message ?? 'Failed to rotate token');
   }
 
   // Get or create device-specific encryption key
   async getOrCreateDeviceKey(): Promise<string> {
     const deviceKeyName = 'device_encryption_key';
 
-    try {
+    const result = await this.wrapAsync('getOrCreateDeviceKey', async () => {
       // Try to get existing device key
       const existingKey = await SecureStore.getItemAsync(deviceKeyName, {
         requireAuthentication: true,
@@ -591,10 +677,12 @@ class AuthService implements IAuthService {
       });
 
       return deviceKey;
-    } catch (error) {
-      SecureLogger.error('Failed to manage device key', { code: 'AUTH_DEVICE_KEY_001' });
-      throw new Error('Failed to manage device encryption key');
+    });
+
+    if (result.success && result.data) {
+      return result.data;
     }
+    throw new Error('Failed to manage device encryption key');
   }
 
   // Get unique device identifier
@@ -603,7 +691,7 @@ class AuthService implements IAuthService {
     // For now, we'll use a hash of crypto-generated data stored securely
     const deviceIdKey = 'device_unique_id';
 
-    try {
+    const result = await this.wrapAsync('getDeviceId', async () => {
       let deviceId = await SecureStore.getItemAsync(deviceIdKey);
 
       if (!deviceId) {
@@ -614,10 +702,12 @@ class AuthService implements IAuthService {
       }
 
       return deviceId || 'unknown-device';
-    } catch (error) {
-      SecureLogger.error('Failed to get device ID', { code: 'AUTH_DEVICE_ID_001' });
-      return 'unknown-device';
+    });
+
+    if (result.success && result.data) {
+      return result.data;
     }
+    return 'unknown-device';
   }
 
   // Get installation ID
@@ -625,7 +715,7 @@ class AuthService implements IAuthService {
     // Similar to device ID but specific to this app installation
     const installIdKey = 'app_installation_id';
 
-    try {
+    const result = await this.wrapAsync('getInstallationId', async () => {
       let installationId = await SecureStore.getItemAsync(installIdKey);
 
       if (!installationId) {
@@ -635,23 +725,42 @@ class AuthService implements IAuthService {
       }
 
       return installationId || 'unknown-installation';
-    } catch (error) {
-      SecureLogger.error('Failed to get installation ID', { code: 'AUTH_INSTALL_ID_001' });
-      return 'unknown-installation';
+    });
+
+    if (result.success && result.data) {
+      return result.data;
     }
+    return 'unknown-installation';
   }
 
   // Invalidate other sessions (placeholder for future implementation)
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async invalidateOtherSessions(_userId: string): Promise<void> {
-    // In a real implementation, this would notify a backend service
-    // to invalidate tokens from other devices
-    SecureLogger.info('Token rotation initiated', {
-      code: 'AUTH_TOKEN_ROTATE_001',
-    });
+  async invalidateOtherSessions(userId: string): Promise<void> {
+    const result = await this.wrapAsync(
+      'invalidateOtherSessions',
+      async () => {
+        // In a real implementation, this would notify a backend service
+        // to invalidate tokens from other devices
+        // Adding a small delay to simulate async operation
+        await new Promise((resolve) => {
+          setTimeout(resolve, 0);
+        });
+
+        SecureLogger.info('Token rotation initiated', {
+          code: 'AUTH_TOKEN_ROTATE_001',
+        });
+      },
+      { userId },
+    );
+
+    if (!result.success) {
+      // This is a non-critical operation, log the error but don't throw
+      this.logError('invalidateOtherSessions', result.error);
+    }
   }
 
   // Detect anomalous token usage patterns
+  // Note: This is a pure synchronous method that doesn't perform any I/O operations,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   detectAnomalousUsage(secureToken: SecureToken): boolean {
     const now = Date.now();
     const timeSinceLastUse = now - secureToken.lastUsedAt.getTime();
@@ -673,6 +782,8 @@ class AuthService implements IAuthService {
   }
 
   // Helper method to convert Uint8Array to base64
+  // Note: This is a pure synchronous utility method that doesn't perform any I/O,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   private uint8ArrayToBase64(bytes: Uint8Array): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     let result = '';
@@ -696,6 +807,8 @@ class AuthService implements IAuthService {
   }
 
   // Helper method to convert Uint8Array to hex string
+  // Note: This is a pure synchronous utility method that doesn't perform any I/O,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   private uint8ArrayToHex(bytes: Uint8Array): string {
     return Array.from(bytes)
       .map((byte) => byte.toString(16).padStart(2, '0'))
@@ -703,4 +816,5 @@ class AuthService implements IAuthService {
   }
 }
 
+export { AuthService };
 export default new AuthService();

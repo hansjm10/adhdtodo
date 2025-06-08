@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import type { AppStateStatus } from 'react-native';
 import { Alert, AppState } from 'react-native';
 import type { BiometricAuthResult, SecuritySettings } from '../services/BiometricAuthService';
-import { BiometricAuthService } from '../services/BiometricAuthService';
+import BiometricAuthService from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 import SecureLogger from '../services/SecureLogger';
 

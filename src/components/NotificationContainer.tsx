@@ -45,16 +45,22 @@ const NotificationContainer = () => {
     if (!currentUser) return;
 
     try {
-      const allNotifications = await NotificationService.getNotificationsForUser(currentUser.id);
+      const result = await NotificationService.getNotificationsForUser(currentUser.id);
+      if (!result.success || !result.data) {
+        return;
+      }
 
       // Filter for new notifications since last check
-      const newNotifications = allNotifications.filter((n) => {
+      const newNotifications = result.data.filter((n) => {
         // Handle both timestamp and createdAt properties
         const notificationTime = (() => {
-          if (n.timestamp) {
+          if ('timestamp' in n && n.timestamp) {
             return typeof n.timestamp === 'string' ? new Date(n.timestamp) : n.timestamp;
           }
-          return n.createdAt;
+          if ('createdAt' in n && n.createdAt) {
+            return n.createdAt;
+          }
+          return null;
         })();
         return !n.read && notificationTime && notificationTime > lastCheckRef.current;
       }) as NotificationWithData[];

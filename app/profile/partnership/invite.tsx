@@ -111,7 +111,9 @@ const PartnerInviteScreen = () => {
           },
         ]);
       } else {
-        Alert.alert('Error', result.error ?? 'Failed to accept invite');
+        const errorMessage =
+          result.error?.message ?? result.error?.toString() ?? 'Failed to accept invite';
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');

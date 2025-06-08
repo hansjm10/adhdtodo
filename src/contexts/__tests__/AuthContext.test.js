@@ -5,12 +5,24 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { AuthProvider, useAuth } from '../AuthContext';
-import { BiometricAuthService } from '../../services/BiometricAuthService';
+import BiometricAuthService from '../../services/BiometricAuthService';
 import { PINAuthService } from '../../services/PINAuthService';
 import SecureLogger from '../../services/SecureLogger';
 
 // Mock services
-jest.mock('../../services/BiometricAuthService');
+jest.mock('../../services/BiometricAuthService', () => ({
+  __esModule: true,
+  default: {
+    checkBiometricSupport: jest.fn(),
+    authenticate: jest.fn(),
+    getSecuritySettings: jest.fn(),
+    setupAppSecurity: jest.fn(),
+    recordFailedAttempt: jest.fn(),
+    resetFailedAttempts: jest.fn(),
+    checkIfLocked: jest.fn(),
+  },
+  BiometricAuthService: jest.fn(),
+}));
 jest.mock('../../services/PINAuthService');
 jest.mock('../../services/SecureLogger');
 

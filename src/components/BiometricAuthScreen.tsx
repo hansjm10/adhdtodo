@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import type { BiometricSupport, SecuritySettings } from '../services/BiometricAuthService';
-import { BiometricAuthService } from '../services/BiometricAuthService';
+import BiometricAuthService from '../services/BiometricAuthService';
 import { PINAuthService } from '../services/PINAuthService';
 
 interface BiometricAuthScreenProps {

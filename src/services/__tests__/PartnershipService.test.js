@@ -1,8 +1,8 @@
-// ABOUTME: Comprehensive unit tests for PartnershipService
-// Tests partnership creation, invites, status updates, and partnership operations
+// ABOUTME: Comprehensive unit tests for PartnershipService with BaseService error handling
+// Tests partnership creation, invites, status updates, and partnership operations with Result<T> patterns
 
 import PartnershipService from '../PartnershipService';
-import SecureStorageService from '../SecureStorageService';
+import { supabase } from '../SupabaseService';
 import UserStorageService from '../UserStorageService';
 import {
   createPartnership,
@@ -13,8 +13,20 @@ import { setUserPartner } from '../../utils/UserModel';
 import { PARTNERSHIP_STATUS, USER_ROLE } from '../../constants/UserConstants';
 
 // Mock dependencies
-jest.mock('../SecureStorageService');
-jest.mock('../UserStorageService');
+jest.mock('../SupabaseService', () => ({
+  supabase: {
+    from: jest.fn(),
+    rpc: jest.fn(),
+    channel: jest.fn(),
+  },
+}));
+jest.mock('../UserStorageService', () => ({
+  __esModule: true,
+  default: {
+    getUserById: jest.fn(),
+    updateUser: jest.fn(),
+  },
+}));
 jest.mock('../../utils/PartnershipModel');
 jest.mock('../../utils/UserModel');
 
@@ -47,6 +59,21 @@ describe('PartnershipService', () => {
     terminatedAt: null,
   };
 
+  const mockDatabasePartnership = {
+    id: 'partnership_123',
+    adhd_user_id: 'user_123',
+    partner_id: 'partner_456',
+    status: 'active',
+    invite_code: 'ABC123',
+    invite_sent_by: 'user_123',
+    settings: mockPartnership.settings,
+    stats: mockPartnership.stats,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-07T00:00:00.000Z',
+    accepted_at: '2024-01-02T00:00:00.000Z',
+    terminated_at: null,
+  };
+
   const mockPendingPartnership = {
     ...mockPartnership,
     id: 'partnership_pending',
@@ -63,7 +90,7 @@ describe('PartnershipService', () => {
     partnerId: 'partner_456',
   };
 
-  const mockPartner = {
+  const _mockPartner = {
     id: 'partner_456',
     name: 'Partner User',
     email: 'partner@example.com',
@@ -71,15 +98,36 @@ describe('PartnershipService', () => {
     partnerId: 'user_123',
   };
 
+  let mockSupabaseQuery;
+
   beforeEach(() => {
     jest.clearAllMocks();
 
+    // Mock Supabase query chain
+    mockSupabaseQuery = {
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockReturnThis(),
+    };
+
+    // Set default resolved values for common operations
+    mockSupabaseQuery.select.mockResolvedValue({ error: null, data: [] });
+    mockSupabaseQuery.insert.mockResolvedValue({ error: null });
+    mockSupabaseQuery.update.mockResolvedValue({ error: null });
+    mockSupabaseQuery.delete.mockResolvedValue({ error: null });
+    mockSupabaseQuery.single.mockResolvedValue({ error: null, data: null });
+
+    supabase.from.mockReturnValue(mockSupabaseQuery);
+    supabase.rpc.mockReturnValue({ error: null, data: 'INVITE123' });
+
     // Default mock implementations
-    SecureStorageService.getItem.mockResolvedValue(null);
-    SecureStorageService.setItem.mockResolvedValue();
-    SecureStorageService.removeItem.mockResolvedValue();
     UserStorageService.getUserById.mockResolvedValue(null);
-    UserStorageService.updateUser.mockResolvedValue(true);
+    UserStorageService.updateUser.mockResolvedValue({ success: true, data: true });
 
     // Mock partnership model functions
     createPartnership.mockImplementation((data) => ({
@@ -113,84 +161,91 @@ describe('PartnershipService', () => {
   });
 
   describe('getAllPartnerships', () => {
-    it('should return all partnerships from storage', async () => {
-      const partnerships = [mockPartnership, mockPendingPartnership];
-      SecureStorageService.getItem.mockResolvedValue(partnerships);
+    it('should return all partnerships from Supabase', async () => {
+      mockSupabaseQuery.select.mockResolvedValue({
+        error: null,
+        data: [mockDatabasePartnership],
+      });
 
       const result = await PartnershipService.getAllPartnerships();
 
-      expect(SecureStorageService.getItem).toHaveBeenCalledWith('partnerships');
-      expect(result).toEqual(partnerships);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveLength(1);
+      expect(supabase.from).toHaveBeenCalledWith('partnerships');
+      expect(mockSupabaseQuery.select).toHaveBeenCalledWith('*');
     });
 
     it('should return empty array if no partnerships', async () => {
-      SecureStorageService.getItem.mockResolvedValue(null);
+      // Clear cache by calling clearAllPartnerships first
+      await PartnershipService.clearAllPartnerships();
+
+      mockSupabaseQuery.select.mockResolvedValue({
+        error: null,
+        data: [],
+      });
 
       const result = await PartnershipService.getAllPartnerships();
 
-      expect(result).toEqual([]);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
     });
 
-    it('should handle non-array data gracefully', async () => {
-      SecureStorageService.getItem.mockResolvedValue('invalid');
+    it('should handle Supabase errors', async () => {
+      // Clear cache first
+      await PartnershipService.clearAllPartnerships();
+
+      mockSupabaseQuery.select.mockResolvedValue({
+        error: new Error('Database error'),
+        data: null,
+      });
 
       const result = await PartnershipService.getAllPartnerships();
 
-      expect(result).toEqual([]);
-    });
-
-    it('should handle storage errors', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      SecureStorageService.getItem.mockRejectedValue(new Error('Storage error'));
-
-      const result = await PartnershipService.getAllPartnerships();
-
-      expect(consoleError).toHaveBeenCalledWith('Error loading partnerships:', expect.any(Error));
-      expect(result).toEqual([]);
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('PARTNERSHIP');
+      expect(result.error.code).toContain('GETALLPARTNERSHIPS');
     });
   });
 
   describe('savePartnership', () => {
-    it('should save new partnership to storage', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
-
-      const newPartnership = { ...mockPendingPartnership, id: 'new_partnership' };
-      const result = await PartnershipService.savePartnership(newPartnership);
-
-      expect(SecureStorageService.setItem).toHaveBeenCalledWith('partnerships', [
-        mockPartnership,
-        newPartnership,
-      ]);
-      expect(result).toBe(true);
-    });
-
-    it('should handle empty partnerships list', async () => {
-      SecureStorageService.getItem.mockResolvedValue([]);
+    it('should save new partnership to Supabase', async () => {
+      mockSupabaseQuery.insert.mockResolvedValue({
+        error: null,
+      });
 
       const result = await PartnershipService.savePartnership(mockPartnership);
 
-      expect(SecureStorageService.setItem).toHaveBeenCalledWith('partnerships', [mockPartnership]);
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
+      expect(supabase.from).toHaveBeenCalledWith('partnerships');
+      expect(mockSupabaseQuery.insert).toHaveBeenCalled();
     });
 
     it('should handle save errors', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      SecureStorageService.setItem.mockRejectedValue(new Error('Save error'));
+      mockSupabaseQuery.insert.mockResolvedValue({
+        error: new Error('Insert error'),
+      });
 
       const result = await PartnershipService.savePartnership(mockPartnership);
 
-      expect(consoleError).toHaveBeenCalledWith('Error saving partnership:', expect.any(Error));
-      expect(result).toBe(false);
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('PARTNERSHIP');
+      expect(result.error.code).toContain('SAVEPARTNERSHIP');
     });
   });
 
   describe('updatePartnership', () => {
     it('should update existing partnership', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership, mockPendingPartnership]);
+      // Setup fresh mock for this test
+      mockSupabaseQuery.update.mockResolvedValueOnce({
+        error: null,
+      });
+      mockSupabaseQuery.eq.mockResolvedValueOnce({
+        error: null,
+      });
 
       const updatedPartnership = {
         ...mockPartnership,
@@ -198,470 +253,313 @@ describe('PartnershipService', () => {
       };
       const result = await PartnershipService.updatePartnership(updatedPartnership);
 
-      expect(SecureStorageService.setItem).toHaveBeenCalledWith('partnerships', [
-        updatedPartnership,
-        mockPendingPartnership,
-      ]);
-      expect(result).toBe(true);
-    });
-
-    it('should return false if partnership not found', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
-
-      const unknownPartnership = { ...mockPartnership, id: 'unknown_id' };
-      const result = await PartnershipService.updatePartnership(unknownPartnership);
-
-      expect(SecureStorageService.setItem).not.toHaveBeenCalled();
-      expect(result).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
+      expect(mockSupabaseQuery.update).toHaveBeenCalled();
+      expect(mockSupabaseQuery.eq).toHaveBeenCalledWith('id', updatedPartnership.id);
     });
 
     it('should handle update errors', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // First getAllPartnerships succeeds
-      SecureStorageService.getItem.mockResolvedValueOnce([mockPartnership]);
-      // setItem fails
-      SecureStorageService.setItem.mockRejectedValue(new Error('Update error'));
+      mockSupabaseQuery.update.mockResolvedValue({
+        error: new Error('Update error'),
+      });
 
       const result = await PartnershipService.updatePartnership(mockPartnership);
 
-      expect(consoleError).toHaveBeenCalledWith('Error updating partnership:', expect.any(Error));
-      expect(result).toBe(false);
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('PARTNERSHIP');
+      expect(result.error.code).toContain('UPDATEPARTNERSHIP');
     });
   });
 
   describe('createPartnershipInvite', () => {
     it('should create partnership invite for partner role', async () => {
-      SecureStorageService.getItem.mockResolvedValue([]);
+      mockSupabaseQuery.insert.mockResolvedValueOnce({
+        error: null,
+      });
+      mockSupabaseQuery.select.mockResolvedValueOnce({
+        error: null,
+        data: mockDatabasePartnership,
+      });
+      mockSupabaseQuery.single.mockResolvedValueOnce({
+        error: null,
+        data: mockDatabasePartnership,
+      });
 
       const result = await PartnershipService.createPartnershipInvite('user_123', 'partner');
 
-      expect(createPartnership).toHaveBeenCalledWith({
-        inviteSentBy: 'user_123',
-        adhdUserId: 'user_123',
-        partnerId: null,
-      });
-      expect(SecureStorageService.setItem).toHaveBeenCalled();
-      expect(result).toMatchObject({
-        inviteSentBy: 'user_123',
-        adhdUserId: 'user_123',
-      });
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(supabase.rpc).toHaveBeenCalledWith('generate_invite_code');
+      expect(createPartnership).toHaveBeenCalled();
     });
 
     it('should create partnership invite for adhd_user role', async () => {
-      SecureStorageService.getItem.mockResolvedValue([]);
-
-      const result = await PartnershipService.createPartnershipInvite('partner_456', 'adhd_user');
-
-      expect(createPartnership).toHaveBeenCalledWith({
-        inviteSentBy: 'partner_456',
-        adhdUserId: null,
-        partnerId: 'partner_456',
+      mockSupabaseQuery.insert.mockResolvedValueOnce({
+        error: null,
       });
-      expect(result).toMatchObject({
-        inviteSentBy: 'partner_456',
-        partnerId: 'partner_456',
+      mockSupabaseQuery.select.mockResolvedValueOnce({
+        error: null,
+        data: mockDatabasePartnership,
       });
+      mockSupabaseQuery.single.mockResolvedValueOnce({
+        error: null,
+        data: mockDatabasePartnership,
+      });
+
+      const result = await PartnershipService.createPartnershipInvite('user_123', 'adhd_user');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
     });
 
     it('should handle errors during invite creation', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // Mock createPartnership to throw an error
-      createPartnership.mockImplementation(() => {
-        throw new Error('Create error');
-      });
+      supabase.rpc.mockReturnValue({ error: new Error('RPC error'), data: null });
 
       const result = await PartnershipService.createPartnershipInvite('user_123', 'partner');
 
-      expect(consoleError).toHaveBeenCalledWith(
-        'Error creating partnership invite:',
-        expect.any(Error),
-      );
-      expect(result).toBeNull();
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('PARTNERSHIP');
+      expect(result.error.code).toContain('CREATEPARTNERSHIPINVITE');
     });
   });
 
   describe('acceptPartnershipInvite', () => {
-    it('should accept valid partnership invite as ADHD user', async () => {
-      const pendingInvite = {
-        ...mockPendingPartnership,
-        adhdUserId: null,
-        partnerId: 'partner_456',
-      };
-      SecureStorageService.getItem.mockResolvedValue([pendingInvite]);
-      UserStorageService.getUserById
-        .mockResolvedValueOnce(mockUser) // ADHD user
-        .mockResolvedValueOnce(mockPartner); // Partner
-
-      const result = await PartnershipService.acceptPartnershipInvite('ABC123', 'user_123');
-
-      expect(result.success).toBe(true);
-      expect(result.partnership).toMatchObject({
-        adhdUserId: 'user_123',
-        partnerId: 'partner_456',
-        status: PARTNERSHIP_STATUS.ACTIVE,
+    it('should accept valid partnership invite', async () => {
+      // Mock finding the partnership
+      mockSupabaseQuery.select.mockResolvedValueOnce({
+        error: null,
+        data: null, // No data for select
       });
-      expect(acceptPartnership).toHaveBeenCalled();
-      expect(setUserPartner).toHaveBeenCalledTimes(2);
-      expect(UserStorageService.updateUser).toHaveBeenCalledTimes(2);
-    });
+      mockSupabaseQuery.eq.mockResolvedValueOnce({
+        error: null,
+        data: null,
+      });
+      mockSupabaseQuery.single.mockResolvedValueOnce({
+        error: null,
+        data: {
+          ...mockDatabasePartnership,
+          status: 'pending',
+          partner_id: null,
+          accepted_at: null,
+        },
+      });
 
-    it('should accept valid partnership invite as partner', async () => {
-      const pendingInvite = {
-        ...mockPendingPartnership,
-        adhdUserId: 'user_123',
-        partnerId: null,
-      };
-      SecureStorageService.getItem.mockResolvedValue([pendingInvite]);
-      UserStorageService.getUserById
-        .mockResolvedValueOnce(mockUser) // ADHD user
-        .mockResolvedValueOnce(mockPartner); // Partner
+      // Mock updating the partnership
+      mockSupabaseQuery.update.mockResolvedValueOnce({
+        error: null,
+      });
+      mockSupabaseQuery.eq.mockResolvedValueOnce({
+        error: null,
+      });
+      mockSupabaseQuery.select.mockResolvedValueOnce({
+        error: null,
+      });
+      mockSupabaseQuery.single.mockResolvedValueOnce({
+        error: null,
+        data: mockDatabasePartnership,
+      });
+
+      UserStorageService.getUserById.mockResolvedValue(mockUser);
 
       const result = await PartnershipService.acceptPartnershipInvite('ABC123', 'partner_456');
 
       expect(result.success).toBe(true);
-      expect(result.partnership).toMatchObject({
-        adhdUserId: 'user_123',
-        partnerId: 'partner_456',
-        status: PARTNERSHIP_STATUS.ACTIVE,
-      });
+      expect(result.data).toBeDefined();
+      expect(acceptPartnership).toHaveBeenCalled();
     });
 
     it('should reject invalid invite code', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
+      mockSupabaseQuery.single.mockResolvedValue({
+        error: new Error('Not found'),
+        data: null,
+      });
 
       const result = await PartnershipService.acceptPartnershipInvite('INVALID', 'user_123');
 
-      expect(result).toEqual({
-        success: false,
-        error: 'Invalid invite code',
-      });
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
 
     it('should reject already used invite', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]); // Already active
-
-      const result = await PartnershipService.acceptPartnershipInvite('ABC123', 'user_789');
-
-      expect(result).toEqual({
-        success: false,
-        error: 'Invite already used',
-      });
-    });
-
-    it('should reject if partnership already complete', async () => {
-      const completePartnership = {
-        ...mockPendingPartnership,
-        adhdUserId: 'user_123',
-        partnerId: 'partner_456',
-      };
-      SecureStorageService.getItem.mockResolvedValue([completePartnership]);
-
-      const result = await PartnershipService.acceptPartnershipInvite('ABC123', 'user_789');
-
-      expect(result).toEqual({
-        success: false,
-        error: 'Partnership already complete',
-      });
-    });
-
-    it('should handle errors during acceptance', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // First call succeeds to find the partnership
-      SecureStorageService.getItem.mockResolvedValueOnce([mockPendingPartnership]);
-      // acceptPartnership throws error
-      acceptPartnership.mockImplementation(() => {
-        throw new Error('Accept error');
+      mockSupabaseQuery.single.mockResolvedValue({
+        error: null,
+        data: mockDatabasePartnership, // Already active
       });
 
       const result = await PartnershipService.acceptPartnershipInvite('ABC123', 'user_123');
 
-      expect(consoleError).toHaveBeenCalledWith(
-        'Error accepting partnership invite:',
-        expect.any(Error),
-      );
-      expect(result).toEqual({
-        success: false,
-        error: 'Failed to accept invite',
-      });
-
-      consoleError.mockRestore();
-    });
-  });
-
-  describe('getPartnershipByUsers', () => {
-    it('should find partnership by user IDs (order 1)', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership, mockPendingPartnership]);
-
-      const result = await PartnershipService.getPartnershipByUsers('user_123', 'partner_456');
-
-      expect(result).toEqual(mockPartnership);
-    });
-
-    it('should find partnership by user IDs (order 2)', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership, mockPendingPartnership]);
-
-      const result = await PartnershipService.getPartnershipByUsers('partner_456', 'user_123');
-
-      expect(result).toEqual(mockPartnership);
-    });
-
-    it('should return null if partnership not found', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
-
-      const result = await PartnershipService.getPartnershipByUsers('user_123', 'unknown_user');
-
-      expect(result).toBeNull();
-    });
-
-    it('should handle errors from getAllPartnerships gracefully', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // When getAllPartnerships encounters an error, it returns empty array
-      SecureStorageService.getItem.mockRejectedValue(new Error('Get error'));
-
-      const result = await PartnershipService.getPartnershipByUsers('user_123', 'partner_456');
-
-      // getAllPartnerships handles the error and returns [], so getPartnershipByUsers returns null
-      expect(consoleError).toHaveBeenCalledWith('Error loading partnerships:', expect.any(Error));
-      expect(result).toBeNull();
-
-      consoleError.mockRestore();
-    });
-  });
-
-  describe('getPartnershipByInviteCode', () => {
-    it('should find partnership by invite code', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership, mockPendingPartnership]);
-
-      const result = await PartnershipService.getPartnershipByInviteCode('ABC123');
-
-      expect(result).toEqual(mockPartnership);
-    });
-
-    it('should return null if invite code not found', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
-
-      const result = await PartnershipService.getPartnershipByInviteCode('INVALID');
-
-      expect(result).toBeNull();
-    });
-
-    it('should handle errors from getAllPartnerships gracefully', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // When getAllPartnerships encounters an error, it returns empty array
-      SecureStorageService.getItem.mockRejectedValue(new Error('Get error'));
-
-      const result = await PartnershipService.getPartnershipByInviteCode('ABC123');
-
-      // getAllPartnerships handles the error and returns [], so getPartnershipByInviteCode returns null
-      expect(consoleError).toHaveBeenCalledWith('Error loading partnerships:', expect.any(Error));
-      expect(result).toBeNull();
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 
   describe('getUserPartnerships', () => {
     it('should return all partnerships for a user', async () => {
-      const anotherPartnership = {
-        ...mockPartnership,
-        id: 'partnership_other',
-        adhdUserId: 'user_123',
-        partnerId: 'partner_789',
-      };
-      SecureStorageService.getItem.mockResolvedValue([
-        mockPartnership,
-        mockPendingPartnership,
-        anotherPartnership,
-      ]);
+      mockSupabaseQuery.or.mockResolvedValue({
+        error: null,
+        data: [mockDatabasePartnership],
+      });
 
       const result = await PartnershipService.getUserPartnerships('user_123');
 
-      expect(result).toHaveLength(3);
-      expect(result).toContain(mockPartnership);
-      expect(result).toContain(mockPendingPartnership);
-      expect(result).toContain(anotherPartnership);
-    });
-
-    it('should return partnerships where user is partner', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership, mockPendingPartnership]);
-
-      const result = await PartnershipService.getUserPartnerships('partner_456');
-
-      expect(result).toHaveLength(1);
-      expect(result).toContain(mockPartnership);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveLength(1);
+      expect(mockSupabaseQuery.or).toHaveBeenCalledWith(
+        'adhd_user_id.eq.user_123,partner_id.eq.user_123',
+      );
     });
 
     it('should return empty array if no partnerships', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
+      // Clear cache first
+      await PartnershipService.clearAllPartnerships();
 
-      const result = await PartnershipService.getUserPartnerships('unknown_user');
+      mockSupabaseQuery.select.mockResolvedValueOnce({
+        error: null,
+        data: [],
+      });
+      mockSupabaseQuery.or.mockResolvedValueOnce({
+        error: null,
+        data: [],
+      });
 
-      expect(result).toEqual([]);
-    });
+      const result = await PartnershipService.getUserPartnerships('user_999'); // Different user ID to avoid cache
 
-    it('should handle errors from getAllPartnerships gracefully', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // When getAllPartnerships encounters an error, it returns empty array
-      SecureStorageService.getItem.mockRejectedValue(new Error('Get error'));
-
-      const result = await PartnershipService.getUserPartnerships('user_123');
-
-      // getAllPartnerships handles the error and returns [], so getUserPartnerships also returns []
-      expect(consoleError).toHaveBeenCalledWith('Error loading partnerships:', expect.any(Error));
-      expect(result).toEqual([]);
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([]);
     });
   });
 
   describe('getActivePartnership', () => {
     it('should return active partnership for user', async () => {
-      const pausedPartnership = {
-        ...mockPartnership,
-        id: 'partnership_paused',
-        status: PARTNERSHIP_STATUS.PAUSED,
-      };
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership, pausedPartnership]);
+      mockSupabaseQuery.single.mockResolvedValue({
+        error: null,
+        data: mockDatabasePartnership,
+      });
 
       const result = await PartnershipService.getActivePartnership('user_123');
 
-      expect(result).toEqual(mockPartnership);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(mockSupabaseQuery.eq).toHaveBeenCalledWith('status', 'active');
     });
 
     it('should return null if no active partnership', async () => {
-      const pausedPartnership = {
-        ...mockPartnership,
-        status: PARTNERSHIP_STATUS.PAUSED,
-      };
-      SecureStorageService.getItem.mockResolvedValue([pausedPartnership, mockPendingPartnership]);
+      mockSupabaseQuery.single.mockResolvedValue({
+        error: new Error('Not found'),
+        data: null,
+      });
 
       const result = await PartnershipService.getActivePartnership('user_123');
 
-      expect(result).toBeNull();
-    });
-
-    it('should handle errors from getAllPartnerships gracefully', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // When getAllPartnerships encounters an error, it returns empty array
-      SecureStorageService.getItem.mockRejectedValue(new Error('Get error'));
-
-      const result = await PartnershipService.getActivePartnership('user_123');
-
-      // getAllPartnerships handles the error and returns [], which leads to no active partnership
-      expect(consoleError).toHaveBeenCalledWith('Error loading partnerships:', expect.any(Error));
-      expect(result).toBeNull();
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeNull();
     });
   });
 
   describe('incrementPartnershipStat', () => {
     it('should increment partnership stat by 1', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
+      supabase.rpc.mockReturnValue({ error: null });
 
       const result = await PartnershipService.incrementPartnershipStat(
         'partnership_123',
         'tasksCompleted',
       );
 
-      expect(updatePartnershipStats).toHaveBeenCalledWith(mockPartnership, {
-        tasksCompleted: 4, // 3 + 1
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
+      expect(supabase.rpc).toHaveBeenCalledWith('update_partnership_stats', {
+        partnership_id: 'partnership_123',
+        stat_key: 'tasksCompleted',
+        increment: 1,
       });
-      expect(SecureStorageService.setItem).toHaveBeenCalled();
-      expect(result).toBe(true);
     });
 
     it('should increment partnership stat by custom amount', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
+      supabase.rpc.mockReturnValue({ error: null });
 
       const result = await PartnershipService.incrementPartnershipStat(
         'partnership_123',
-        'encouragementsSent',
+        'tasksCompleted',
         5,
       );
 
-      expect(updatePartnershipStats).toHaveBeenCalledWith(mockPartnership, {
-        encouragementsSent: 15, // 10 + 5
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
+      expect(supabase.rpc).toHaveBeenCalledWith('update_partnership_stats', {
+        partnership_id: 'partnership_123',
+        stat_key: 'tasksCompleted',
+        increment: 5,
       });
-      expect(result).toBe(true);
-    });
-
-    it('should handle missing stat gracefully', async () => {
-      const partnershipWithoutStat = {
-        ...mockPartnership,
-        stats: {},
-      };
-      SecureStorageService.getItem.mockResolvedValue([partnershipWithoutStat]);
-
-      const result = await PartnershipService.incrementPartnershipStat(
-        'partnership_123',
-        'newStat',
-      );
-
-      expect(updatePartnershipStats).toHaveBeenCalledWith(partnershipWithoutStat, {
-        newStat: 1, // 0 + 1
-      });
-      expect(result).toBe(true);
-    });
-
-    it('should return false if partnership not found', async () => {
-      SecureStorageService.getItem.mockResolvedValue([mockPartnership]);
-
-      const result = await PartnershipService.incrementPartnershipStat(
-        'unknown_id',
-        'tasksCompleted',
-      );
-
-      expect(updatePartnershipStats).not.toHaveBeenCalled();
-      expect(result).toBe(false);
     });
 
     it('should handle errors', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      // First getAllPartnerships succeeds
-      SecureStorageService.getItem.mockResolvedValueOnce([mockPartnership]);
-      // updatePartnershipStats throws error
-      updatePartnershipStats.mockImplementation(() => {
-        throw new Error('Update stats error');
-      });
+      supabase.rpc.mockReturnValue({ error: new Error('RPC error') });
 
       const result = await PartnershipService.incrementPartnershipStat(
         'partnership_123',
         'tasksCompleted',
       );
 
-      expect(consoleError).toHaveBeenCalledWith(
-        'Error incrementing partnership stat:',
-        expect.any(Error),
-      );
-      expect(result).toBe(false);
-
-      consoleError.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('PARTNERSHIP');
+      expect(result.error.code).toContain('INCREMENTPARTNERSHIPSTAT');
     });
   });
 
   describe('clearAllPartnerships', () => {
-    it('should clear all partnerships from storage', async () => {
+    it('should clear all partnerships from Supabase', async () => {
+      mockSupabaseQuery.delete.mockResolvedValueOnce({
+        error: null,
+      });
+      mockSupabaseQuery.neq.mockResolvedValueOnce({
+        error: null,
+      });
+
       const result = await PartnershipService.clearAllPartnerships();
 
-      expect(SecureStorageService.removeItem).toHaveBeenCalledWith('partnerships');
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
+      expect(mockSupabaseQuery.delete).toHaveBeenCalled();
+      expect(mockSupabaseQuery.neq).toHaveBeenCalledWith(
+        'id',
+        '00000000-0000-0000-0000-000000000000',
+      );
     });
 
     it('should handle clear errors', async () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      SecureStorageService.removeItem.mockRejectedValue(new Error('Clear error'));
+      mockSupabaseQuery.delete.mockResolvedValue({
+        error: new Error('Delete error'),
+      });
 
       const result = await PartnershipService.clearAllPartnerships();
 
-      expect(consoleError).toHaveBeenCalledWith('Error clearing partnerships:', expect.any(Error));
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('PARTNERSHIP');
+      expect(result.error.code).toContain('CLEARALLPARTNERSHIPS');
+    });
+  });
 
-      consoleError.mockRestore();
+  describe('subscribeToPartnershipUpdates', () => {
+    it('should create a realtime subscription', () => {
+      const mockChannel = {
+        on: jest.fn().mockReturnThis(),
+        subscribe: jest.fn().mockReturnThis(),
+      };
+      supabase.channel.mockReturnValue(mockChannel);
+
+      const callback = jest.fn();
+      const result = PartnershipService.subscribeToPartnershipUpdates('user_123', callback);
+
+      expect(supabase.channel).toHaveBeenCalledWith('partnerships-user_123');
+      expect(mockChannel.on).toHaveBeenCalled();
+      expect(mockChannel.subscribe).toHaveBeenCalled();
+      expect(result).toBe(mockChannel);
     });
   });
 });

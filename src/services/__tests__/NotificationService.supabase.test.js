@@ -83,7 +83,8 @@ describe('NotificationService - Supabase Implementation', () => {
         { taskId: 'task-123', taskTitle: 'Test Task' },
       );
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(supabase.from).toHaveBeenCalledWith('notifications');
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -111,7 +112,8 @@ describe('NotificationService - Supabase Implementation', () => {
         {},
       );
 
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 
@@ -149,7 +151,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.notifyTaskAssigned(mockTask, mockAssigner);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'partner-456',
@@ -172,7 +175,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.notifyTaskStarted(mockTask, mockStartedByUser);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'assigner-123', // Notify the assigner
@@ -195,7 +199,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.notifyTaskCompleted(mockTask, mockCompletedByUser);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'assigner-123', // Notify the assigner
@@ -218,7 +223,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.notifyTaskOverdue(mockTask);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           type: NotificationTypes.TASK_OVERDUE,
@@ -230,12 +236,18 @@ describe('NotificationService - Supabase Implementation', () => {
 
   describe('Encouragement and check-in', () => {
     beforeEach(() => {
-      // Mock UserStorageService.getUserById to return user data
+      // Mock UserStorageService.getUserById to return user data in Result<T> format
       UserStorageService.getUserById = jest.fn().mockImplementation((userId) => {
         if (userId === mockUser.id) {
-          return Promise.resolve(createMockUser({ id: mockUser.id, name: 'Test User' }));
+          return Promise.resolve({
+            success: true,
+            data: createMockUser({ id: mockUser.id, name: 'Test User' }),
+          });
         }
-        return Promise.resolve(null);
+        return Promise.resolve({
+          success: true,
+          data: null,
+        });
       });
     });
 
@@ -254,7 +266,8 @@ describe('NotificationService - Supabase Implementation', () => {
         'task-123',
       );
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: mockPartner.id,
@@ -282,7 +295,8 @@ describe('NotificationService - Supabase Implementation', () => {
         'How are you doing?',
       );
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: mockPartner.id,
@@ -325,7 +339,7 @@ describe('NotificationService - Supabase Implementation', () => {
       });
       supabase.from.mockReturnValue(mockQueryBuilder);
 
-      const notifications = await notificationService.getNotificationsForUser(mockUser.id);
+      const result = await notificationService.getNotificationsForUser(mockUser.id);
 
       expect(supabase.from).toHaveBeenCalledWith('notifications');
       expect(mockQueryBuilder.select).toHaveBeenCalledWith('*');
@@ -333,9 +347,10 @@ describe('NotificationService - Supabase Implementation', () => {
       expect(mockQueryBuilder.order).toHaveBeenCalledWith('created_at', { ascending: false });
       expect(mockQueryBuilder.limit).toHaveBeenCalledWith(100);
 
-      expect(notifications).toHaveLength(2);
-      expect(notifications[0].type).toBe(NotificationTypes.TASK_ASSIGNED);
-      expect(notifications[1].type).toBe(NotificationTypes.ENCOURAGEMENT);
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].type).toBe(NotificationTypes.TASK_ASSIGNED);
+      expect(result.data[1].type).toBe(NotificationTypes.ENCOURAGEMENT);
     });
 
     it('should return empty array on error', async () => {
@@ -346,8 +361,9 @@ describe('NotificationService - Supabase Implementation', () => {
       });
       supabase.from.mockReturnValue(mockQueryBuilder);
 
-      const notifications = await notificationService.getNotificationsForUser(mockUser.id);
-      expect(notifications).toEqual([]);
+      const result = await notificationService.getNotificationsForUser(mockUser.id);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 
@@ -366,11 +382,12 @@ describe('NotificationService - Supabase Implementation', () => {
       });
       supabase.from.mockReturnValue(mockQueryBuilder);
 
-      const count = await notificationService.getUnreadNotificationCount(mockUser.id);
+      const result = await notificationService.getUnreadNotificationCount(mockUser.id);
 
       expect(mockQueryBuilder.eq).toHaveBeenCalledWith('user_id', mockUser.id);
       expect(mockQueryBuilder.is).toHaveBeenCalledWith('read', false);
-      expect(count).toBe(2);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(2);
     });
   });
 
@@ -392,7 +409,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.markNotificationAsRead(notificationId);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.update).toHaveBeenCalledWith({
         read: true,
         read_at: expect.any(String),
@@ -412,7 +430,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.markAllNotificationsAsRead(mockUser.id);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.update).toHaveBeenCalledWith({
         read: true,
         read_at: expect.any(String),
@@ -433,7 +452,8 @@ describe('NotificationService - Supabase Implementation', () => {
 
       const result = await notificationService.clearNotificationsForUser(mockUser.id);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQueryBuilder.delete).toHaveBeenCalled();
       expect(mockQueryBuilder.eq).toHaveBeenCalledWith('user_id', mockUser.id);
     });
@@ -447,7 +467,8 @@ describe('NotificationService - Supabase Implementation', () => {
       supabase.from.mockReturnValue(mockQueryBuilder);
 
       const result = await notificationService.clearNotificationsForUser(mockUser.id);
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 

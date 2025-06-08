@@ -5,7 +5,7 @@ import { supabase } from './SupabaseService';
 // import type { Database } from '../types/database.types'; // Will be used when DbUser is needed
 import type { ICryptoService } from './CryptoService';
 import CryptoService from './CryptoService';
-import SecureLogger from './SecureLogger';
+import { BaseService } from './BaseService';
 import type { IRateLimiter } from './RateLimiter';
 import RateLimiter from './RateLimiter';
 import ValidationService from './ValidationService';
@@ -24,7 +24,7 @@ import UserStorageService from './UserStorageService';
 
 // type DbUser = Database['public']['Tables']['users']['Row']; // Will be used in future
 
-export class SupabaseAuthService implements IAuthService {
+export class SupabaseAuthService extends BaseService implements IAuthService {
   // Password validation rules (same as original)
   static readonly PASSWORD_MIN_LENGTH = 8;
   static readonly PASSWORD_REQUIRE_UPPERCASE = true;
@@ -40,6 +40,7 @@ export class SupabaseAuthService implements IAuthService {
     cryptoService: ICryptoService = CryptoService,
     rateLimiter: IRateLimiter = RateLimiter,
   ) {
+    super('SupabaseAuthService');
     this.cryptoService = cryptoService;
     this.rateLimiter = rateLimiter;
 
@@ -55,17 +56,17 @@ export class SupabaseAuthService implements IAuthService {
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         // Handle sign in
-        SecureLogger.info('User signed in via Supabase', {
+        this.logger.info('User signed in via Supabase', {
           code: 'SUPABASE_AUTH_001',
         });
       } else if (event === 'SIGNED_OUT') {
         // Handle sign out
-        SecureLogger.info('User signed out via Supabase', {
+        this.logger.info('User signed out via Supabase', {
           code: 'SUPABASE_AUTH_002',
         });
       } else if (event === 'TOKEN_REFRESHED') {
         // Handle token refresh
-        SecureLogger.info('Session token refreshed', {
+        this.logger.info('Session token refreshed', {
           code: 'SUPABASE_AUTH_003',
         });
       }
@@ -113,162 +114,168 @@ export class SupabaseAuthService implements IAuthService {
 
   // Sign up a new user
   async signUp(email: string, password: string, name: string, role: UserRole): Promise<AuthResult> {
-    try {
-      // Check if Supabase is available
-      if (!supabase) {
-        throw new Error('Supabase client not initialized');
-      }
+    const result = await this.wrapAsync(
+      'signUp',
+      async () => {
+        // Check if Supabase is available
+        if (!supabase) {
+          throw new Error('Supabase client not initialized');
+        }
 
-      // Validate email format
-      if (!ValidationService.validateEmail(email)) {
-        throw new Error('Invalid email address');
-      }
+        // Validate email format
+        if (!ValidationService.validateEmail(email)) {
+          throw new Error('Invalid email address');
+        }
 
-      // Validate password
-      const passwordValidation = this.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.errors.join('. '));
-      }
+        // Validate password
+        const passwordValidation = this.validatePassword(password);
+        if (!passwordValidation.isValid) {
+          throw new Error(passwordValidation.errors.join('. '));
+        }
 
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.toLowerCase(),
-        password,
-        options: {
-          data: {
-            name,
-            role,
+        // Create user in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email.toLowerCase(),
+          password,
+          options: {
+            data: {
+              name,
+              role,
+            },
           },
-        },
-      });
+        });
 
-      if (authError) {
-        throw new Error(authError.message);
-      }
+        if (authError) {
+          throw new Error(authError.message);
+        }
 
-      if (!authData.user) {
-        throw new Error('Failed to create user account');
-      }
+        if (!authData.user) {
+          throw new Error('Failed to create user account');
+        }
 
-      // Create user profile in database
-      const { error: profileError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: email.toLowerCase(),
-        name,
-        theme: 'system',
-        notification_preferences: { global: 'all' },
-      });
+        // Create user profile in database
+        const { error: profileError } = await supabase.from('users').insert({
+          id: authData.user.id,
+          email: email.toLowerCase(),
+          name,
+          theme: 'system',
+          notification_preferences: { global: 'all' },
+        });
 
-      if (profileError) {
-        // Rollback auth user if profile creation fails
-        await supabase.auth.admin.deleteUser(authData.user.id);
-        throw new Error('Failed to create user profile');
-      }
+        if (profileError) {
+          // Rollback auth user if profile creation fails
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw new Error('Failed to create user profile');
+        }
 
-      // Create secure token for device binding (compatible with original implementation)
-      const secureToken = await this.createSecureToken(authData.user.id);
-      await this.storeSecureToken(authData.user.id, secureToken);
+        // Create secure token for device binding (compatible with original implementation)
+        const secureToken = await this.createSecureToken(authData.user.id);
+        await this.storeSecureToken(authData.user.id, secureToken);
 
-      // Get session token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token ?? '';
+        // Get session token
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token ?? '';
 
-      // Transform to match original User type
-      const user = this.transformSupabaseUser(authData.user, { name, role });
+        // Transform to match original User type
+        const user = this.transformSupabaseUser(authData.user, { name, role });
 
-      return {
-        success: true,
-        user: this.sanitizeUser(user),
-        token,
-      };
-    } catch (error) {
-      SecureLogger.error('Sign up failed', {
-        code: 'SUPABASE_SIGNUP_001',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+        return {
+          success: true,
+          user: this.sanitizeUser(user),
+          token,
+        };
+      },
+      { email: email.toLowerCase(), role },
+    );
+
+    if (result.success) {
+      return result.data!;
     }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Login an existing user
   async login(email: string, password: string): Promise<AuthResult> {
-    try {
-      // Validate inputs
-      if (!email || !password) {
-        throw new Error('Email and password are required');
-      }
+    const result = await this.wrapAsync(
+      'login',
+      async () => {
+        // Validate inputs
+        if (!email || !password) {
+          throw new Error('Email and password are required');
+        }
 
-      // Check rate limiting
-      if (!this.rateLimiter.canAttemptLogin(email)) {
-        const lockoutEnd = this.rateLimiter.getLockoutEndTime(email);
-        const minutesRemaining = lockoutEnd ? Math.ceil((lockoutEnd - Date.now()) / 60000) : 15;
-        throw new Error(
-          `Too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
-        );
-      }
+        // Check rate limiting
+        if (!this.rateLimiter.canAttemptLogin(email)) {
+          const lockoutEnd = this.rateLimiter.getLockoutEndTime(email);
+          const minutesRemaining = lockoutEnd ? Math.ceil((lockoutEnd - Date.now()) / 60000) : 15;
+          throw new Error(
+            `Too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
+          );
+        }
 
-      // Sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase(),
-        password,
-      });
+        // Sign in with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password,
+        });
 
-      if (error) {
-        this.rateLimiter.recordLoginAttempt(email, false);
-        throw new Error('Invalid email or password');
-      }
+        if (error) {
+          this.rateLimiter.recordLoginAttempt(email, false);
+          throw new Error('Invalid email or password');
+        }
 
-      if (!data.user) {
-        throw new Error('Login failed');
-      }
+        if (!data.user) {
+          throw new Error('Login failed');
+        }
 
-      // Record successful login
-      this.rateLimiter.recordLoginAttempt(email, true);
+        // Record successful login
+        this.rateLimiter.recordLoginAttempt(email, true);
 
-      // Update last login time in database
-      await supabase
-        .from('users')
-        .update({ last_active: new Date().toISOString() })
-        .eq('id', data.user.id);
+        // Update last login time in database
+        await supabase
+          .from('users')
+          .update({ last_active: new Date().toISOString() })
+          .eq('id', data.user.id);
 
-      // Create secure token for device binding
-      const secureToken = await this.createSecureToken(data.user.id);
-      await this.storeSecureToken(data.user.id, secureToken);
+        // Create secure token for device binding
+        const secureToken = await this.createSecureToken(data.user.id);
+        await this.storeSecureToken(data.user.id, secureToken);
 
-      // Check if this is a user migrating from local storage
-      if (!this.migrationInProgress) {
-        await this.attemptDataMigration(data.user.id);
-      }
+        // Check if this is a user migrating from local storage
+        if (!this.migrationInProgress) {
+          await this.attemptDataMigration(data.user.id);
+        }
 
-      // Get user profile with role
-      const profile = await this.getUserProfile(data.user.id);
-      const user = this.transformSupabaseUser(data.user, profile);
+        // Get user profile with role
+        const profile = await this.getUserProfile(data.user.id);
+        const user = this.transformSupabaseUser(data.user, profile);
 
-      return {
-        success: true,
-        user: this.sanitizeUser(user),
-        token: data.session?.access_token || '',
-      };
-    } catch (error) {
-      SecureLogger.error('Login failed', {
-        code: 'SUPABASE_LOGIN_001',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+        return {
+          success: true,
+          user: this.sanitizeUser(user),
+          token: data.session?.access_token || '',
+        };
+      },
+      { email: email.toLowerCase() },
+    );
+
+    if (result.success) {
+      return result.data!;
     }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Verify current session
   async verifySession(): Promise<SessionVerificationResult> {
-    try {
+    const result = await this.wrapAsync('verifySession', async () => {
       const {
         data: { session },
         error,
@@ -295,7 +302,7 @@ export class SupabaseAuthService implements IAuthService {
         // Validate device binding
         const deviceId = await this.getDeviceId();
         if (secureToken.deviceId !== deviceId) {
-          SecureLogger.warn('Session accessed from different device', {
+          this.logger.warn('Session accessed from different device', {
             code: 'SUPABASE_SESSION_001',
           });
         }
@@ -319,18 +326,17 @@ export class SupabaseAuthService implements IAuthService {
         isValid: true,
         user: this.sanitizeUser(user),
       };
-    } catch (error) {
-      SecureLogger.error('Session verification failed', {
-        code: 'SUPABASE_SESSION_002',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return { isValid: false, reason: 'Verification error' };
+    });
+
+    if (result.success) {
+      return result.data!;
     }
+    return { isValid: false, reason: 'Verification error' };
   }
 
   // Logout current user
   async logout(): Promise<{ success: boolean; error?: string }> {
-    try {
+    const result = await this.wrapAsync('logout', async () => {
       const { error } = await supabase.auth.signOut();
 
       if (error) {
@@ -349,21 +355,20 @@ export class SupabaseAuthService implements IAuthService {
       await UserStorageService.logout();
 
       return { success: true };
-    } catch (error) {
-      SecureLogger.error('Logout failed', {
-        code: 'SUPABASE_LOGOUT_001',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+    });
+
+    if (result.success) {
+      return result.data!;
     }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Change password for current user
   async changePassword(currentPassword: string, newPassword: string): Promise<AuthResult> {
-    try {
+    const result = await this.wrapAsync('changePassword', async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -400,43 +405,53 @@ export class SupabaseAuthService implements IAuthService {
       await this.rotateToken(user.id);
 
       return { success: true };
-    } catch (error) {
-      SecureLogger.error('Password change failed', {
-        code: 'SUPABASE_PASSWORD_001',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+    });
+
+    if (result.success) {
+      return result.data!;
     }
+    return {
+      success: false,
+      error: result.error!.message,
+    };
   }
 
   // Reset password (for forgot password flow)
-  // eslint-disable-next-line @typescript-eslint/require-await
+
   async resetPassword(_email: string, _newPassword: string): Promise<PasswordResetResult> {
-    try {
-      // In a real implementation, this would send a reset email
-      // For now, we'll implement direct reset for development
+    const result = await this.wrapAsync(
+      'resetPassword',
+      async () => {
+        // In a real implementation, this would send a reset email
+        // For now, we'll implement direct reset for development
 
-      // This would typically be a two-step process:
-      // 1. Send reset email: await supabase.auth.resetPasswordForEmail(email)
-      // 2. Update password with token from email
+        // This would typically be a two-step process:
+        // 1. Send reset email: await supabase.auth.resetPasswordForEmail(email)
+        // 2. Update password with token from email
 
-      SecureLogger.info('Password reset requested', {
-        code: 'SUPABASE_RESET_001',
-      });
+        // Simulate async operation
+        await Promise.resolve();
 
-      return {
-        success: true,
-        message: 'If an account exists, a password reset email has been sent',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+        this.logger.info('Password reset requested', {
+          code: 'SUPABASE_RESET_001',
+        });
+
+        const resetResult: PasswordResetResult = {
+          success: true,
+          message: 'If an account exists, a password reset email has been sent',
+        };
+        return resetResult;
+      },
+      { email: _email },
+    );
+
+    if (result.success && result.data) {
+      return result.data;
     }
+    return {
+      success: false,
+      message: result.error?.message ?? 'Password reset failed',
+    };
   }
 
   // Remove sensitive fields from user object
@@ -479,7 +494,7 @@ export class SupabaseAuthService implements IAuthService {
     try {
       const currentDeviceId = await this.getDeviceId();
       if (secureToken.deviceId !== currentDeviceId) {
-        SecureLogger.warn('Token used from different device', {
+        this.logger.warn('Token used from different device', {
           code: 'SUPABASE_TOKEN_001',
         });
         return false;
@@ -505,7 +520,7 @@ export class SupabaseAuthService implements IAuthService {
 
       return decryptedToken === providedToken;
     } catch (error) {
-      SecureLogger.error('Token validation failed', {
+      this.logger.error('Token validation failed', {
         code: 'SUPABASE_TOKEN_002',
       });
       return false;
@@ -538,7 +553,7 @@ export class SupabaseAuthService implements IAuthService {
 
       return token;
     } catch (error) {
-      SecureLogger.error('Failed to retrieve secure token', {
+      this.logger.error('Failed to retrieve secure token', {
         code: 'SUPABASE_TOKEN_003',
       });
       return null;
@@ -590,7 +605,7 @@ export class SupabaseAuthService implements IAuthService {
 
       return deviceKey;
     } catch (error) {
-      SecureLogger.error('Failed to manage device key', {
+      this.logger.error('Failed to manage device key', {
         code: 'SUPABASE_DEVICE_001',
       });
       throw new Error('Failed to manage device encryption key');
@@ -611,7 +626,7 @@ export class SupabaseAuthService implements IAuthService {
 
       return deviceId || 'unknown-device';
     } catch (error) {
-      SecureLogger.error('Failed to get device ID', {
+      this.logger.error('Failed to get device ID', {
         code: 'SUPABASE_DEVICE_002',
       });
       return 'unknown-device';
@@ -632,7 +647,7 @@ export class SupabaseAuthService implements IAuthService {
 
       return installationId || 'unknown-installation';
     } catch (error) {
-      SecureLogger.error('Failed to get installation ID', {
+      this.logger.error('Failed to get installation ID', {
         code: 'SUPABASE_DEVICE_003',
       });
       return 'unknown-installation';
@@ -642,7 +657,7 @@ export class SupabaseAuthService implements IAuthService {
   // eslint-disable-next-line @typescript-eslint/require-await
   async invalidateOtherSessions(_userId: string): Promise<void> {
     // In Supabase, this would be handled by the refresh token rotation
-    SecureLogger.info('Token rotation initiated', {
+    this.logger.info('Token rotation initiated', {
       code: 'SUPABASE_TOKEN_ROTATE_001',
     });
   }
@@ -652,7 +667,7 @@ export class SupabaseAuthService implements IAuthService {
     const timeSinceLastUse = now - secureToken.lastUsedAt.getTime();
 
     if (timeSinceLastUse < 1000) {
-      SecureLogger.warn('Suspicious rapid token usage detected', {
+      this.logger.warn('Suspicious rapid token usage detected', {
         code: 'SUPABASE_ANOMALY_001',
       });
       return true;
@@ -672,7 +687,7 @@ export class SupabaseAuthService implements IAuthService {
     }>();
 
     if (error || !data) {
-      SecureLogger.error('Failed to fetch user profile', {
+      this.logger.error('Failed to fetch user profile', {
         code: 'SUPABASE_PROFILE_001',
       });
       return {};
@@ -749,7 +764,7 @@ export class SupabaseAuthService implements IAuthService {
       // Check for local user data
       const localUser = await UserStorageService.getCurrentUser();
       if (localUser?.email) {
-        SecureLogger.info('Attempting data migration for user', {
+        this.logger.info('Attempting data migration for user', {
           code: 'SUPABASE_MIGRATE_001',
         });
 
@@ -760,7 +775,7 @@ export class SupabaseAuthService implements IAuthService {
         await SecureStore.setItemAsync(migrationKey, 'true');
       }
     } catch (error) {
-      SecureLogger.error('Data migration failed', {
+      this.logger.error('Data migration failed', {
         code: 'SUPABASE_MIGRATE_002',
         context: error instanceof Error ? error.message : 'Unknown error',
       });

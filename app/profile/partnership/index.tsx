@@ -66,10 +66,11 @@ const PartnershipScreen = () => {
       setCurrentUser(user);
 
       if (user) {
-        const activePartnership = await PartnershipService.getActivePartnership(user.id);
-        setPartnership(activePartnership);
+        const partnershipResult = await PartnershipService.getActivePartnership(user.id);
+        if (partnershipResult.success && partnershipResult.data) {
+          setPartnership(partnershipResult.data);
+          const activePartnership = partnershipResult.data;
 
-        if (activePartnership) {
           const partnerId =
             activePartnership.adhdUserId === user.id
               ? activePartnership.partnerId
@@ -122,13 +123,14 @@ const PartnershipScreen = () => {
       const invitedRole: UserRole =
         currentUser.role === USER_ROLE.ADHD_USER ? USER_ROLE.PARTNER : USER_ROLE.ADHD_USER;
 
-      const newPartnership = await PartnershipService.createPartnershipInvite(
+      const partnershipResult = await PartnershipService.createPartnershipInvite(
         currentUser.id,
         invitedRole,
       );
 
-      if (newPartnership) {
-        setInviteCode(newPartnership.inviteCode);
+      if (partnershipResult.success && partnershipResult.data) {
+        const newPartnership = partnershipResult.data;
+        setInviteCode(newPartnership.inviteCode || null);
         Alert.alert(
           'Invite Created!',
           `Your invite code is: ${newPartnership.inviteCode}\n\nShare this code with your ${

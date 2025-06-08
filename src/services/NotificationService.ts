@@ -2,10 +2,10 @@
 // No local storage fallback, no manual cleanup - pure Supabase implementation
 
 import { supabase } from './SupabaseService';
+import { BaseService } from './BaseService';
 import { NOTIFICATION_TYPES } from '../constants/UserConstants';
 import UserStorageService from './UserStorageService';
-import SecureLogger from './SecureLogger';
-import type { Notification, NotificationTypes, User, Task } from '../types';
+import type { Notification, NotificationTypes, User, Task, Result } from '../types';
 import { NotificationPriority } from '../types';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -14,23 +14,23 @@ export interface INotificationService {
     toUserId: string,
     type: NotificationTypes,
     data: Record<string, unknown>,
-  ): Promise<boolean>;
-  notifyTaskAssigned(task: Task, assignedByUser: User): Promise<boolean>;
-  notifyTaskStarted(task: Task, startedByUser: User): Promise<boolean>;
-  notifyTaskCompleted(task: Task, completedByUser: User): Promise<boolean>;
-  notifyTaskOverdue(task: Task): Promise<boolean>;
+  ): Promise<Result<boolean>>;
+  notifyTaskAssigned(task: Task, assignedByUser: User): Promise<Result<boolean>>;
+  notifyTaskStarted(task: Task, startedByUser: User): Promise<Result<boolean>>;
+  notifyTaskCompleted(task: Task, completedByUser: User): Promise<Result<boolean>>;
+  notifyTaskOverdue(task: Task): Promise<Result<boolean>>;
   sendEncouragement(
     fromUserId: string,
     toUserId: string,
     message: string,
     taskId?: string | null,
-  ): Promise<boolean>;
-  sendCheckIn(fromUserId: string, toUserId: string, message: string): Promise<boolean>;
-  getNotificationsForUser(userId: string): Promise<Notification[]>;
-  getUnreadNotificationCount(userId: string): Promise<number>;
-  markNotificationAsRead(notificationId: string): Promise<boolean>;
-  markAllNotificationsAsRead(userId: string): Promise<boolean>;
-  clearNotificationsForUser(userId: string): Promise<boolean>;
+  ): Promise<Result<boolean>>;
+  sendCheckIn(fromUserId: string, toUserId: string, message: string): Promise<Result<boolean>>;
+  getNotificationsForUser(userId: string): Promise<Result<Notification[]>>;
+  getUnreadNotificationCount(userId: string): Promise<Result<number>>;
+  markNotificationAsRead(notificationId: string): Promise<Result<boolean>>;
+  markAllNotificationsAsRead(userId: string): Promise<Result<boolean>>;
+  clearNotificationsForUser(userId: string): Promise<Result<boolean>>;
   subscribeToNotifications(
     userId: string,
     callback: (notification: Notification) => void,
@@ -52,8 +52,12 @@ interface DbNotification {
   expires_at?: string;
 }
 
-export class NotificationService implements INotificationService {
+export class NotificationService extends BaseService implements INotificationService {
   private subscriptions = new Map<string, RealtimeChannel>();
+
+  constructor() {
+    super('Notification');
+  }
 
   private transformDbNotificationToNotification(dbNotif: DbNotification): Notification {
     return {
@@ -131,70 +135,104 @@ export class NotificationService implements INotificationService {
     toUserId: string,
     type: NotificationTypes,
     data: Record<string, unknown>,
-  ): Promise<boolean> {
-    try {
-      const { error } = await supabase.from('notifications').insert({
-        user_id: toUserId,
-        type,
-        title: this.generateTitle(type, data),
-        message: this.generateMessage(type, data),
-        data,
-        priority: this.getPriority(type),
-      });
-
-      if (error) {
-        SecureLogger.error('Failed to send notification', {
-          code: 'NOTIF_001',
-          context: error.message,
+  ): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'sendNotification',
+      async () => {
+        const { error } = await supabase.from('notifications').insert({
+          user_id: toUserId,
+          type,
+          title: this.generateTitle(type, data),
+          message: this.generateMessage(type, data),
+          data,
+          priority: this.getPriority(type),
         });
-        return false;
-      }
 
-      return true;
-    } catch (error) {
-      SecureLogger.error('Failed to send notification', {
-        code: 'NOTIF_002',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return false;
-    }
+        if (error) throw error;
+        return true;
+      },
+      { toUserId, type, hasData: Object.keys(data).length > 0 },
+    );
   }
 
-  async notifyTaskAssigned(task: Task, assignedByUser: User): Promise<boolean> {
-    if (!task.assignedTo) return false;
+  async notifyTaskAssigned(task: Task, assignedByUser: User): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'notifyTaskAssigned',
+      async () => {
+        if (!task.assignedTo) {
+          return false;
+        }
 
-    return this.sendNotification(task.assignedTo, NOTIFICATION_TYPES.TASK_ASSIGNED, {
-      taskId: task.id,
-      taskTitle: task.title,
-      assignedByUserId: assignedByUser.id,
-      fromUserName: assignedByUser.name,
-    });
+        const result = await this.sendNotification(
+          task.assignedTo,
+          NOTIFICATION_TYPES.TASK_ASSIGNED,
+          {
+            taskId: task.id,
+            taskTitle: task.title,
+            assignedByUserId: assignedByUser.id,
+            fromUserName: assignedByUser.name,
+          },
+        );
+
+        return result.success ? result.data! : false;
+      },
+      { taskId: task.id, assignedTo: task.assignedTo, assignedBy: assignedByUser.id },
+    );
   }
 
-  async notifyTaskStarted(task: Task, startedByUser: User): Promise<boolean> {
-    if (!task.assignedBy || task.assignedBy === startedByUser.id) return true;
+  async notifyTaskStarted(task: Task, startedByUser: User): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'notifyTaskStarted',
+      async () => {
+        if (!task.assignedBy || task.assignedBy === startedByUser.id) {
+          return true;
+        }
 
-    return this.sendNotification(task.assignedBy, NOTIFICATION_TYPES.TASK_STARTED, {
-      taskId: task.id,
-      taskTitle: task.title,
-      startedByUserId: startedByUser.id,
-      fromUserName: startedByUser.name,
-    });
+        const result = await this.sendNotification(
+          task.assignedBy,
+          NOTIFICATION_TYPES.TASK_STARTED,
+          {
+            taskId: task.id,
+            taskTitle: task.title,
+            startedByUserId: startedByUser.id,
+            fromUserName: startedByUser.name,
+          },
+        );
+
+        return result.success ? result.data! : false;
+      },
+      { taskId: task.id, assignedBy: task.assignedBy, startedBy: startedByUser.id },
+    );
   }
 
-  async notifyTaskCompleted(task: Task, completedByUser: User): Promise<boolean> {
-    if (!task.assignedBy || task.assignedBy === completedByUser.id) return true;
+  async notifyTaskCompleted(task: Task, completedByUser: User): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'notifyTaskCompleted',
+      async () => {
+        if (!task.assignedBy || task.assignedBy === completedByUser.id) {
+          return true;
+        }
 
-    return this.sendNotification(task.assignedBy, NOTIFICATION_TYPES.TASK_COMPLETED, {
-      taskId: task.id,
-      taskTitle: task.title,
-      completedByUserId: completedByUser.id,
-      fromUserName: completedByUser.name,
-      xpEarned: task.xpEarned,
-    });
+        const result = await this.sendNotification(
+          task.assignedBy,
+          NOTIFICATION_TYPES.TASK_COMPLETED,
+          {
+            taskId: task.id,
+            taskTitle: task.title,
+            completedByUserId: completedByUser.id,
+            fromUserName: completedByUser.name,
+            xpEarned: task.xpEarned,
+          },
+        );
+
+        return result.success ? result.data! : false;
+      },
+      { taskId: task.id, assignedBy: task.assignedBy, completedBy: completedByUser.id },
+    );
   }
 
-  async notifyTaskOverdue(task: Task): Promise<boolean> {
+  async notifyTaskOverdue(task: Task): Promise<Result<boolean>> {
+    // Calculate userIds upfront for context
     const userIds: string[] = [];
 
     // Notify the task owner
@@ -212,17 +250,23 @@ export class NotificationService implements INotificationService {
       userIds.push(task.assignedBy);
     }
 
-    const results = await Promise.all(
-      userIds.map((userId) =>
-        this.sendNotification(userId, NOTIFICATION_TYPES.TASK_OVERDUE, {
-          taskId: task.id,
-          taskTitle: task.title,
-          dueDate: task.dueDate?.toISOString(),
-        }),
-      ),
-    );
+    return this.wrapAsync(
+      'notifyTaskOverdue',
+      async () => {
+        const results = await Promise.all(
+          userIds.map((userId) =>
+            this.sendNotification(userId, NOTIFICATION_TYPES.TASK_OVERDUE, {
+              taskId: task.id,
+              taskTitle: task.title,
+              dueDate: task.dueDate?.toISOString(),
+            }),
+          ),
+        );
 
-    return results.every((result) => result);
+        return results.every((result) => result.success && result.data);
+      },
+      { taskId: task.id, userIds, dueDate: task.dueDate?.toISOString() },
+    );
   }
 
   async sendEncouragement(
@@ -230,159 +274,138 @@ export class NotificationService implements INotificationService {
     toUserId: string,
     message: string,
     taskId?: string | null,
-  ): Promise<boolean> {
-    const fromUser = await UserStorageService.getUserById(fromUserId);
-    if (!fromUser) return false;
-
-    return this.sendNotification(toUserId, NOTIFICATION_TYPES.ENCOURAGEMENT, {
-      fromUserId,
-      fromUserName: fromUser.name,
-      message,
-      taskId,
-    });
-  }
-
-  async sendCheckIn(fromUserId: string, toUserId: string, message: string): Promise<boolean> {
-    const fromUser = await UserStorageService.getUserById(fromUserId);
-    if (!fromUser) return false;
-
-    return this.sendNotification(toUserId, NOTIFICATION_TYPES.CHECK_IN, {
-      fromUserId,
-      fromUserName: fromUser.name,
-      message,
-    });
-  }
-
-  async getNotificationsForUser(userId: string): Promise<Notification[]> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) {
-        SecureLogger.error('Failed to fetch notifications', {
-          code: 'NOTIF_003',
-          context: error.message,
+  ): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'sendEncouragement',
+      async () => {
+        const fromUser = await UserStorageService.getUserById(fromUserId);
+        if (!fromUser) {
+          return false;
+        }
+        const result = await this.sendNotification(toUserId, NOTIFICATION_TYPES.ENCOURAGEMENT, {
+          fromUserId,
+          fromUserName: fromUser.name ?? 'Unknown User',
+          message,
+          taskId,
         });
-        return [];
-      }
 
-      return (data || []).map(this.transformDbNotificationToNotification);
-    } catch (error) {
-      SecureLogger.error('Failed to get notifications', {
-        code: 'NOTIF_004',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return [];
-    }
+        return result.success ? result.data! : false;
+      },
+      { fromUserId, toUserId, taskId },
+    );
   }
 
-  async getUnreadNotificationCount(userId: string): Promise<number> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('id')
-        .eq('user_id', userId)
-        .is('read', false);
-
-      if (error) {
-        SecureLogger.error('Failed to count unread notifications', {
-          code: 'NOTIF_005',
-          context: error.message,
+  async sendCheckIn(
+    fromUserId: string,
+    toUserId: string,
+    message: string,
+  ): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'sendCheckIn',
+      async () => {
+        const fromUser = await UserStorageService.getUserById(fromUserId);
+        if (!fromUser) {
+          return false;
+        }
+        const result = await this.sendNotification(toUserId, NOTIFICATION_TYPES.CHECK_IN, {
+          fromUserId,
+          fromUserName: fromUser.name ?? 'Unknown User',
+          message,
         });
-        return 0;
-      }
 
-      return data?.length ?? 0;
-    } catch (error) {
-      SecureLogger.error('Failed to get unread count', {
-        code: 'NOTIF_006',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return 0;
-    }
+        return result.success ? result.data! : false;
+      },
+      { fromUserId, toUserId },
+    );
   }
 
-  async markNotificationAsRead(notificationId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({
-          read: true,
-          read_at: new Date().toISOString(),
-        })
-        .eq('id', notificationId);
+  async getNotificationsForUser(userId: string): Promise<Result<Notification[]>> {
+    return this.wrapAsync(
+      'getNotificationsForUser',
+      async () => {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(100);
 
-      if (error) {
-        SecureLogger.error('Failed to mark notification as read', {
-          code: 'NOTIF_007',
-          context: error.message,
-        });
-        return false;
-      }
+        if (error) throw error;
 
-      return true;
-    } catch (error) {
-      SecureLogger.error('Failed to mark as read', {
-        code: 'NOTIF_008',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return false;
-    }
+        return (data || []).map(this.transformDbNotificationToNotification);
+      },
+      { userId },
+    );
   }
 
-  async markAllNotificationsAsRead(userId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({
-          read: true,
-          read_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId)
-        .is('read', false);
+  async getUnreadNotificationCount(userId: string): Promise<Result<number>> {
+    return this.wrapAsync(
+      'getUnreadNotificationCount',
+      async () => {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', userId)
+          .is('read', false);
 
-      if (error) {
-        SecureLogger.error('Failed to mark all notifications as read', {
-          code: 'NOTIF_009',
-          context: error.message,
-        });
-        return false;
-      }
+        if (error) throw error;
 
-      return true;
-    } catch (error) {
-      SecureLogger.error('Failed to mark all as read', {
-        code: 'NOTIF_010',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return false;
-    }
+        return data?.length ?? 0;
+      },
+      { userId },
+    );
   }
 
-  async clearNotificationsForUser(userId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
+  async markNotificationAsRead(notificationId: string): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'markNotificationAsRead',
+      async () => {
+        const { error } = await supabase
+          .from('notifications')
+          .update({
+            read: true,
+            read_at: new Date().toISOString(),
+          })
+          .eq('id', notificationId);
 
-      if (error) {
-        SecureLogger.error('Failed to clear notifications', {
-          code: 'NOTIF_011',
-          context: error.message,
-        });
-        return false;
-      }
+        if (error) throw error;
+        return true;
+      },
+      { notificationId },
+    );
+  }
 
-      return true;
-    } catch (error) {
-      SecureLogger.error('Failed to clear notifications', {
-        code: 'NOTIF_012',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return false;
-    }
+  async markAllNotificationsAsRead(userId: string): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'markAllNotificationsAsRead',
+      async () => {
+        const { error } = await supabase
+          .from('notifications')
+          .update({
+            read: true,
+            read_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId)
+          .is('read', false);
+
+        if (error) throw error;
+        return true;
+      },
+      { userId },
+    );
+  }
+
+  async clearNotificationsForUser(userId: string): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'clearNotificationsForUser',
+      async () => {
+        const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
+
+        if (error) throw error;
+        return true;
+      },
+      { userId },
+    );
   }
 
   subscribeToNotifications(

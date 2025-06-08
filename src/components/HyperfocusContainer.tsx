@@ -29,18 +29,20 @@ export const HyperfocusContainer: React.FC = () => {
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {
-      const settings = await SettingsService.loadSettings();
-      const pomodoroSettings = settings.pomodoro;
+      const result = await SettingsService.loadSettings();
+      if (result.success && result.data) {
+        const pomodoroSettings = result.data.pomodoro;
 
-      const workSec = pomodoroSettings.workDuration * 60;
-      const breakSec = pomodoroSettings.breakDuration * 60;
-      const longBreakSec = pomodoroSettings.longBreakDuration * 60;
+        const workSec = pomodoroSettings.workDuration * 60;
+        const breakSec = pomodoroSettings.breakDuration * 60;
+        const longBreakSec = pomodoroSettings.longBreakDuration * 60;
 
-      setWorkDuration(workSec);
-      setBreakDuration(breakSec);
-      setLongBreakDuration(longBreakSec);
-      setLongBreakAfter(pomodoroSettings.longBreakAfter);
-      setTimeLeft(workSec);
+        setWorkDuration(workSec);
+        setBreakDuration(breakSec);
+        setLongBreakDuration(longBreakSec);
+        setLongBreakAfter(pomodoroSettings.longBreakAfter);
+        setTimeLeft(workSec);
+      }
     };
 
     loadSettings().catch((error) => {
