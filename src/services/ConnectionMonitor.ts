@@ -108,8 +108,9 @@ class ConnectionMonitor extends BaseService {
 
     this.stopHealthChecks();
 
-    this.logger.info('📡 Connection monitoring stopped', {
+    this.logger.info('Connection monitoring stopped', {
       code: 'CONNECTION_MONITOR_001',
+      context: 'Service stopped by user request',
     });
   }
 
@@ -324,8 +325,9 @@ class ConnectionMonitor extends BaseService {
 
     if (this.isCircuitOpen) {
       this.isCircuitOpen = false;
-      this.logger.info('🔓 Circuit breaker closed - connection restored', {
+      this.logger.info('Circuit breaker closed - connection restored', {
         code: 'CONNECTION_MONITOR_002',
+        context: `Previous failure count: ${this.failureCount}`,
       });
     }
   }
@@ -339,16 +341,17 @@ class ConnectionMonitor extends BaseService {
 
     if (this.failureCount >= this.FAILURE_THRESHOLD) {
       this.isCircuitOpen = true;
-      this.logger.info('🔒 Circuit breaker opened due to repeated failures', {
+      this.logger.info('Circuit breaker opened due to repeated failures', {
         code: 'CONNECTION_MONITOR_003',
-        context: JSON.stringify({ failureCount: this.failureCount }),
+        context: `Failure count: ${this.failureCount}, Threshold: ${this.FAILURE_THRESHOLD}`,
       });
 
       // Set timeout to try again later
       setTimeout(() => {
         this.isCircuitOpen = false;
-        this.logger.info('⏰ Circuit breaker timeout - attempting to close', {
+        this.logger.info('Circuit breaker timeout - attempting to close', {
           code: 'CONNECTION_MONITOR_004',
+          context: `Timeout duration: ${this.CIRCUIT_TIMEOUT}ms`,
         });
       }, this.CIRCUIT_TIMEOUT);
     }
@@ -379,7 +382,11 @@ class ConnectionMonitor extends BaseService {
       try {
         callback(event);
       } catch (error) {
-        this.logError('emitEvent', error);
+        this.logError('emitEvent', error, {
+          eventType: event.type,
+          connectionState: event.connectionState.isConnected,
+          subscriberCount: this.callbacks.size,
+        });
       }
     });
   }

@@ -47,12 +47,13 @@ describe('CollaborativeEditingService', () => {
       };
       supabase.channel.mockReturnValue(mockChannel);
 
-      const session = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      const result = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
 
-      expect(session).toBeDefined();
-      expect(session.taskId).toBe(mockTaskId);
-      expect(session.editors.has(mockUserId)).toBe(true);
-      expect(session.isLocked).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data.taskId).toBe(mockTaskId);
+      expect(result.data.editors.has(mockUserId)).toBe(true);
+      expect(result.data.isLocked).toBe(false);
       expect(supabase.channel).toHaveBeenCalledWith(`task_edit:${mockTaskId}`);
     });
 
@@ -65,10 +66,14 @@ describe('CollaborativeEditingService', () => {
       supabase.channel.mockReturnValue(mockChannel);
 
       // Create first session
-      const session1 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      const result1 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      expect(result1.success).toBe(true);
+      const session1 = result1.data;
 
       // Create second session for same task
-      const session2 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId2);
+      const result2 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId2);
+      expect(result2.success).toBe(true);
+      const session2 = result2.data;
 
       expect(session1.taskId).toBe(session2.taskId);
       expect(session2.editors.size).toBe(2);
@@ -126,13 +131,18 @@ describe('CollaborativeEditingService', () => {
       supabase.channel.mockReturnValue(mockChannel);
 
       // Start session
-      const session = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId2);
+      const result1 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      expect(result1.success).toBe(true);
+      const session = result1.data;
+
+      const result2 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId2);
+      expect(result2.success).toBe(true);
 
       expect(session.editors.size).toBe(2);
 
       // Stop session for one user
-      await CollaborativeEditingService.stopEditSession(mockTaskId, mockUserId);
+      const stopResult = await CollaborativeEditingService.stopEditSession(mockTaskId, mockUserId);
+      expect(stopResult.success).toBe(true);
 
       expect(session.editors.size).toBe(1);
       expect(session.editors.has(mockUserId)).toBe(false);
@@ -149,8 +159,14 @@ describe('CollaborativeEditingService', () => {
       supabase.channel.mockReturnValue(mockChannel);
 
       // Start and stop session
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
-      await CollaborativeEditingService.stopEditSession(mockTaskId, mockUserId);
+      const startResult = await CollaborativeEditingService.startEditSession(
+        mockTaskId,
+        mockUserId,
+      );
+      expect(startResult.success).toBe(true);
+
+      const stopResult = await CollaborativeEditingService.stopEditSession(mockTaskId, mockUserId);
+      expect(stopResult.success).toBe(true);
 
       expect(mockChannel.unsubscribe).toHaveBeenCalled();
       expect(CollaborativeEditingService.editSessions.has(mockTaskId)).toBe(false);
@@ -195,9 +211,10 @@ describe('CollaborativeEditingService', () => {
         8,
       );
 
-      const success = await CollaborativeEditingService.applyOperation(operation);
+      const result = await CollaborativeEditingService.applyOperation(operation);
 
-      expect(success).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(supabase.from).toHaveBeenCalledWith('tasks');
       expect(mockQuery.update).toHaveBeenCalledWith({ title: 'Original Updated Title' });
     });
@@ -221,9 +238,10 @@ describe('CollaborativeEditingService', () => {
         'high',
       );
 
-      const success = await CollaborativeEditingService.applyOperation(operation);
+      const result = await CollaborativeEditingService.applyOperation(operation);
 
-      expect(success).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(mockQuery.update).toHaveBeenCalledWith({ priority: 'high' });
     });
 
@@ -243,9 +261,10 @@ describe('CollaborativeEditingService', () => {
         0,
       );
 
-      const success = await CollaborativeEditingService.applyOperation(operation);
+      const result = await CollaborativeEditingService.applyOperation(operation);
 
-      expect(success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
     });
 
     it('should queue operation for offline retry on database failure', async () => {
@@ -273,9 +292,10 @@ describe('CollaborativeEditingService', () => {
         0,
       );
 
-      const success = await CollaborativeEditingService.applyOperation(operation);
+      const result = await CollaborativeEditingService.applyOperation(operation);
 
-      expect(success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
       expect(OfflineQueueManager.addOperation).toHaveBeenCalledWith(
         'collaborative_edit',
         operation,
@@ -293,13 +313,23 @@ describe('CollaborativeEditingService', () => {
       };
       supabase.channel.mockReturnValue(mockChannel);
 
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      const startResult = await CollaborativeEditingService.startEditSession(
+        mockTaskId,
+        mockUserId,
+      );
+      expect(startResult.success).toBe(true);
     });
 
     it('should update cursor position and broadcast', async () => {
       const mockChannel = CollaborativeEditingService.channels.get(mockTaskId);
 
-      await CollaborativeEditingService.updateCursor(mockTaskId, mockUserId, 'title', 10);
+      const result = await CollaborativeEditingService.updateCursor(
+        mockTaskId,
+        mockUserId,
+        'title',
+        10,
+      );
+      expect(result.success).toBe(true);
 
       const session = CollaborativeEditingService.editSessions.get(mockTaskId);
       const cursor = session.editors.get(mockUserId);
@@ -330,17 +360,18 @@ describe('CollaborativeEditingService', () => {
       };
       supabase.channel.mockReturnValue(mockChannel);
 
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      const startResult = await CollaborativeEditingService.startEditSession(
+        mockTaskId,
+        mockUserId,
+      );
+      expect(startResult.success).toBe(true);
     });
 
     it('should lock task successfully', async () => {
-      const success = await CollaborativeEditingService.toggleTaskLock(
-        mockTaskId,
-        mockUserId,
-        true,
-      );
+      const result = await CollaborativeEditingService.toggleTaskLock(mockTaskId, mockUserId, true);
 
-      expect(success).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
 
       const session = CollaborativeEditingService.editSessions.get(mockTaskId);
       expect(session.isLocked).toBe(true);
@@ -349,16 +380,22 @@ describe('CollaborativeEditingService', () => {
 
     it('should unlock task successfully', async () => {
       // First lock the task
-      await CollaborativeEditingService.toggleTaskLock(mockTaskId, mockUserId, true);
+      const lockResult = await CollaborativeEditingService.toggleTaskLock(
+        mockTaskId,
+        mockUserId,
+        true,
+      );
+      expect(lockResult.success).toBe(true);
 
       // Then unlock it
-      const success = await CollaborativeEditingService.toggleTaskLock(
+      const unlockResult = await CollaborativeEditingService.toggleTaskLock(
         mockTaskId,
         mockUserId,
         false,
       );
 
-      expect(success).toBe(true);
+      expect(unlockResult.success).toBe(true);
+      expect(unlockResult.data).toBe(true);
 
       const session = CollaborativeEditingService.editSessions.get(mockTaskId);
       expect(session.isLocked).toBe(false);
@@ -367,16 +404,22 @@ describe('CollaborativeEditingService', () => {
 
     it('should prevent locking when already locked by another user', async () => {
       // Lock by first user
-      await CollaborativeEditingService.toggleTaskLock(mockTaskId, mockUserId, true);
+      const lockResult = await CollaborativeEditingService.toggleTaskLock(
+        mockTaskId,
+        mockUserId,
+        true,
+      );
+      expect(lockResult.success).toBe(true);
 
       // Try to lock by second user
-      const success = await CollaborativeEditingService.toggleTaskLock(
+      const result = await CollaborativeEditingService.toggleTaskLock(
         mockTaskId,
         mockUserId2,
         true,
       );
 
-      expect(success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
 
       const session = CollaborativeEditingService.editSessions.get(mockTaskId);
       expect(session.lockOwner).toBe(mockUserId); // Should still be first user
@@ -384,16 +427,22 @@ describe('CollaborativeEditingService', () => {
 
     it('should prevent unlocking by non-owner', async () => {
       // Lock by first user
-      await CollaborativeEditingService.toggleTaskLock(mockTaskId, mockUserId, true);
+      const lockResult = await CollaborativeEditingService.toggleTaskLock(
+        mockTaskId,
+        mockUserId,
+        true,
+      );
+      expect(lockResult.success).toBe(true);
 
       // Try to unlock by second user
-      const success = await CollaborativeEditingService.toggleTaskLock(
+      const result = await CollaborativeEditingService.toggleTaskLock(
         mockTaskId,
         mockUserId2,
         false,
       );
 
-      expect(success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
 
       const session = CollaborativeEditingService.editSessions.get(mockTaskId);
       expect(session.isLocked).toBe(true);
@@ -410,7 +459,11 @@ describe('CollaborativeEditingService', () => {
       };
       supabase.channel.mockReturnValue(mockChannel);
 
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      const startResult = await CollaborativeEditingService.startEditSession(
+        mockTaskId,
+        mockUserId,
+      );
+      expect(startResult.success).toBe(true);
     });
 
     it('should transform insert operation against another insert', () => {
@@ -488,8 +541,10 @@ describe('CollaborativeEditingService', () => {
     });
 
     it('should return active collaborators within time limit', async () => {
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId2);
+      const result1 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      expect(result1.success).toBe(true);
+      const result2 = await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId2);
+      expect(result2.success).toBe(true);
 
       const collaborators = CollaborativeEditingService.getCollaborators(mockTaskId);
 
@@ -499,7 +554,11 @@ describe('CollaborativeEditingService', () => {
     });
 
     it('should filter out inactive collaborators', async () => {
-      await CollaborativeEditingService.startEditSession(mockTaskId, mockUserId);
+      const startResult = await CollaborativeEditingService.startEditSession(
+        mockTaskId,
+        mockUserId,
+      );
+      expect(startResult.success).toBe(true);
 
       const session = CollaborativeEditingService.editSessions.get(mockTaskId);
       const cursor = session.editors.get(mockUserId);
@@ -560,7 +619,8 @@ describe('CollaborativeEditingService', () => {
 
       const result = await CollaborativeEditingService.resolveConflict(mockTaskId, 'title');
 
-      expect(result).toBe('Resolved Value');
+      expect(result.success).toBe(true);
+      expect(result.data).toBe('Resolved Value');
       expect(ConflictResolver.resolveConflict).toHaveBeenCalledWith({
         entityId: mockTaskId,
         entityType: 'task',
@@ -586,7 +646,8 @@ describe('CollaborativeEditingService', () => {
 
       const result = await CollaborativeEditingService.resolveConflict(mockTaskId, 'title');
 
-      expect(result).toBeNull();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeNull();
     });
   });
 });

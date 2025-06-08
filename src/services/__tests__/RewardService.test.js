@@ -60,10 +60,11 @@ describe('RewardService', () => {
     it('should start new streak on first task completion', async () => {
       TaskStorageService.getCompletedTasks.mockResolvedValue([]);
 
-      const streak = await RewardService.updateStreak();
+      const result = await RewardService.updateStreak();
 
-      expect(streak.current).toBe(1);
-      expect(streak.best).toBe(1);
+      expect(result.success).toBe(true);
+      expect(result.data.current).toBe(1);
+      expect(result.data.best).toBe(1);
     });
 
     it('should continue streak when completing task on same day', async () => {
@@ -72,9 +73,10 @@ describe('RewardService', () => {
 
       TaskStorageService.getCompletedTasks.mockResolvedValue([todayTask]);
 
-      const streak = await RewardService.updateStreak();
+      const result = await RewardService.updateStreak();
 
-      expect(streak.current).toBe(1);
+      expect(result.success).toBe(true);
+      expect(result.data.current).toBe(1);
     });
 
     it('should increment streak for consecutive days', async () => {
@@ -93,9 +95,10 @@ describe('RewardService', () => {
         return Promise.resolve(null);
       });
 
-      const streak = await RewardService.updateStreak();
+      const result = await RewardService.updateStreak();
 
-      expect(streak.current).toBe(2);
+      expect(result.success).toBe(true);
+      expect(result.data.current).toBe(2);
     });
 
     it('should reset streak after missing a day', async () => {
@@ -114,9 +117,10 @@ describe('RewardService', () => {
         return Promise.resolve(null);
       });
 
-      const streak = await RewardService.updateStreak();
+      const result = await RewardService.updateStreak();
 
-      expect(streak.current).toBe(1);
+      expect(result.success).toBe(true);
+      expect(result.data.current).toBe(1);
     });
 
     it('should track best streak', async () => {
@@ -135,10 +139,11 @@ describe('RewardService', () => {
         return Promise.resolve(null);
       });
 
-      const streak = await RewardService.updateStreak();
+      const result = await RewardService.updateStreak();
 
-      expect(streak.current).toBe(6);
-      expect(streak.best).toBe(6);
+      expect(result.success).toBe(true);
+      expect(result.data.current).toBe(6);
+      expect(result.data.best).toBe(6);
     });
   });
 
@@ -156,12 +161,13 @@ describe('RewardService', () => {
         createTask({ title: 'Pending' }),
       ]);
 
-      const stats = await RewardService.getStats();
+      const result = await RewardService.getStats();
 
-      expect(stats.totalXP).toBe(45);
-      expect(stats.tasksCompleted).toBe(3);
-      expect(stats.totalTasks).toBe(4);
-      expect(stats.completionRate).toBe(75);
+      expect(result.success).toBe(true);
+      expect(result.data.totalXP).toBe(45);
+      expect(result.data.tasksCompleted).toBe(3);
+      expect(result.data.totalTasks).toBe(4);
+      expect(result.data.completionRate).toBe(75);
     });
   });
 });

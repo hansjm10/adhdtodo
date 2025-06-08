@@ -10,6 +10,7 @@ import type {
 } from '../services/CollaborativeEditingService';
 import CollaborativeEditingService from '../services/CollaborativeEditingService';
 import { useUser } from './UserContext';
+import SecureLogger from '../services/SecureLogger';
 
 interface CollaborativeEditingState {
   activeSessions: Map<string, TaskEditSession>;
@@ -157,6 +158,7 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
 }) => {
   const [state, dispatch] = useReducer(collaborativeEditingReducer, initialState);
   const { user } = useUser();
+  const logger = SecureLogger;
 
   // Monitor collaborators for current session
   useEffect(() => {
@@ -178,18 +180,16 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
   const startEditing = async (taskId: string): Promise<void> => {
     if (!user) return;
 
-    try {
-      const sessionResult = await CollaborativeEditingService.startEditSession(taskId, user.id);
-      if (sessionResult.success && sessionResult.data) {
-        dispatch({ type: 'START_SESSION', payload: { taskId, session: sessionResult.data } });
-        dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId } });
-        dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: true } });
-      } else {
-        console.error('Failed to start editing session');
-        dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: false } });
-      }
-    } catch (error) {
-      console.error('Failed to start editing session:', error);
+    const sessionResult = await CollaborativeEditingService.startEditSession(taskId, user.id);
+    if (sessionResult.success && sessionResult.data) {
+      dispatch({ type: 'START_SESSION', payload: { taskId, session: sessionResult.data } });
+      dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId } });
+      dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: true } });
+    } else {
+      logger.error(`Failed to start editing session for task ${taskId}`, {
+        code: 'COLLAB_START_FAILED',
+        context: sessionResult.error?.message ?? 'Unknown error',
+      });
       dispatch({ type: 'UPDATE_CONNECTION', payload: { isConnected: false } });
     }
   };
@@ -197,57 +197,68 @@ export const CollaborativeEditingProvider: React.FC<CollaborativeEditingProvider
   const stopEditing = async (taskId: string): Promise<void> => {
     if (!user) return;
 
-    try {
-      await CollaborativeEditingService.stopEditSession(taskId, user.id);
+    const result = await CollaborativeEditingService.stopEditSession(taskId, user.id);
+    if (result.success) {
       dispatch({ type: 'STOP_SESSION', payload: { taskId } });
 
       if (state.currentTaskId === taskId) {
         dispatch({ type: 'SET_CURRENT_TASK', payload: { taskId: null } });
       }
-    } catch (error) {
-      console.error('Failed to stop editing session:', error);
+    } else {
+      logger.error(`Failed to stop editing session for task ${taskId}`, {
+        code: 'COLLAB_STOP_FAILED',
+        context: result.error?.message ?? 'Unknown error',
+      });
     }
   };
 
   const applyOperation = async (operation: EditOperation): Promise<boolean> => {
-    try {
-      const result = await CollaborativeEditingService.applyOperation(operation);
-      const success = result.success && result.data === true;
-      if (success) {
-        dispatch({ type: 'ADD_OPERATION', payload: { operation } });
-        dispatch({ type: 'SYNC_COMPLETE', payload: { timestamp: new Date() } });
-      }
-      return success;
-    } catch (error) {
-      console.error('Failed to apply operation:', error);
-      return false;
+    const result = await CollaborativeEditingService.applyOperation(operation);
+    const success = result.success && result.data === true;
+    if (success) {
+      dispatch({ type: 'ADD_OPERATION', payload: { operation } });
+      dispatch({ type: 'SYNC_COMPLETE', payload: { timestamp: new Date() } });
+    } else {
+      logger.error(`Failed to apply operation on task ${operation.taskId}`, {
+        code: 'COLLAB_OPERATION_FAILED',
+        context: `Field: ${operation.field}, Type: ${operation.type}`,
+      });
     }
+    return success;
   };
 
   const updateCursor = async (field: string, position: number): Promise<void> => {
     if (!user || !state.currentTaskId) return;
 
-    try {
-      await CollaborativeEditingService.updateCursor(state.currentTaskId, user.id, field, position);
-    } catch (error) {
-      console.error('Failed to update cursor:', error);
+    const result = await CollaborativeEditingService.updateCursor(
+      state.currentTaskId,
+      user.id,
+      field,
+      position,
+    );
+    if (!result.success) {
+      logger.warn(`Failed to update cursor for task ${state.currentTaskId}`, {
+        code: 'COLLAB_CURSOR_UPDATE_FAILED',
+        context: `Field: ${field}, Position: ${position}`,
+      });
     }
   };
 
   const toggleTaskLock = async (lock: boolean): Promise<boolean> => {
     if (!user || !state.currentTaskId) return false;
 
-    try {
-      const result = await CollaborativeEditingService.toggleTaskLock(
-        state.currentTaskId,
-        user.id,
-        lock,
-      );
-      return result.success && result.data === true;
-    } catch (error) {
-      console.error('Failed to toggle task lock:', error);
-      return false;
+    const result = await CollaborativeEditingService.toggleTaskLock(
+      state.currentTaskId,
+      user.id,
+      lock,
+    );
+    if (!result.success) {
+      logger.error(`Failed to toggle task lock for task ${state.currentTaskId}`, {
+        code: 'COLLAB_LOCK_FAILED',
+        context: `Lock action: ${lock ? 'acquire' : 'release'}`,
+      });
     }
+    return result.success && result.data === true;
   };
 
   const createTextOperation = (

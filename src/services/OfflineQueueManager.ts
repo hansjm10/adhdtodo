@@ -81,12 +81,12 @@ class OfflineQueueManager extends BaseService {
 
       if (!wasOnline && this.isOnline) {
         // Came back online, process queue
-        this.logger.info('📡 Connection restored, processing offline queue', {
+        this.logger.info('Connection restored, processing offline queue', {
           code: 'OFFLINE_QUEUE_001',
         });
         void this.processQueue();
       } else if (wasOnline && !this.isOnline) {
-        this.logger.info('📡 Connection lost, switching to offline mode', {
+        this.logger.info('Connection lost, switching to offline mode', {
           code: 'OFFLINE_QUEUE_002',
         });
       }
@@ -122,7 +122,7 @@ class OfflineQueueManager extends BaseService {
       // Sort queue by priority and timestamp
       this.sortQueue();
 
-      this.logger.info(`📦 Loaded ${this.queue.length} operations from offline queue`, {
+      this.logger.info(`Loaded ${this.queue.length} operations from offline queue`, {
         code: 'OFFLINE_QUEUE_003',
         context: JSON.stringify({ count: this.queue.length }),
       });
@@ -206,7 +206,7 @@ class OfflineQueueManager extends BaseService {
     this.sortQueue();
     await this.persistQueue();
 
-    this.logger.info(`🔄 Added ${type} operation to offline queue (${this.queue.length} total)`, {
+    this.logger.info(`Added ${type} operation to offline queue (${this.queue.length} total)`, {
       code: 'OFFLINE_QUEUE_004',
       context: JSON.stringify({ type, queueLength: this.queue.length }),
     });
@@ -231,7 +231,7 @@ class OfflineQueueManager extends BaseService {
     const results: OfflineOperationResult[] = [];
     let processed = 0;
 
-    this.logger.info(`🚀 Processing offline queue (${this.queue.length} operations)`, {
+    this.logger.info(`Processing offline queue (${this.queue.length} operations)`, {
       code: 'OFFLINE_QUEUE_005',
       context: JSON.stringify({ queueLength: this.queue.length }),
     });
@@ -253,7 +253,7 @@ class OfflineQueueManager extends BaseService {
         if (result.success) {
           // Remove successful operation
           this.queue.shift();
-          this.logger.info(`✅ Successfully processed ${operation.type} operation`, {
+          this.logger.info(`Successfully processed ${operation.type} operation`, {
             code: 'OFFLINE_QUEUE_006',
             context: JSON.stringify({ type: operation.type }),
           });
@@ -265,7 +265,7 @@ class OfflineQueueManager extends BaseService {
             // Move to dead letter queue
             const failedOp = this.queue.shift()!;
             this.deadLetterQueue.push(failedOp);
-            this.logger.info(`💀 Moved ${operation.type} operation to dead letter queue`, {
+            this.logger.info(`Moved ${operation.type} operation to dead letter queue`, {
               code: 'OFFLINE_QUEUE_007',
               context: JSON.stringify({ type: operation.type }),
             });
@@ -273,7 +273,7 @@ class OfflineQueueManager extends BaseService {
             // Keep for retry (move to end for exponential backoff effect)
             this.queue.push(this.queue.shift()!);
             this.logger.info(
-              `🔄 Retrying ${operation.type} operation (attempt ${operation.retryCount})`,
+              `Retrying ${operation.type} operation (attempt ${operation.retryCount})`,
               {
                 code: 'OFFLINE_QUEUE_008',
                 context: JSON.stringify({ type: operation.type, attempt: operation.retryCount }),
@@ -288,12 +288,12 @@ class OfflineQueueManager extends BaseService {
       await this.persistQueue();
 
       if (this.queue.length > 0) {
-        this.logger.info(`⏳ ${this.queue.length} operations remaining in queue`, {
+        this.logger.info(`${this.queue.length} operations remaining in queue`, {
           code: 'OFFLINE_QUEUE_009',
           context: JSON.stringify({ remaining: this.queue.length }),
         });
       } else {
-        this.logger.info('🎉 Offline queue processing complete', {
+        this.logger.info('Offline queue processing complete', {
           code: 'OFFLINE_QUEUE_010',
         });
       }
@@ -355,7 +355,7 @@ class OfflineQueueManager extends BaseService {
 
     this.queue = this.queue.filter((op) => {
       if (op.priority === 'low' && op.timestamp.getTime() < cutoff) {
-        this.logger.info(`🗑️ Removed stale low priority operation: ${op.type}`, {
+        this.logger.info(`Removed stale low priority operation: ${op.type}`, {
           code: 'OFFLINE_QUEUE_011',
           context: JSON.stringify({ type: op.type }),
         });
@@ -400,7 +400,7 @@ class OfflineQueueManager extends BaseService {
       return;
     }
 
-    this.logger.info(`🔄 Retrying ${this.deadLetterQueue.length} dead letter operations`, {
+    this.logger.info(`Retrying ${this.deadLetterQueue.length} dead letter operations`, {
       code: 'OFFLINE_QUEUE_012',
       context: JSON.stringify({ count: this.deadLetterQueue.length }),
     });
@@ -427,7 +427,7 @@ class OfflineQueueManager extends BaseService {
     this.queue = [];
     this.deadLetterQueue = [];
     await this.persistQueue();
-    this.logger.info('🗑️ Cleared all offline queues', {
+    this.logger.info('Cleared all offline queues', {
       code: 'OFFLINE_QUEUE_013',
     });
   }
