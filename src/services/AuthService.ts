@@ -363,10 +363,13 @@ class AuthService extends BaseService implements IAuthService {
 
   // Change password for current user
   async changePassword(currentPassword: string, newPassword: string): Promise<AuthResult> {
+    // Capture user ID before wrapAsync to avoid async context calculation
+    const currentUser = await this.userStorageService.getCurrentUser();
+    const userId = currentUser?.id;
+
     const result = await this.wrapAsync(
       'changePassword',
       async () => {
-        const currentUser = await this.userStorageService.getCurrentUser();
         if (!currentUser) {
           throw new Error('No user logged in');
         }
@@ -409,7 +412,7 @@ class AuthService extends BaseService implements IAuthService {
 
         return true;
       },
-      { userId: (await this.userStorageService.getCurrentUser())?.id },
+      { userId },
     );
 
     if (result.success) {
@@ -470,6 +473,8 @@ class AuthService extends BaseService implements IAuthService {
   }
 
   // Remove sensitive fields from user object
+  // Note: This is a pure synchronous method that performs simple object manipulation,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   sanitizeUser(user: User): Omit<User, 'passwordHash' | 'passwordSalt' | 'sessionToken'> {
     const {
       passwordHash: _passwordHash,
@@ -483,32 +488,43 @@ class AuthService extends BaseService implements IAuthService {
   // Secure Token Methods
 
   // Create a secure token with device binding and encryption
-  async createSecureToken(_userId: string): Promise<SecureToken> {
-    // Generate cryptographically secure token
-    const rawToken = await this.cryptoService.generateSecureBytes(32);
-    // Convert Uint8Array to base64 manually
-    const tokenString = this.uint8ArrayToBase64(rawToken);
+  async createSecureToken(userId: string): Promise<SecureToken> {
+    const result = await this.wrapAsync(
+      'createSecureToken',
+      async () => {
+        // Generate cryptographically secure token
+        const rawToken = await this.cryptoService.generateSecureBytes(32);
+        // Convert Uint8Array to base64 manually
+        const tokenString = this.uint8ArrayToBase64(rawToken);
 
-    // Get device-specific information
-    const deviceId = await this.getDeviceId();
-    const installationId = await this.getInstallationId();
+        // Get device-specific information
+        const deviceId = await this.getDeviceId();
+        const installationId = await this.getInstallationId();
 
-    // Create token fingerprint (hash of token + device info)
-    const fingerprint = await this.cryptoService.hash(
-      `${tokenString}:${deviceId}:${installationId}`,
+        // Create token fingerprint (hash of token + device info)
+        const fingerprint = await this.cryptoService.hash(
+          `${tokenString}:${deviceId}:${installationId}`,
+        );
+
+        // Encrypt token with device-specific key
+        const deviceKey = await this.getOrCreateDeviceKey();
+        const encryptedToken = await this.cryptoService.encrypt(tokenString, deviceKey);
+
+        return {
+          encryptedToken,
+          deviceId,
+          createdAt: new Date(),
+          lastUsedAt: new Date(),
+          fingerprint,
+        };
+      },
+      { userId },
     );
 
-    // Encrypt token with device-specific key
-    const deviceKey = await this.getOrCreateDeviceKey();
-    const encryptedToken = await this.cryptoService.encrypt(tokenString, deviceKey);
-
-    return {
-      encryptedToken,
-      deviceId,
-      createdAt: new Date(),
-      lastUsedAt: new Date(),
-      fingerprint,
-    };
+    if (result.success && result.data) {
+      return result.data;
+    }
+    throw new Error(result.error?.message ?? 'Failed to create secure token');
   }
 
   // Validate a secure token with device binding checks
@@ -555,13 +571,23 @@ class AuthService extends BaseService implements IAuthService {
 
   // Store token separately from user data
   async storeSecureToken(userId: string, secureToken: SecureToken): Promise<void> {
-    const tokenKey = `auth_token_${userId}`;
+    const result = await this.wrapAsync(
+      'storeSecureToken',
+      async () => {
+        const tokenKey = `auth_token_${userId}`;
 
-    // Use SecureStore directly for token storage with authentication
-    await SecureStore.setItemAsync(tokenKey, JSON.stringify(secureToken), {
-      requireAuthentication: true,
-      authenticationPrompt: 'Authenticate to save session',
-    });
+        // Use SecureStore directly for token storage with authentication
+        await SecureStore.setItemAsync(tokenKey, JSON.stringify(secureToken), {
+          requireAuthentication: true,
+          authenticationPrompt: 'Authenticate to save session',
+        });
+      },
+      { userId },
+    );
+
+    if (!result.success) {
+      throw new Error(result.error?.message ?? 'Failed to store secure token');
+    }
   }
 
   // Retrieve secure token
@@ -594,23 +620,35 @@ class AuthService extends BaseService implements IAuthService {
 
   // Rotate token and invalidate old sessions
   async rotateToken(userId: string): Promise<string> {
-    const newToken = await this.createSecureToken(userId);
-    await this.storeSecureToken(userId, newToken);
+    const result = await this.wrapAsync(
+      'rotateToken',
+      async () => {
+        const newToken = await this.createSecureToken(userId);
+        await this.storeSecureToken(userId, newToken);
 
-    // Fire and forget - we don't need to wait for this
-    // Start the invalidation process but don't wait for it
-    const startInvalidation = async () => {
-      try {
-        await this.invalidateOtherSessions(userId);
-      } catch (err: unknown) {
-        this.logError('invalidateOtherSessions', err);
-      }
-    };
+        // Fire and forget - we don't need to wait for this
+        // Start the invalidation process but don't wait for it
+        // This is intentionally not wrapped as it's a fire-and-forget operation
+        const startInvalidation = async () => {
+          try {
+            await this.invalidateOtherSessions(userId);
+          } catch (err: unknown) {
+            this.logError('invalidateOtherSessions', err);
+          }
+        };
 
-    // Execute without waiting
-    void startInvalidation();
+        // Execute without waiting
+        void startInvalidation();
 
-    return newToken.encryptedToken;
+        return newToken.encryptedToken;
+      },
+      { userId },
+    );
+
+    if (result.success && result.data) {
+      return result.data;
+    }
+    throw new Error(result.error?.message ?? 'Failed to rotate token');
   }
 
   // Get or create device-specific encryption key
@@ -696,16 +734,33 @@ class AuthService extends BaseService implements IAuthService {
   }
 
   // Invalidate other sessions (placeholder for future implementation)
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async invalidateOtherSessions(_userId: string): Promise<void> {
-    // In a real implementation, this would notify a backend service
-    // to invalidate tokens from other devices
-    SecureLogger.info('Token rotation initiated', {
-      code: 'AUTH_TOKEN_ROTATE_001',
-    });
+  async invalidateOtherSessions(userId: string): Promise<void> {
+    const result = await this.wrapAsync(
+      'invalidateOtherSessions',
+      async () => {
+        // In a real implementation, this would notify a backend service
+        // to invalidate tokens from other devices
+        // Adding a small delay to simulate async operation
+        await new Promise((resolve) => {
+          setTimeout(resolve, 0);
+        });
+
+        SecureLogger.info('Token rotation initiated', {
+          code: 'AUTH_TOKEN_ROTATE_001',
+        });
+      },
+      { userId },
+    );
+
+    if (!result.success) {
+      // This is a non-critical operation, log the error but don't throw
+      this.logError('invalidateOtherSessions', result.error);
+    }
   }
 
   // Detect anomalous token usage patterns
+  // Note: This is a pure synchronous method that doesn't perform any I/O operations,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   detectAnomalousUsage(secureToken: SecureToken): boolean {
     const now = Date.now();
     const timeSinceLastUse = now - secureToken.lastUsedAt.getTime();
@@ -727,6 +782,8 @@ class AuthService extends BaseService implements IAuthService {
   }
 
   // Helper method to convert Uint8Array to base64
+  // Note: This is a pure synchronous utility method that doesn't perform any I/O,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   private uint8ArrayToBase64(bytes: Uint8Array): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     let result = '';
@@ -750,6 +807,8 @@ class AuthService extends BaseService implements IAuthService {
   }
 
   // Helper method to convert Uint8Array to hex string
+  // Note: This is a pure synchronous utility method that doesn't perform any I/O,
+  // so it doesn't need wrapAsync/wrapSync as it cannot throw errors
   private uint8ArrayToHex(bytes: Uint8Array): string {
     return Array.from(bytes)
       .map((byte) => byte.toString(16).padStart(2, '0'))
