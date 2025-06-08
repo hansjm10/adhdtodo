@@ -2,6 +2,8 @@
 // Handles Pomodoro timer settings, notification preferences, and other app configurations
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BaseService } from './BaseService';
+import type { Result } from '../types/common.types';
 
 export interface PomodoroSettings {
   workDuration: number; // in minutes (5-90)
@@ -41,11 +43,13 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const SETTINGS_KEY = '@adhd_todo_settings';
 
-class SettingsService {
+class SettingsService extends BaseService {
   private static instance: SettingsService;
   private settings: AppSettings = DEFAULT_SETTINGS;
 
-  private constructor() {}
+  private constructor() {
+    super('SettingsService');
+  }
 
   static getInstance(): SettingsService {
     if (!SettingsService.instance) {
@@ -54,31 +58,37 @@ class SettingsService {
     return SettingsService.instance;
   }
 
-  async loadSettings(): Promise<AppSettings> {
-    try {
-      const stored = await AsyncStorage.getItem(SETTINGS_KEY);
-      if (stored) {
-        this.settings = { ...DEFAULT_SETTINGS, ...(JSON.parse(stored) as Partial<AppSettings>) };
-      }
-      return this.settings;
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      return DEFAULT_SETTINGS;
-    }
+  async loadSettings(): Promise<Result<AppSettings>> {
+    const result = await this.wrapAsync(
+      'loadSettings',
+      async () => {
+        const stored = await AsyncStorage.getItem(SETTINGS_KEY);
+        if (stored) {
+          this.settings = { ...DEFAULT_SETTINGS, ...(JSON.parse(stored) as Partial<AppSettings>) };
+        }
+        return this.settings;
+      },
+      { storageKey: SETTINGS_KEY },
+    );
+
+    return result;
   }
 
-  async saveSettings(settings: AppSettings): Promise<boolean> {
-    try {
-      this.settings = settings;
-      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      return true;
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      return false;
-    }
+  async saveSettings(settings: AppSettings): Promise<Result<boolean>> {
+    const result = await this.wrapAsync(
+      'saveSettings',
+      async () => {
+        this.settings = settings;
+        await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        return true;
+      },
+      { storageKey: SETTINGS_KEY },
+    );
+
+    return result;
   }
 
-  async updatePomodoroSettings(pomodoro: Partial<PomodoroSettings>): Promise<boolean> {
+  async updatePomodoroSettings(pomodoro: Partial<PomodoroSettings>): Promise<Result<boolean>> {
     const updated = {
       ...this.settings,
       pomodoro: {
@@ -92,7 +102,7 @@ class SettingsService {
   async updateSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K],
-  ): Promise<boolean> {
+  ): Promise<Result<boolean>> {
     const updated = {
       ...this.settings,
       [key]: value,
@@ -108,8 +118,43 @@ class SettingsService {
     return this.settings.pomodoro;
   }
 
-  resetToDefaults(): Promise<boolean> {
+  resetToDefaults(): Promise<Result<boolean>> {
     return this.saveSettings(DEFAULT_SETTINGS);
+  }
+
+  // Convenience methods for backward compatibility
+  // These methods provide fallback values for easier migration
+
+  async loadSettingsCompat(): Promise<AppSettings> {
+    const result = await this.loadSettings();
+    if (result.success && result.data) {
+      return result.data;
+    } 
+      return DEFAULT_SETTINGS;
+    
+  }
+
+  async saveSettingsCompat(settings: AppSettings): Promise<boolean> {
+    const result = await this.saveSettings(settings);
+    return result.success && result.data ? result.data : false;
+  }
+
+  async updatePomodoroSettingsCompat(pomodoro: Partial<PomodoroSettings>): Promise<boolean> {
+    const result = await this.updatePomodoroSettings(pomodoro);
+    return result.success && result.data ? result.data : false;
+  }
+
+  async updateSettingCompat<K extends keyof AppSettings>(
+    key: K,
+    value: AppSettings[K],
+  ): Promise<boolean> {
+    const result = await this.updateSetting(key, value);
+    return result.success && result.data ? result.data : false;
+  }
+
+  async resetToDefaultsCompat(): Promise<boolean> {
+    const result = await this.resetToDefaults();
+    return result.success && result.data ? result.data : false;
   }
 
   // Validation helpers

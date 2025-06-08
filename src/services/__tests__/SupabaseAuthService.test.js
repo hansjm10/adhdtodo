@@ -11,7 +11,16 @@ jest.mock('../CryptoService');
 jest.mock('../RateLimiter');
 jest.mock('expo-secure-store');
 jest.mock('../SecureLogger');
-jest.mock('../UserStorageService');
+jest.mock('../UserStorageService', () => {
+  const mockLogout = jest.fn().mockResolvedValue();
+  return {
+    default: {
+      logout: mockLogout,
+      getCurrentUser: jest.fn().mockResolvedValue(null),
+    },
+    __esModule: true,
+  };
+});
 
 // Mock SupabaseService with a proper structure
 jest.mock('../SupabaseService', () => ({
@@ -81,6 +90,8 @@ describe('SupabaseAuthService', () => {
     RateLimiter.canAttemptLogin = jest.fn(() => true);
     RateLimiter.recordLoginAttempt = jest.fn();
     RateLimiter.getLockoutEndTime = jest.fn(() => null);
+
+    // UserStorageService is mocked at the top of the file
 
     // SecureStore mocks are already set up by jest.mock('expo-secure-store')
 

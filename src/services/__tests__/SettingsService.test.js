@@ -34,34 +34,34 @@ describe('SettingsService', () => {
 
       AsyncStorage.getItem.mockResolvedValue(JSON.stringify(storedSettings));
 
-      const settings = await settingsService.loadSettings();
+      const result = await settingsService.loadSettings();
 
       expect(AsyncStorage.getItem).toHaveBeenCalledWith('@adhd_todo_settings');
-      expect(settings.pomodoro.workDuration).toBe(30);
-      expect(settings.soundEnabled).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data.pomodoro.workDuration).toBe(30);
+      expect(result.data.soundEnabled).toBe(true);
     });
 
     it('should return default settings if nothing is stored', async () => {
       AsyncStorage.getItem.mockResolvedValue(null);
 
       const freshService = SettingsService.getInstance();
-      const settings = await freshService.loadSettings();
+      const result = await freshService.loadSettings();
 
-      expect(settings.pomodoro.workDuration).toBe(25);
-      expect(settings.pomodoro.breakDuration).toBe(5);
-      expect(settings.soundEnabled).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data.pomodoro.workDuration).toBe(25);
+      expect(result.data.pomodoro.breakDuration).toBe(5);
+      expect(result.data.soundEnabled).toBe(false);
     });
 
-    it('should handle errors and return defaults', async () => {
+    it('should handle errors and return error result', async () => {
       AsyncStorage.getItem.mockRejectedValue(new Error('Storage error'));
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      const settings = await settingsService.loadSettings();
+      const result = await settingsService.loadSettings();
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error loading settings:', expect.any(Error));
-      expect(settings.pomodoro.workDuration).toBe(25);
-
-      consoleSpy.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('SETTINGSSERVICE_LOADSETTINGS_ERROR');
     });
   });
 
@@ -88,7 +88,8 @@ describe('SettingsService', () => {
 
       const result = await settingsService.saveSettings(newSettings);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(AsyncStorage.setItem).toHaveBeenCalledWith(
         '@adhd_todo_settings',
         JSON.stringify(newSettings),
@@ -98,13 +99,11 @@ describe('SettingsService', () => {
     it('should handle save errors', async () => {
       AsyncStorage.setItem.mockRejectedValue(new Error('Storage error'));
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       const result = await settingsService.saveSettings({});
 
-      expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Error saving settings:', expect.any(Error));
-
-      consoleSpy.mockRestore();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toContain('SETTINGSSERVICE_SAVESETTINGS_ERROR');
     });
   });
 
@@ -124,7 +123,8 @@ describe('SettingsService', () => {
         breakDuration: 10,
       });
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
 
       const savedSettings = JSON.parse(AsyncStorage.setItem.mock.calls[0][1]);
       expect(savedSettings.pomodoro.workDuration).toBe(50);
@@ -143,7 +143,8 @@ describe('SettingsService', () => {
 
       const result = await settingsService.updateSetting('soundEnabled', true);
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
 
       const savedSettings = JSON.parse(AsyncStorage.setItem.mock.calls[0][1]);
       expect(savedSettings.soundEnabled).toBe(true);
@@ -173,7 +174,8 @@ describe('SettingsService', () => {
 
       const result = await settingsService.resetToDefaults();
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
 
       const savedSettings = JSON.parse(AsyncStorage.setItem.mock.calls[0][1]);
       expect(savedSettings.pomodoro.workDuration).toBe(25);
@@ -213,6 +215,65 @@ describe('SettingsService', () => {
       expect(SettingsService.validateTaskLimit(10)).toBe(true);
       expect(SettingsService.validateTaskLimit(2)).toBe(false);
       expect(SettingsService.validateTaskLimit(11)).toBe(false);
+    });
+  });
+
+  describe('compatibility methods', () => {
+    it('should load settings with backward compatibility', async () => {
+      const storedSettings = {
+        pomodoro: {
+          workDuration: 30,
+          breakDuration: 10,
+        },
+        soundEnabled: true,
+      };
+
+      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(storedSettings));
+
+      const settings = await settingsService.loadSettingsCompat();
+
+      expect(settings.pomodoro.workDuration).toBe(30);
+      expect(settings.soundEnabled).toBe(true);
+    });
+
+    it('should return defaults on error with loadSettingsCompat', async () => {
+      AsyncStorage.getItem.mockRejectedValue(new Error('Storage error'));
+
+      const settings = await settingsService.loadSettingsCompat();
+
+      expect(settings.pomodoro.workDuration).toBe(25);
+      expect(settings.soundEnabled).toBe(false);
+    });
+
+    it('should save settings with backward compatibility', async () => {
+      AsyncStorage.setItem.mockResolvedValue();
+
+      const result = await settingsService.saveSettingsCompat({
+        pomodoro: {
+          workDuration: 45,
+          breakDuration: 15,
+          longBreakDuration: 30,
+          longBreakAfter: 3,
+          autoStartBreaks: true,
+          autoStartWork: false,
+          breakReminders: true,
+          reminderInterval: 60,
+        },
+        soundEnabled: true,
+        hapticEnabled: false,
+        taskLimit: 7,
+        celebrationAnimations: true,
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false on save error with saveSettingsCompat', async () => {
+      AsyncStorage.setItem.mockRejectedValue(new Error('Storage error'));
+
+      const result = await settingsService.saveSettingsCompat({});
+
+      expect(result).toBe(false);
     });
   });
 });
