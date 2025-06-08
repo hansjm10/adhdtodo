@@ -126,6 +126,77 @@ describe('ErrorHandler', () => {
       expect(console.error).not.toHaveBeenCalled();
       expect(SecureLogger.error).toHaveBeenCalled();
     });
+
+    it('should rate limit error logging per context', () => {
+      const error = new Error('Test error');
+      const context = 'RateLimitTest';
+      console.warn = jest.fn();
+      const initialCallCount = SecureLogger.error.mock.calls.length;
+
+      // Log 10 errors (should all go through)
+      for (let i = 0; i < 10; i++) {
+        logError(context, error);
+      }
+
+      expect(SecureLogger.error).toHaveBeenCalledTimes(initialCallCount + 10);
+
+      // 11th error should be rate limited
+      logError(context, error);
+      expect(SecureLogger.error).toHaveBeenCalledTimes(initialCallCount + 10); // Still same count
+
+      // Should show rate limit warning
+      expect(console.warn).toHaveBeenCalledWith(
+        '[RateLimitTest] Error logging rate limited (max 10 per minute)',
+      );
+    });
+
+    it('should reset rate limit after time window', () => {
+      const error = new Error('Test error');
+      const context = 'TimeWindowTest';
+
+      // Mock Date.now to control time
+      const originalDateNow = Date.now;
+      let mockTime = 1000000;
+      Date.now = jest.fn(() => mockTime);
+
+      try {
+        const initialCallCount = SecureLogger.error.mock.calls.length;
+
+        // Fill rate limit
+        for (let i = 0; i < 10; i++) {
+          logError(context, error);
+        }
+        expect(SecureLogger.error).toHaveBeenCalledTimes(initialCallCount + 10);
+
+        // Try to log one more (should be rate limited)
+        logError(context, error);
+        expect(SecureLogger.error).toHaveBeenCalledTimes(initialCallCount + 10);
+
+        // Advance time by more than 1 minute
+        mockTime += 61000;
+
+        // Should allow logging again
+        logError(context, error);
+        expect(SecureLogger.error).toHaveBeenCalledTimes(initialCallCount + 11);
+      } finally {
+        Date.now = originalDateNow;
+      }
+    });
+
+    it('should rate limit different contexts independently', () => {
+      const error = new Error('Test error');
+      const initialCallCount = SecureLogger.error.mock.calls.length;
+
+      // Fill rate limit for context1
+      for (let i = 0; i < 10; i++) {
+        logError('Context1', error);
+      }
+
+      // Should still allow logging for context2
+      logError('Context2', error);
+
+      expect(SecureLogger.error).toHaveBeenCalledTimes(initialCallCount + 11);
+    });
   });
 
   describe('showError', () => {
