@@ -157,17 +157,16 @@ describe('BaseService', () => {
       const mockFn = jest.fn().mockRejectedValue(error);
       const result = await service.testWrapAsync('testOperation', mockFn, { userId: '123' });
 
-      expect(result).toEqual({
-        success: false,
-        error: {
-          code: 'TESTSERVICE_TESTOPERATION_ERROR',
-          message: 'Async error',
-          details: {
-            operation: 'testOperation',
-            userId: '123',
-          },
-        },
-      });
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toBe('TESTSERVICE_TESTOPERATION_ERROR');
+      expect(result.error.message).toBe('Async error');
+      expect(result.error.details).toBeDefined();
+      expect(result.error.details.operation).toBe('testOperation');
+      expect(result.error.details.userId).toBe('123');
+      // Call stack should be included in dev mode
+      expect(result.error.details.callStack).toBeDefined();
+      expect(typeof result.error.details.callStack).toBe('string');
     });
   });
 
@@ -190,17 +189,16 @@ describe('BaseService', () => {
       });
       const result = service.testWrapSync('testOperation', mockFn, { userId: '123' });
 
-      expect(result).toEqual({
-        success: false,
-        error: {
-          code: 'TESTSERVICE_TESTOPERATION_ERROR',
-          message: 'Sync error',
-          details: {
-            operation: 'testOperation',
-            userId: '123',
-          },
-        },
-      });
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error.code).toBe('TESTSERVICE_TESTOPERATION_ERROR');
+      expect(result.error.message).toBe('Sync error');
+      expect(result.error.details).toBeDefined();
+      expect(result.error.details.operation).toBe('testOperation');
+      expect(result.error.details.userId).toBe('123');
+      // Call stack should be included in dev mode
+      expect(result.error.details.callStack).toBeDefined();
+      expect(typeof result.error.details.callStack).toBe('string');
     });
   });
 

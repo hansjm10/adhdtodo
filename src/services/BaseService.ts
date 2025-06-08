@@ -78,13 +78,22 @@ export abstract class BaseService {
     fn: () => Promise<T>,
     context?: Record<string, unknown>,
   ): Promise<Result<T>> {
+    // Capture call stack before async operation for better debugging
+    const callStack = new Error().stack;
+
     try {
       const data = await fn();
       return { success: true, data };
     } catch (error) {
+      // Include call stack in context for debugging
+      const enhancedContext = {
+        ...context,
+        ...(global.__DEV__ && callStack ? { callStack } : {}),
+      };
+
       return {
         success: false,
-        error: this.handleError(error, operation, context),
+        error: this.handleError(error, operation, enhancedContext),
       };
     }
   }
@@ -101,13 +110,22 @@ export abstract class BaseService {
     fn: () => T,
     context?: Record<string, unknown>,
   ): Result<T> {
+    // Capture call stack for better debugging
+    const callStack = new Error().stack;
+
     try {
       const data = fn();
       return { success: true, data };
     } catch (error) {
+      // Include call stack in context for debugging
+      const enhancedContext = {
+        ...context,
+        ...(global.__DEV__ && callStack ? { callStack } : {}),
+      };
+
       return {
         success: false,
-        error: this.handleError(error, operation, context),
+        error: this.handleError(error, operation, enhancedContext),
       };
     }
   }
