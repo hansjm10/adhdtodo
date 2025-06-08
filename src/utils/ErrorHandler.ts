@@ -11,6 +11,9 @@ type RetryFunction = () => void;
 
 class ErrorHandler {
   private static logger = SecureLogger;
+  private static errorCounts = new Map<string, { count: number; lastReset: number }>();
+  private static readonly RATE_LIMIT_WINDOW = 60000; // 1 minute
+  private static readonly MAX_ERRORS_PER_WINDOW = 10;
 
   /**
    * Converts various error types to a standardized ErrorResponse
@@ -55,10 +58,16 @@ class ErrorHandler {
 
   /**
    * Centralized error logging that respects environment settings
+   * Rate limited to prevent log flooding (10 errors per minute per context)
    * @param context The context where the error occurred
    * @param error The error to log
    */
   static logError(context: string, error: unknown): void {
+    // Check rate limiting
+    if (!this.shouldLogError(context)) {
+      return;
+    }
+
     if (global.__DEV__) {
       console.error(`[${context}] Error:`, error);
     }
@@ -68,6 +77,46 @@ class ErrorHandler {
     this.logger.error(`${context}: ${errorMessage}`, {
       code: `${context.toUpperCase()}_ERROR`,
     });
+  }
+
+  /**
+   * Rate limiting check for error logging
+   * @param context The context to check rate limiting for
+   * @returns true if error should be logged, false if rate limited
+   */
+  private static shouldLogError(context: string): boolean {
+    const now = Date.now();
+    const contextData = this.errorCounts.get(context);
+
+    if (!contextData) {
+      // First error for this context
+      this.errorCounts.set(context, { count: 1, lastReset: now });
+      return true;
+    }
+
+    // Reset counter if window has passed
+    if (now - contextData.lastReset >= this.RATE_LIMIT_WINDOW) {
+      this.errorCounts.set(context, { count: 1, lastReset: now });
+      return true;
+    }
+
+    // Check if under rate limit
+    if (contextData.count < this.MAX_ERRORS_PER_WINDOW) {
+      contextData.count++;
+      return true;
+    }
+
+    // Rate limited - only log once per window when limit exceeded
+    if (contextData.count === this.MAX_ERRORS_PER_WINDOW) {
+      contextData.count++; // Mark that we've shown the rate limit message
+      if (global.__DEV__) {
+        console.warn(
+          `[${context}] Error logging rate limited (max ${this.MAX_ERRORS_PER_WINDOW} per minute)`,
+        );
+      }
+    }
+
+    return false;
   }
 
   static showError(message: string, retry: RetryFunction | null = null): void {
