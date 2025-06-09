@@ -159,7 +159,10 @@ class CollaborativeEditingService extends BaseService {
         session.operations.push(operation);
 
         // Transform operation if there are conflicts
-        const transformedOperation = await this.transformOperation(operation, session);
+        const transformedOperation = await CollaborativeEditingService.transformOperation(
+          operation,
+          session,
+        );
 
         // Apply to database
         const success = await this.applyToDatabase(transformedOperation);
@@ -339,7 +342,7 @@ class CollaborativeEditingService extends BaseService {
   /**
    * Transform operation to resolve conflicts with concurrent edits
    */
-  private transformOperation(
+  private static transformOperation(
     operation: EditOperation,
     session: TaskEditSession,
   ): Promise<EditOperation> {
@@ -360,7 +363,10 @@ class CollaborativeEditingService extends BaseService {
       let transformedOp = { ...operation };
 
       for (const concurrentOp of concurrentOps) {
-        transformedOp = this.transformAgainstOperation(transformedOp, concurrentOp);
+        transformedOp = CollaborativeEditingService.transformAgainstOperation(
+          transformedOp,
+          concurrentOp,
+        );
       }
 
       return transformedOp;
@@ -370,7 +376,7 @@ class CollaborativeEditingService extends BaseService {
   /**
    * Transform one operation against another (operational transform)
    */
-  private transformAgainstOperation(op1: EditOperation, op2: EditOperation): EditOperation {
+  private static transformAgainstOperation(op1: EditOperation, op2: EditOperation): EditOperation {
     // Simple operational transform logic
     // In a production system, this would be much more sophisticated
 
@@ -467,7 +473,7 @@ class CollaborativeEditingService extends BaseService {
 
       return !error;
     } catch (error) {
-      console.error('Error applying operation to database:', error);
+      this.logError('applyToDatabase', error);
       return false;
     }
   }

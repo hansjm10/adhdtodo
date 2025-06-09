@@ -16,10 +16,26 @@ describe('PresenceService', () => {
   const mockUserId2 = 'user-456';
   const mockTaskId = 'task-789';
 
+  // Helper function to create consistent mock channel
+  const createMockChannel = () => {
+    const mockChannel = {
+      on: jest.fn(),
+      subscribe: jest.fn((callback) => {
+        callback('SUBSCRIBED');
+        return mockChannel;
+      }),
+      track: jest.fn(),
+      presenceState: jest.fn(() => ({})),
+      unsubscribe: jest.fn().mockResolvedValue(undefined),
+    };
+    mockChannel.on.mockReturnValue(mockChannel);
+    return mockChannel;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset service state
+    // Reset service state using private property access
     PresenceService.channel = null;
     PresenceService.heartbeatTimer = null;
     PresenceService.awayTimer = null;
@@ -28,25 +44,19 @@ describe('PresenceService', () => {
   });
 
   afterEach(async () => {
-    await PresenceService.stopPresence();
+    const result = await PresenceService.stopPresence();
+    // Ensure cleanup succeeds
+    expect(result.success).toBe(true);
   });
 
   describe('startPresence', () => {
     it('should initialize presence tracking for a user', async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          // Simulate successful subscription
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
-      await PresenceService.startPresence(mockUserId, mockTaskId);
+      const result = await PresenceService.startPresence(mockUserId, mockTaskId);
 
+      expect(result.success).toBe(true);
       expect(supabase.channel).toHaveBeenCalledWith(`presence:${mockUserId}`);
       expect(mockChannel.on).toHaveBeenCalledWith(
         'presence',
@@ -73,53 +83,31 @@ describe('PresenceService', () => {
     });
 
     it('should not create duplicate presence if already tracking', async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
       // Start presence twice
-      await PresenceService.startPresence(mockUserId);
-      await PresenceService.startPresence(mockUserId);
+      const result1 = await PresenceService.startPresence(mockUserId);
+      const result2 = await PresenceService.startPresence(mockUserId);
 
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
       // Channel should only be created once
       expect(supabase.channel).toHaveBeenCalledTimes(1);
     });
 
     it('should stop existing presence before starting new one', async () => {
-      const mockChannel1 = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel1;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-        unsubscribe: jest.fn(),
-      };
-
-      const mockChannel2 = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel2;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel1 = createMockChannel();
+      const mockChannel2 = createMockChannel();
 
       supabase.channel.mockReturnValueOnce(mockChannel1).mockReturnValueOnce(mockChannel2);
 
       // Start presence for user 1, then user 2
-      await PresenceService.startPresence(mockUserId);
-      await PresenceService.startPresence(mockUserId2);
+      const result1 = await PresenceService.startPresence(mockUserId);
+      const result2 = await PresenceService.startPresence(mockUserId2);
 
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
       expect(mockChannel1.unsubscribe).toHaveBeenCalled();
       expect(supabase.channel).toHaveBeenCalledTimes(2);
     });
@@ -127,21 +115,14 @@ describe('PresenceService', () => {
 
   describe('stopPresence', () => {
     it('should clean up timers and channels', async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-        unsubscribe: jest.fn(),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
-      await PresenceService.startPresence(mockUserId);
-      await PresenceService.stopPresence();
+      const startResult = await PresenceService.startPresence(mockUserId);
+      const stopResult = await PresenceService.stopPresence();
 
+      expect(startResult.success).toBe(true);
+      expect(stopResult.success).toBe(true);
       expect(mockChannel.unsubscribe).toHaveBeenCalled();
       expect(PresenceService.channel).toBeNull();
       expect(PresenceService.currentUserId).toBeNull();
@@ -153,18 +134,11 @@ describe('PresenceService', () => {
 
   describe('updatePresence', () => {
     beforeEach(async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
-      await PresenceService.startPresence(mockUserId);
+      const result = await PresenceService.startPresence(mockUserId);
+      expect(result.success).toBe(true);
     });
 
     it('should update presence status', async () => {
@@ -180,31 +154,25 @@ describe('PresenceService', () => {
     });
 
     it('should not update if not initialized', async () => {
-      await PresenceService.stopPresence();
+      const stopResult = await PresenceService.stopPresence();
+      expect(stopResult.success).toBe(true);
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
       await PresenceService.updatePresence('online');
 
-      expect(consoleSpy).toHaveBeenCalledWith('Presence not initialized');
+      expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
   });
 
   describe('setCurrentTask', () => {
     beforeEach(async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
-      await PresenceService.startPresence(mockUserId);
+      const result = await PresenceService.startPresence(mockUserId);
+      expect(result.success).toBe(true);
 
       // Set initial presence state
       PresenceService.presenceState.set(mockUserId, {
@@ -417,18 +385,11 @@ describe('PresenceService', () => {
 
   describe('signalActivity', () => {
     beforeEach(async () => {
-      const mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      const mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
-      await PresenceService.startPresence(mockUserId);
+      const result = await PresenceService.startPresence(mockUserId);
+      expect(result.success).toBe(true);
 
       // Set user as away
       PresenceService.presenceState.set(mockUserId, {
@@ -466,18 +427,11 @@ describe('PresenceService', () => {
     let mockChannel;
 
     beforeEach(async () => {
-      mockChannel = {
-        on: jest.fn().mockReturnThis(),
-        subscribe: jest.fn((callback) => {
-          callback('SUBSCRIBED');
-          return mockChannel;
-        }),
-        track: jest.fn(),
-        presenceState: jest.fn(() => ({})),
-      };
+      mockChannel = createMockChannel();
       supabase.channel.mockReturnValue(mockChannel);
 
-      await PresenceService.startPresence(mockUserId);
+      const result = await PresenceService.startPresence(mockUserId);
+      expect(result.success).toBe(true);
     });
 
     it('should handle presence sync event', () => {

@@ -174,7 +174,11 @@ class ConnectionMonitor extends BaseService {
       const latency = Date.now() - startTime;
 
       if (error) {
-        throw error;
+        // Enhance error with connection test context
+        const enhancedError = new Error(`Supabase connection test failed: ${error.message}`);
+        // Store original error details in context for logging
+        (enhancedError as Error & { originalError?: unknown }).originalError = error;
+        throw enhancedError;
       }
 
       this.onConnectionSuccess();
@@ -214,6 +218,19 @@ class ConnectionMonitor extends BaseService {
         return result;
       } catch (error) {
         lastError = error as Error;
+
+        // Log each retry attempt with context
+        this.logError('executeWithRetry', error, {
+          attempt,
+          maxRetries,
+          isLastAttempt: attempt === maxRetries,
+          delay,
+          backoffMultiplier,
+          failureCount: this.failureCount,
+          isCircuitOpen: this.isCircuitOpen,
+          connectionState: this.currentState,
+        });
+
         this.onConnectionFailure(lastError);
 
         if (attempt === maxRetries) {
@@ -288,20 +305,30 @@ class ConnectionMonitor extends BaseService {
 
     this.healthCheckInterval = setInterval(() => {
       if (this.isConnected()) {
-        void this.testConnection().then((result) => {
-          if (
-            result.success &&
-            result.data?.latency &&
-            result.data.latency > this.SLOW_CONNECTION_THRESHOLD
-          ) {
-            this.emitEvent({
-              type: 'slow',
-              timestamp: new Date(),
-              connectionState: this.currentState!,
-              metadata: { latency: result.data.latency },
+        void this.testConnection()
+          .then((result) => {
+            if (
+              result.success &&
+              result.data?.latency &&
+              result.data.latency > this.SLOW_CONNECTION_THRESHOLD
+            ) {
+              this.emitEvent({
+                type: 'slow',
+                timestamp: new Date(),
+                connectionState: this.currentState!,
+                metadata: { latency: result.data.latency },
+              });
+            }
+          })
+          .catch((error) => {
+            this.logError('healthCheck', error, {
+              isConnected: this.isConnected(),
+              currentState: this.currentState,
+              interval: this.HEALTH_CHECK_INTERVAL,
+              slowThreshold: this.SLOW_CONNECTION_THRESHOLD,
+              monitoringActive: this.isMonitoring,
             });
-          }
-        });
+          });
       }
     }, this.HEALTH_CHECK_INTERVAL);
   }
@@ -378,14 +405,19 @@ class ConnectionMonitor extends BaseService {
    * Emit event to all subscribers
    */
   private emitEvent(event: ConnectionEvent): void {
-    this.callbacks.forEach((callback) => {
+    this.callbacks.forEach((callback, index) => {
       try {
         callback(event);
       } catch (error) {
         this.logError('emitEvent', error, {
           eventType: event.type,
+          eventTimestamp: event.timestamp.toISOString(),
           connectionState: event.connectionState.isConnected,
+          connectionType: event.connectionState.connectionType,
           subscriberCount: this.callbacks.size,
+          subscriberIndex: index,
+          eventMetadata: event.metadata,
+          callbackError: error instanceof Error ? error.message : String(error),
         });
       }
     });
