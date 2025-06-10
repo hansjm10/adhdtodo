@@ -1,8 +1,10 @@
 // ABOUTME: Connection monitoring service for network state management
 // Provides connection status, error handling, and automatic retry mechanisms
 
+import { BaseService } from './BaseService';
 // import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { supabase } from './SupabaseService';
+import type { Result } from '../types/common.types';
 
 interface NetInfoState {
   isConnected: boolean | null;
@@ -49,7 +51,7 @@ export interface ConnectionEvent {
 
 type ConnectionCallback = (event: ConnectionEvent) => void;
 
-class ConnectionMonitor {
+class ConnectionMonitor extends BaseService {
   private currentState: ConnectionState | null = null;
   private callbacks: Set<ConnectionCallback> = new Set();
   private isMonitoring = false;
@@ -67,6 +69,10 @@ class ConnectionMonitor {
   // Health check state
   private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
   private readonly HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+
+  constructor() {
+    super('ConnectionMonitor');
+  }
 
   /**
    * Start monitoring connection state
@@ -102,7 +108,15 @@ class ConnectionMonitor {
 
     this.stopHealthChecks();
 
-    console.info('📡 Connection monitoring stopped');
+    this.logger.info('Connection monitoring stopped', {
+      code: 'CONNECTION_MONITOR_001',
+      context: JSON.stringify({
+        reason: 'Service stopped by user request',
+        wasMonitoring: this.isMonitoring,
+        hadActiveCallbacks: this.callbacks.size > 0,
+        hadHealthCheck: this.healthCheckInterval !== null,
+      }),
+    });
   }
 
   /**
@@ -149,21 +163,27 @@ class ConnectionMonitor {
   /**
    * Manual connection test
    */
-  async testConnection(): Promise<{
-    success: boolean;
-    latency?: number;
-    error?: Error;
-  }> {
-    const startTime = Date.now();
+  async testConnection(): Promise<
+    Result<{
+      success: boolean;
+      latency?: number;
+      error?: Error;
+    }>
+  > {
+    return this.wrapAsync('testConnection', async () => {
+      const startTime = Date.now();
 
-    try {
       // Test Supabase connection
       const { error } = await supabase.from('users').select('id').limit(1);
 
       const latency = Date.now() - startTime;
 
       if (error) {
-        throw error;
+        // Enhance error with connection test context
+        const enhancedError = new Error(`Supabase connection test failed: ${error.message}`);
+        // Store original error details in context for logging
+        (enhancedError as Error & { originalError?: unknown }).originalError = error;
+        throw enhancedError;
       }
 
       this.onConnectionSuccess();
@@ -172,14 +192,7 @@ class ConnectionMonitor {
         success: true,
         latency,
       };
-    } catch (error) {
-      this.onConnectionFailure(error as Error);
-
-      return {
-        success: false,
-        error: error as Error,
-      };
-    }
+    });
   }
 
   /**
@@ -210,6 +223,19 @@ class ConnectionMonitor {
         return result;
       } catch (error) {
         lastError = error as Error;
+
+        // Log each retry attempt with context
+        this.logError('executeWithRetry', error, {
+          attempt,
+          maxRetries,
+          isLastAttempt: attempt === maxRetries,
+          delay,
+          backoffMultiplier,
+          failureCount: this.failureCount,
+          isCircuitOpen: this.isCircuitOpen,
+          connectionState: this.currentState,
+        });
+
         this.onConnectionFailure(lastError);
 
         if (attempt === maxRetries) {
@@ -248,6 +274,14 @@ class ConnectionMonitor {
     // Detect connection changes
     if (!previousState) {
       // Initial state
+      this.logger.info('Initial connection state detected', {
+        code: 'CONNECTION_MONITOR_005',
+        context: JSON.stringify({
+          isConnected: this.currentState.isConnected,
+          connectionType: this.currentState.connectionType,
+          isInternetReachable: this.currentState.isInternetReachable,
+        }),
+      });
       this.emitEvent({
         type: this.currentState.isConnected ? 'connected' : 'disconnected',
         timestamp: new Date(),
@@ -257,6 +291,16 @@ class ConnectionMonitor {
       // Connection state changed
       if (this.currentState.isConnected) {
         // Reconnected
+        this.logger.info('Connection restored', {
+          code: 'CONNECTION_MONITOR_006',
+          context: JSON.stringify({
+            previousConnectionType: previousState.connectionType,
+            currentConnectionType: this.currentState.connectionType,
+            wasInternetReachable: previousState.isInternetReachable,
+            isInternetReachable: this.currentState.isInternetReachable,
+            connectionDetails: this.currentState.details,
+          }),
+        });
         this.onConnectionRestored();
         this.emitEvent({
           type: 'restored',
@@ -265,6 +309,15 @@ class ConnectionMonitor {
         });
       } else {
         // Disconnected
+        this.logger.info('Connection lost', {
+          code: 'CONNECTION_MONITOR_007',
+          context: JSON.stringify({
+            previousConnectionType: previousState.connectionType,
+            hadInternetAccess: previousState.isInternetReachable,
+            failureCount: this.failureCount,
+            isCircuitOpen: this.isCircuitOpen,
+          }),
+        });
         this.emitEvent({
           type: 'disconnected',
           timestamp: new Date(),
@@ -284,16 +337,30 @@ class ConnectionMonitor {
 
     this.healthCheckInterval = setInterval(() => {
       if (this.isConnected()) {
-        void this.testConnection().then((result) => {
-          if (result.success && result.latency && result.latency > this.SLOW_CONNECTION_THRESHOLD) {
-            this.emitEvent({
-              type: 'slow',
-              timestamp: new Date(),
-              connectionState: this.currentState!,
-              metadata: { latency: result.latency },
+        void this.testConnection()
+          .then((result) => {
+            if (
+              result.success &&
+              result.data?.latency &&
+              result.data.latency > this.SLOW_CONNECTION_THRESHOLD
+            ) {
+              this.emitEvent({
+                type: 'slow',
+                timestamp: new Date(),
+                connectionState: this.currentState!,
+                metadata: { latency: result.data.latency },
+              });
+            }
+          })
+          .catch((error) => {
+            this.logError('healthCheck', error, {
+              isConnected: this.isConnected(),
+              currentState: this.currentState,
+              interval: this.HEALTH_CHECK_INTERVAL,
+              slowThreshold: this.SLOW_CONNECTION_THRESHOLD,
+              monitoringActive: this.isMonitoring,
             });
-          }
-        });
+          });
       }
     }, this.HEALTH_CHECK_INTERVAL);
   }
@@ -317,7 +384,16 @@ class ConnectionMonitor {
 
     if (this.isCircuitOpen) {
       this.isCircuitOpen = false;
-      console.info('🔓 Circuit breaker closed - connection restored');
+      this.logger.info('Circuit breaker closed - connection restored', {
+        code: 'CONNECTION_MONITOR_002',
+        context: JSON.stringify({
+          previousFailureCount: this.failureCount,
+          timeSinceLastFailure: this.lastFailureTime
+            ? Date.now() - new Date(this.lastFailureTime).getTime()
+            : null,
+          circuitWasOpenFor: 'auto-recovery',
+        }),
+      });
     }
   }
 
@@ -330,12 +406,31 @@ class ConnectionMonitor {
 
     if (this.failureCount >= this.FAILURE_THRESHOLD) {
       this.isCircuitOpen = true;
-      console.info('🔒 Circuit breaker opened due to repeated failures');
+      this.logger.info('Circuit breaker opened due to repeated failures', {
+        code: 'CONNECTION_MONITOR_003',
+        context: JSON.stringify({
+          failureCount: this.failureCount,
+          threshold: this.FAILURE_THRESHOLD,
+          lastError: error.message,
+          timeSinceFirstFailure: this.lastFailureTime
+            ? Date.now() - this.lastFailureTime.getTime()
+            : 0,
+          connectionState: this.currentState,
+        }),
+      });
 
       // Set timeout to try again later
       setTimeout(() => {
         this.isCircuitOpen = false;
-        console.info('⏰ Circuit breaker timeout - attempting to close');
+        this.logger.info('Circuit breaker timeout - attempting to close', {
+          code: 'CONNECTION_MONITOR_004',
+          context: JSON.stringify({
+            timeoutDuration: this.CIRCUIT_TIMEOUT,
+            failureCountBeforeReset: this.failureCount,
+            isConnected: this.isConnected(),
+            connectionType: this.currentState?.connectionType,
+          }),
+        });
       }, this.CIRCUIT_TIMEOUT);
     }
 
@@ -361,11 +456,34 @@ class ConnectionMonitor {
    * Emit event to all subscribers
    */
   private emitEvent(event: ConnectionEvent): void {
-    this.callbacks.forEach((callback) => {
+    this.callbacks.forEach((callback, index) => {
       try {
         callback(event);
       } catch (error) {
-        console.error('Error in connection event callback:', error);
+        this.logError('emitEvent', error, {
+          event: {
+            type: event.type,
+            timestamp: event.timestamp.toISOString(),
+            metadata: event.metadata,
+          },
+          connection: {
+            isConnected: event.connectionState.isConnected,
+            type: event.connectionState.connectionType,
+            isInternetReachable: event.connectionState.isInternetReachable,
+            details: event.connectionState.details,
+          },
+          subscriber: {
+            totalCount: this.callbacks.size,
+            failedIndex: index,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            errorType: error instanceof Error ? error.constructor.name : typeof error,
+          },
+          monitorState: {
+            isMonitoring: this.isMonitoring,
+            isCircuitOpen: this.isCircuitOpen,
+            failureCount: this.failureCount,
+          },
+        });
       }
     });
   }

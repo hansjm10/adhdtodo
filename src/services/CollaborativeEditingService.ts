@@ -2,10 +2,12 @@
 // Enables multiple users to edit tasks simultaneously with operational transform
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { BaseService } from './BaseService';
 import { supabase } from './SupabaseService';
 import type { Task } from '../types/task.types';
 import ConflictResolver from './ConflictResolver';
 import OfflineQueueManager from './OfflineQueueManager';
+import type { Result } from '../types/common.types';
 
 export interface EditOperation {
   id: string;
@@ -43,121 +45,147 @@ export interface TaskEditSession {
   lockOwner?: string;
 }
 
-class CollaborativeEditingService {
+class CollaborativeEditingService extends BaseService {
   private editSessions = new Map<string, TaskEditSession>();
   private channels = new Map<string, RealtimeChannel>();
   private currentUserId: string | null = null;
   private cursorColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
 
+  constructor() {
+    super('CollaborativeEditing');
+  }
+
   /**
    * Start collaborative editing session for a task
    */
-  async startEditSession(taskId: string, userId: string): Promise<TaskEditSession> {
-    this.currentUserId = userId;
+  async startEditSession(taskId: string, userId: string): Promise<Result<TaskEditSession>> {
+    return this.wrapAsync(
+      'startEditSession',
+      async () => {
+        this.currentUserId = userId;
 
-    // Check if session already exists
-    let session = this.editSessions.get(taskId);
-    if (!session) {
-      session = {
-        taskId,
-        editors: new Map(),
-        operations: [],
-        lastSyncTime: new Date(),
-        isLocked: false,
-      };
-      this.editSessions.set(taskId, session);
-    }
+        // Check if session already exists
+        let session = this.editSessions.get(taskId);
+        if (!session) {
+          session = {
+            taskId,
+            editors: new Map(),
+            operations: [],
+            lastSyncTime: new Date(),
+            isLocked: false,
+          };
+          this.editSessions.set(taskId, session);
+        }
 
-    // Add current user as editor
-    const cursor: CollaboratorCursor = {
-      userId,
-      userName: await this.getUserName(userId),
-      color: this.getColorForUser(userId),
-      position: 0,
-      field: 'title',
-      lastSeen: new Date(),
-    };
-    session.editors.set(userId, cursor);
+        // Add current user as editor
+        const cursor: CollaboratorCursor = {
+          userId,
+          userName: await this.getUserName(userId),
+          color: this.getColorForUser(userId),
+          position: 0,
+          field: 'title',
+          lastSeen: new Date(),
+        };
+        session.editors.set(userId, cursor);
 
-    // Set up real-time channel
-    this.setupRealtimeChannel(taskId);
+        // Set up real-time channel
+        this.setupRealtimeChannel(taskId);
 
-    // Broadcast join event
-    await this.broadcastEvent(taskId, 'user_joined', { userId, cursor });
+        // Broadcast join event
+        await this.broadcastEvent(taskId, 'user_joined', { userId, cursor });
 
-    return session;
+        return session;
+      },
+      { taskId, userId },
+    );
   }
 
   /**
    * Stop collaborative editing session for a user
    */
-  async stopEditSession(taskId: string, userId: string): Promise<void> {
-    const session = this.editSessions.get(taskId);
-    if (!session) return;
+  async stopEditSession(taskId: string, userId: string): Promise<Result<void>> {
+    return this.wrapAsync(
+      'stopEditSession',
+      async () => {
+        const session = this.editSessions.get(taskId);
+        if (!session) return;
 
-    // Remove user from editors
-    session.editors.delete(userId);
+        // Remove user from editors
+        session.editors.delete(userId);
 
-    // Broadcast leave event
-    await this.broadcastEvent(taskId, 'user_left', { userId });
+        // Broadcast leave event
+        await this.broadcastEvent(taskId, 'user_left', { userId });
 
-    // Clean up session if no editors left
-    if (session.editors.size === 0) {
-      const channel = this.channels.get(taskId);
-      if (channel) {
-        await channel.unsubscribe();
-        this.channels.delete(taskId);
-      }
-      this.editSessions.delete(taskId);
-    }
+        // Clean up session if no editors left
+        if (session.editors.size === 0) {
+          const channel = this.channels.get(taskId);
+          if (channel) {
+            await channel.unsubscribe();
+            this.channels.delete(taskId);
+          }
+          this.editSessions.delete(taskId);
+        }
+      },
+      { taskId, userId },
+    );
   }
 
   /**
    * Apply an edit operation to a task
    */
-  async applyOperation(operation: EditOperation): Promise<boolean> {
-    try {
-      const session = this.editSessions.get(operation.taskId);
-      if (!session) {
-        console.warn('No edit session found for task:', operation.taskId);
-        return false;
-      }
+  async applyOperation(operation: EditOperation): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'applyOperation',
+      async () => {
+        const session = this.editSessions.get(operation.taskId);
+        if (!session) {
+          this.logError('applyOperation', new Error('No edit session found'), {
+            taskId: operation.taskId,
+          });
+          return false;
+        }
 
-      // Check if task is locked by another user
-      if (session.isLocked && session.lockOwner !== operation.userId) {
-        console.warn('Task is locked by another user');
-        return false;
-      }
+        // Check if task is locked by another user
+        if (session.isLocked && session.lockOwner !== operation.userId) {
+          this.logError('applyOperation', new Error('Task is locked by another user'), {
+            taskId: operation.taskId,
+            lockOwner: session.lockOwner,
+            userId: operation.userId,
+          });
+          return false;
+        }
 
-      // Add operation to session
-      session.operations.push(operation);
+        // Add operation to session
+        session.operations.push(operation);
 
-      // Transform operation if there are conflicts
-      const transformedOperation = await this.transformOperation(operation, session);
+        // Transform operation if there are conflicts
+        const transformedOperation = await CollaborativeEditingService.transformOperation(
+          operation,
+          session,
+        );
 
-      // Apply to database
-      const success = await this.applyToDatabase(transformedOperation);
-      if (!success) {
-        // Queue operation for offline retry
-        await OfflineQueueManager.addOperation('collaborative_edit', operation, {
-          priority: 'high',
-          maxRetries: 5,
+        // Apply to database
+        const success = await this.applyToDatabase(transformedOperation);
+        if (!success) {
+          // Queue operation for offline retry
+          await OfflineQueueManager.addOperation('collaborative_edit', operation, {
+            priority: 'high',
+            maxRetries: 5,
+            userId: operation.userId,
+          });
+          return false;
+        }
+
+        // Broadcast to other collaborators
+        await this.broadcastEvent(operation.taskId, 'operation_applied', {
+          operation: transformedOperation,
           userId: operation.userId,
         });
-        return false;
-      }
 
-      // Broadcast to other collaborators
-      await this.broadcastEvent(operation.taskId, 'operation_applied', {
-        operation: transformedOperation,
-        userId: operation.userId,
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Error applying operation:', error);
-      return false;
-    }
+        return true;
+      },
+      { taskId: operation.taskId, userId: operation.userId },
+    );
   }
 
   /**
@@ -168,53 +196,65 @@ class CollaborativeEditingService {
     userId: string,
     field: string,
     position: number,
-  ): Promise<void> {
-    const session = this.editSessions.get(taskId);
-    if (!session) return;
+  ): Promise<Result<void>> {
+    return this.wrapAsync(
+      'updateCursor',
+      async () => {
+        const session = this.editSessions.get(taskId);
+        if (!session) return;
 
-    const cursor = session.editors.get(userId);
-    if (cursor) {
-      cursor.field = field;
-      cursor.position = position;
-      cursor.lastSeen = new Date();
+        const cursor = session.editors.get(userId);
+        if (cursor) {
+          cursor.field = field;
+          cursor.position = position;
+          cursor.lastSeen = new Date();
 
-      // Broadcast cursor update
-      await this.broadcastEvent(taskId, 'cursor_updated', {
-        userId,
-        cursor: { field, position, lastSeen: cursor.lastSeen },
-      });
-    }
+          // Broadcast cursor update
+          await this.broadcastEvent(taskId, 'cursor_updated', {
+            userId,
+            cursor: { field, position, lastSeen: cursor.lastSeen },
+          });
+        }
+      },
+      { taskId, userId, field, position },
+    );
   }
 
   /**
    * Lock/unlock a task for exclusive editing
    */
-  async toggleTaskLock(taskId: string, userId: string, lock: boolean): Promise<boolean> {
-    const session = this.editSessions.get(taskId);
-    if (!session) return false;
+  async toggleTaskLock(taskId: string, userId: string, lock: boolean): Promise<Result<boolean>> {
+    return this.wrapAsync(
+      'toggleTaskLock',
+      async () => {
+        const session = this.editSessions.get(taskId);
+        if (!session) return false;
 
-    if (lock) {
-      if (session.isLocked && session.lockOwner !== userId) {
-        return false; // Already locked by someone else
-      }
-      session.isLocked = true;
-      session.lockOwner = userId;
-    } else {
-      if (session.lockOwner !== userId) {
-        return false; // Can't unlock someone else's lock
-      }
-      session.isLocked = false;
-      session.lockOwner = undefined;
-    }
+        if (lock) {
+          if (session.isLocked && session.lockOwner !== userId) {
+            return false; // Already locked by someone else
+          }
+          session.isLocked = true;
+          session.lockOwner = userId;
+        } else {
+          if (session.lockOwner !== userId) {
+            return false; // Can't unlock someone else's lock
+          }
+          session.isLocked = false;
+          session.lockOwner = undefined;
+        }
 
-    // Broadcast lock status change
-    await this.broadcastEvent(taskId, 'lock_changed', {
-      isLocked: session.isLocked,
-      lockOwner: session.lockOwner,
-      userId,
-    });
+        // Broadcast lock status change
+        await this.broadcastEvent(taskId, 'lock_changed', {
+          isLocked: session.isLocked,
+          lockOwner: session.lockOwner,
+          userId,
+        });
 
-    return true;
+        return true;
+      },
+      { taskId, userId, lock },
+    );
   }
 
   /**
@@ -302,7 +342,7 @@ class CollaborativeEditingService {
   /**
    * Transform operation to resolve conflicts with concurrent edits
    */
-  private transformOperation(
+  private static transformOperation(
     operation: EditOperation,
     session: TaskEditSession,
   ): Promise<EditOperation> {
@@ -323,7 +363,10 @@ class CollaborativeEditingService {
       let transformedOp = { ...operation };
 
       for (const concurrentOp of concurrentOps) {
-        transformedOp = this.transformAgainstOperation(transformedOp, concurrentOp);
+        transformedOp = CollaborativeEditingService.transformAgainstOperation(
+          transformedOp,
+          concurrentOp,
+        );
       }
 
       return transformedOp;
@@ -333,7 +376,7 @@ class CollaborativeEditingService {
   /**
    * Transform one operation against another (operational transform)
    */
-  private transformAgainstOperation(op1: EditOperation, op2: EditOperation): EditOperation {
+  private static transformAgainstOperation(op1: EditOperation, op2: EditOperation): EditOperation {
     // Simple operational transform logic
     // In a production system, this would be much more sophisticated
 
@@ -365,9 +408,9 @@ class CollaborativeEditingService {
    * Apply operation to database
    */
   private async applyToDatabase(operation: EditOperation): Promise<boolean> {
-    try {
-      const updateData: Record<string, unknown> = {};
+    const updateData: Record<string, unknown> = {};
 
+    try {
       switch (operation.type) {
         case 'text': {
           // For text operations, we need to get the current value and apply the change
@@ -430,7 +473,14 @@ class CollaborativeEditingService {
 
       return !error;
     } catch (error) {
-      console.error('Error applying operation to database:', error);
+      this.logError('applyToDatabase', error, {
+        taskId: operation.taskId,
+        operationType: operation.type,
+        field: operation.field,
+        operation: operation.operation,
+        userId: operation.userId,
+        updateDataKeys: Object.keys(updateData),
+      });
       return false;
     }
   }
@@ -570,33 +620,34 @@ class CollaborativeEditingService {
   /**
    * Resolve conflicts when multiple users edit the same field
    */
-  async resolveConflict(taskId: string, field: string): Promise<unknown> {
-    try {
-      // Get current database value
-      const { data: currentTask } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('id', taskId)
-        .single<Record<string, unknown>>();
+  async resolveConflict(taskId: string, field: string): Promise<Result<unknown>> {
+    return this.wrapAsync(
+      'resolveConflict',
+      async () => {
+        // Get current database value
+        const { data: currentTask } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', taskId)
+          .single<Record<string, unknown>>();
 
-      if (!currentTask) return null;
+        if (!currentTask) return null;
 
-      // Use ConflictResolver for complex conflicts
-      const conflictInfo = {
-        entity: 'task',
-        entityId: taskId,
-        localData: currentTask as unknown as Task, // Use full task as local data
-        remoteData: currentTask as unknown as Task, // Use full task as remote data
-        conflictFields: [field],
-        timestamp: new Date(),
-      };
+        // Use ConflictResolver for complex conflicts
+        const conflictInfo = {
+          entity: 'task',
+          entityId: taskId,
+          localData: currentTask as unknown as Task, // Use full task as local data
+          remoteData: currentTask as unknown as Task, // Use full task as remote data
+          conflictFields: [field],
+          timestamp: new Date(),
+        };
 
-      const resolution = await ConflictResolver.resolveConflict<Task>(conflictInfo);
-      return resolution.resolvedData[field as keyof Task];
-    } catch (error) {
-      console.error('Error resolving conflict:', error);
-      return null;
-    }
+        const resolution = await ConflictResolver.resolveConflict<Task>(conflictInfo);
+        return resolution.resolvedData[field as keyof Task];
+      },
+      { taskId, field },
+    );
   }
 }
 

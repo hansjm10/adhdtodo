@@ -2,7 +2,9 @@
 // Shows when partners are online and what they're working on with live updates
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { BaseService } from './BaseService';
 import { supabase } from './SupabaseService';
+import type { Result } from '../types/common.types';
 
 // Type for Supabase presence data - represents the raw data from Supabase
 type PresenceData = Record<string, unknown>;
@@ -25,7 +27,7 @@ export interface PresenceConfig {
   offlineTimeout: number; // ms
 }
 
-class PresenceService {
+class PresenceService extends BaseService {
   private channel: RealtimeChannel | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private awayTimer: ReturnType<typeof setTimeout> | null = null;
@@ -38,61 +40,73 @@ class PresenceService {
     offlineTimeout: 900000, // 15 minutes
   };
 
+  constructor() {
+    super('Presence');
+  }
+
   /**
    * Initialize presence tracking for a user
    */
-  async startPresence(userId: string, initialTaskId?: string): Promise<void> {
-    if (this.currentUserId === userId && this.channel) {
-      return; // Already tracking
-    }
-
-    await this.stopPresence();
-
-    this.currentUserId = userId;
-    this.channel = supabase.channel(`presence:${userId}`);
-
-    // Track own presence
-    await this.updatePresence('online', initialTaskId);
-
-    // Set up presence subscription for all users
-    this.channel
-      .on('presence', { event: 'sync' }, () => {
-        this.handlePresenceSync();
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        this.handlePresenceJoin(key, newPresences);
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        this.handlePresenceLeave(key, leftPresences);
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          this.startHeartbeat();
+  async startPresence(userId: string, initialTaskId?: string): Promise<Result<void>> {
+    return this.wrapAsync(
+      'startPresence',
+      async () => {
+        if (this.currentUserId === userId && this.channel) {
+          return; // Already tracking
         }
-      });
+
+        await this.stopPresence();
+
+        this.currentUserId = userId;
+        this.channel = supabase.channel(`presence:${userId}`);
+
+        // Track own presence
+        await this.updatePresence('online', initialTaskId);
+
+        // Set up presence subscription for all users
+        this.channel
+          .on('presence', { event: 'sync' }, () => {
+            this.handlePresenceSync();
+          })
+          .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+            this.handlePresenceJoin(key, newPresences);
+          })
+          .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+            this.handlePresenceLeave(key, leftPresences);
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              this.startHeartbeat();
+            }
+          });
+      },
+      { userId, initialTaskId },
+    );
   }
 
   /**
    * Stop presence tracking
    */
-  async stopPresence(): Promise<void> {
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
-    }
+  async stopPresence(): Promise<Result<void>> {
+    return this.wrapAsync('stopPresence', async () => {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
 
-    if (this.awayTimer) {
-      clearTimeout(this.awayTimer);
-      this.awayTimer = null;
-    }
+      if (this.awayTimer) {
+        clearTimeout(this.awayTimer);
+        this.awayTimer = null;
+      }
 
-    if (this.channel) {
-      await this.channel.unsubscribe();
-      this.channel = null;
-    }
+      if (this.channel) {
+        await this.channel.unsubscribe();
+        this.channel = null;
+      }
 
-    this.currentUserId = null;
-    this.presenceState.clear();
+      this.currentUserId = null;
+      this.presenceState.clear();
+    });
   }
 
   /**
@@ -104,7 +118,7 @@ class PresenceService {
     metadata?: PresenceState['metadata'],
   ): Promise<void> {
     if (!this.channel || !this.currentUserId) {
-      console.warn('Presence not initialized');
+      this.logError('updatePresence', new Error('Presence not initialized'));
       return;
     }
 

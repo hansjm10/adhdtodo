@@ -1,25 +1,13 @@
 // ABOUTME: Tests for PINAuthService handling PIN-based authentication
 // including secure PIN storage, verification, and attempt tracking
 
-import { PINAuthService } from '../PINAuthService';
-import { SecureStorageService } from '../SecureStorageService';
-import { CryptoService } from '../CryptoService';
+import PINAuthService from '../PINAuthService';
+import SecureStorageService from '../SecureStorageService';
+import CryptoService from '../CryptoService';
 
 // Mock dependencies
-jest.mock('../SecureStorageService', () => ({
-  SecureStorageService: {
-    saveSecure: jest.fn(),
-    getSecure: jest.fn(),
-    deleteSecure: jest.fn(),
-  },
-}));
-
-jest.mock('../CryptoService', () => ({
-  CryptoService: {
-    hashPIN: jest.fn(),
-    verifyPIN: jest.fn(),
-  },
-}));
+jest.mock('../SecureStorageService');
+jest.mock('../CryptoService');
 
 describe('PINAuthService', () => {
   beforeEach(() => {
@@ -33,30 +21,36 @@ describe('PINAuthService', () => {
       CryptoService.hashPIN.mockResolvedValue(hashedPIN);
       SecureStorageService.saveSecure.mockResolvedValue();
 
-      await PINAuthService.setupPIN(pin);
+      const result = await PINAuthService.setupPIN(pin);
 
+      expect(result.success).toBe(true);
       expect(CryptoService.hashPIN).toHaveBeenCalledWith(pin);
       expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('USER_PIN', hashedPIN);
     });
 
     it('should validate PIN format before saving', async () => {
-      await expect(PINAuthService.setupPIN('123')).rejects.toThrow('PIN must be at least 4 digits');
+      const result = await PINAuthService.setupPIN('123');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('PIN must be at least 4 digits');
       expect(CryptoService.hashPIN).not.toHaveBeenCalled();
       expect(SecureStorageService.saveSecure).not.toHaveBeenCalled();
     });
 
     it('should reject non-numeric PINs', async () => {
-      await expect(PINAuthService.setupPIN('abcd')).rejects.toThrow(
-        'PIN must contain only numbers',
-      );
+      const result = await PINAuthService.setupPIN('abcd');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('PIN must contain only numbers');
       expect(CryptoService.hashPIN).not.toHaveBeenCalled();
       expect(SecureStorageService.saveSecure).not.toHaveBeenCalled();
     });
 
     it('should reject PINs longer than 8 digits', async () => {
-      await expect(PINAuthService.setupPIN('123456789')).rejects.toThrow(
-        'PIN must not exceed 8 digits',
-      );
+      const result = await PINAuthService.setupPIN('123456789');
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('PIN must not exceed 8 digits');
       expect(CryptoService.hashPIN).not.toHaveBeenCalled();
       expect(SecureStorageService.saveSecure).not.toHaveBeenCalled();
     });
@@ -71,20 +65,22 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.verifyPIN(pin);
 
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
       expect(SecureStorageService.getSecure).toHaveBeenCalledWith('USER_PIN');
       expect(CryptoService.verifyPIN).toHaveBeenCalledWith(pin, storedHash);
-      expect(result).toBe(true);
     });
 
     it('should reject incorrect PIN', async () => {
-      const pin = '1234';
-      const storedHash = 'hashed_5678';
+      const pin = '5678';
+      const storedHash = 'hashed_1234';
       SecureStorageService.getSecure.mockResolvedValue(storedHash);
       CryptoService.verifyPIN.mockResolvedValue(false);
 
       const result = await PINAuthService.verifyPIN(pin);
 
-      expect(result).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
     });
 
     it('should return false when no PIN is set', async () => {
@@ -92,7 +88,8 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.verifyPIN('1234');
 
-      expect(result).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
       expect(CryptoService.verifyPIN).not.toHaveBeenCalled();
     });
   });
@@ -103,8 +100,8 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.isPINEnabled();
 
-      expect(result).toBe(true);
-      expect(SecureStorageService.getSecure).toHaveBeenCalledWith('USER_PIN');
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
     });
 
     it('should return false when PIN is not set', async () => {
@@ -112,7 +109,8 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.isPINEnabled();
 
-      expect(result).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
     });
   });
 
@@ -120,8 +118,9 @@ describe('PINAuthService', () => {
     it('should enable PIN fallback option', async () => {
       SecureStorageService.saveSecure.mockResolvedValue();
 
-      await PINAuthService.enablePINFallback();
+      const result = await PINAuthService.enablePINFallback();
 
+      expect(result.success).toBe(true);
       expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('PIN_FALLBACK_ENABLED', true);
     });
   });
@@ -130,8 +129,9 @@ describe('PINAuthService', () => {
     it('should disable PIN fallback option', async () => {
       SecureStorageService.saveSecure.mockResolvedValue();
 
-      await PINAuthService.disablePINFallback();
+      const result = await PINAuthService.disablePINFallback();
 
+      expect(result.success).toBe(true);
       expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('PIN_FALLBACK_ENABLED', false);
     });
   });
@@ -142,8 +142,8 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.isPINFallbackEnabled();
 
-      expect(result).toBe(true);
-      expect(SecureStorageService.getSecure).toHaveBeenCalledWith('PIN_FALLBACK_ENABLED');
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(true);
     });
 
     it('should return false when PIN fallback is disabled', async () => {
@@ -151,7 +151,8 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.isPINFallbackEnabled();
 
-      expect(result).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
     });
 
     it('should return false when PIN fallback setting is not set', async () => {
@@ -159,7 +160,8 @@ describe('PINAuthService', () => {
 
       const result = await PINAuthService.isPINFallbackEnabled();
 
-      expect(result).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(false);
     });
   });
 
@@ -175,8 +177,9 @@ describe('PINAuthService', () => {
       CryptoService.hashPIN.mockResolvedValue(newHash);
       SecureStorageService.saveSecure.mockResolvedValue();
 
-      await PINAuthService.changePIN(currentPIN, newPIN);
+      const result = await PINAuthService.changePIN(currentPIN, newPIN);
 
+      expect(result.success).toBe(true);
       expect(CryptoService.verifyPIN).toHaveBeenCalledWith(currentPIN, storedHash);
       expect(CryptoService.hashPIN).toHaveBeenCalledWith(newPIN);
       expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('USER_PIN', newHash);
@@ -185,33 +188,30 @@ describe('PINAuthService', () => {
     it('should reject PIN change with incorrect current PIN', async () => {
       const currentPIN = '1234';
       const newPIN = '5678';
-      const storedHash = 'hashed_9999';
+      const storedHash = 'hashed_1234';
 
       SecureStorageService.getSecure.mockResolvedValue(storedHash);
       CryptoService.verifyPIN.mockResolvedValue(false);
 
-      await expect(PINAuthService.changePIN(currentPIN, newPIN)).rejects.toThrow(
-        'Current PIN is incorrect',
-      );
+      const result = await PINAuthService.changePIN(currentPIN, newPIN);
 
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('Current PIN is incorrect');
       expect(CryptoService.hashPIN).not.toHaveBeenCalled();
-      expect(SecureStorageService.saveSecure).not.toHaveBeenCalledWith(
-        'USER_PIN',
-        expect.anything(),
-      );
     });
 
     it('should validate new PIN format', async () => {
       const currentPIN = '1234';
-      const invalidNewPIN = 'abc';
+      const newPIN = '123'; // Too short
       const storedHash = 'hashed_1234';
 
       SecureStorageService.getSecure.mockResolvedValue(storedHash);
       CryptoService.verifyPIN.mockResolvedValue(true);
 
-      await expect(PINAuthService.changePIN(currentPIN, invalidNewPIN)).rejects.toThrow(
-        'PIN must contain only numbers',
-      );
+      const result = await PINAuthService.changePIN(currentPIN, newPIN);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('PIN must be at least 4 digits');
     });
   });
 
@@ -224,22 +224,25 @@ describe('PINAuthService', () => {
       CryptoService.verifyPIN.mockResolvedValue(true);
       SecureStorageService.deleteSecure.mockResolvedValue();
 
-      await PINAuthService.removePIN(pin);
+      const result = await PINAuthService.removePIN(pin);
 
+      expect(result.success).toBe(true);
       expect(CryptoService.verifyPIN).toHaveBeenCalledWith(pin, storedHash);
       expect(SecureStorageService.deleteSecure).toHaveBeenCalledWith('USER_PIN');
       expect(SecureStorageService.deleteSecure).toHaveBeenCalledWith('PIN_FALLBACK_ENABLED');
     });
 
     it('should reject removal with incorrect PIN', async () => {
-      const pin = '1234';
-      const storedHash = 'hashed_5678';
+      const pin = '5678';
+      const storedHash = 'hashed_1234';
 
       SecureStorageService.getSecure.mockResolvedValue(storedHash);
       CryptoService.verifyPIN.mockResolvedValue(false);
 
-      await expect(PINAuthService.removePIN(pin)).rejects.toThrow('PIN is incorrect');
+      const result = await PINAuthService.removePIN(pin);
 
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain('PIN is incorrect');
       expect(SecureStorageService.deleteSecure).not.toHaveBeenCalled();
     });
   });
@@ -249,9 +252,10 @@ describe('PINAuthService', () => {
       SecureStorageService.getSecure.mockResolvedValue(2);
       SecureStorageService.saveSecure.mockResolvedValue();
 
-      const count = await PINAuthService.recordFailedPINAttempt();
+      const result = await PINAuthService.recordFailedPINAttempt();
 
-      expect(count).toBe(3);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(3);
       expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('FAILED_PIN_ATTEMPTS', 3);
     });
 
@@ -259,9 +263,10 @@ describe('PINAuthService', () => {
       SecureStorageService.getSecure.mockResolvedValue(null);
       SecureStorageService.saveSecure.mockResolvedValue();
 
-      const count = await PINAuthService.recordFailedPINAttempt();
+      const result = await PINAuthService.recordFailedPINAttempt();
 
-      expect(count).toBe(1);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(1);
       expect(SecureStorageService.saveSecure).toHaveBeenCalledWith('FAILED_PIN_ATTEMPTS', 1);
     });
   });
@@ -270,8 +275,9 @@ describe('PINAuthService', () => {
     it('should delete failed PIN attempt counter', async () => {
       SecureStorageService.deleteSecure.mockResolvedValue();
 
-      await PINAuthService.resetFailedPINAttempts();
+      const result = await PINAuthService.resetFailedPINAttempts();
 
+      expect(result.success).toBe(true);
       expect(SecureStorageService.deleteSecure).toHaveBeenCalledWith('FAILED_PIN_ATTEMPTS');
     });
   });

@@ -113,15 +113,7 @@ class SecureStorageService extends BaseService implements ISecureStorageService 
 
   clear(): Promise<void> {
     // SecureStore does not support clearing all items
-    const result = this.wrapSync('clear', () => {
-      throw new Error('SecureStore does not support clearing all items');
-    });
-
-    if (!result.success) {
-      throw new Error(result.error!.message);
-    }
-
-    return Promise.resolve();
+    return Promise.reject(new Error('SecureStore does not support clearing all items'));
   }
 
   async multiGet<T = unknown>(keys: string[]): Promise<Array<[string, T | null]>> {

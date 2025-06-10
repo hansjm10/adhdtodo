@@ -1,11 +1,12 @@
 // ABOUTME: Service for managing rewards, XP, and streak tracking
 // Handles XP calculations, streak management, and reward statistics
 
+import { BaseService } from './BaseService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TaskStorageService from './TaskStorageService';
 import { REWARD_POINTS } from '../constants/TaskConstants';
-import ErrorHandler from '../utils/ErrorHandler';
 import type { Task } from '../types';
+import type { Result } from '../types/common.types';
 
 const STREAK_KEY = 'streak_data';
 const LAST_COMPLETION_KEY = 'last_completion_date';
@@ -33,13 +34,16 @@ export interface RewardStats {
 
 export interface IRewardService {
   calculateTaskXP(task: Task): number;
-  updateStreak(): Promise<StreakData>;
-  getStreakData(): Promise<StreakData>;
-  getStats(): Promise<RewardStats>;
-  checkForAchievements(task: Task): Promise<Achievement[]>;
+  updateStreak(): Promise<Result<StreakData>>;
+  getStreakData(): Promise<Result<StreakData>>;
+  getStats(): Promise<Result<RewardStats>>;
+  checkForAchievements(task: Task): Promise<Result<Achievement[]>>;
 }
 
-class RewardService implements IRewardService {
+class RewardService extends BaseService implements IRewardService {
+  constructor() {
+    super('Reward');
+  }
   calculateTaskXP(task: Task): number {
     let xp = REWARD_POINTS.TASK_COMPLETION;
 
@@ -61,13 +65,17 @@ class RewardService implements IRewardService {
     return xp;
   }
 
-  async updateStreak(): Promise<StreakData> {
-    try {
+  async updateStreak(): Promise<Result<StreakData>> {
+    return this.wrapAsync('updateStreak', async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const lastCompletionStr = await AsyncStorage.getItem(LAST_COMPLETION_KEY);
-      const streakData = await this.getStreakData();
+      const streakDataResult = await this.getStreakData();
+      const streakData =
+        streakDataResult.success && streakDataResult.data
+          ? streakDataResult.data
+          : { current: 0, best: 0 };
 
       if (!lastCompletionStr) {
         // First task ever completed
@@ -106,95 +114,105 @@ class RewardService implements IRewardService {
       await this.setStreakData(streakData);
 
       return streakData;
-    } catch (error) {
-      ErrorHandler.handleStorageError(error, 'save');
-      return { current: 0, best: 0 };
-    }
+    });
   }
 
-  async getStreakData(): Promise<StreakData> {
-    try {
+  async getStreakData(): Promise<Result<StreakData>> {
+    return this.wrapAsync('getStreakData', async () => {
       const data = await AsyncStorage.getItem(STREAK_KEY);
       return data ? (JSON.parse(data) as StreakData) : { current: 0, best: 0 };
-    } catch (error) {
-      ErrorHandler.handleStorageError(error, 'load');
-      return { current: 0, best: 0 };
-    }
+    });
   }
 
-  private async setStreakData(streakData: StreakData): Promise<void> {
-    try {
+  private async setStreakData(streakData: StreakData): Promise<Result<void>> {
+    return this.wrapAsync('setStreakData', async () => {
       await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(streakData));
-    } catch (error) {
-      ErrorHandler.handleStorageError(error, 'save');
-    }
+    });
   }
 
-  async getStats(): Promise<RewardStats> {
-    const allTasks = await TaskStorageService.getAllTasks();
-    const completedTasks = await TaskStorageService.getCompletedTasks();
+  async getStats(): Promise<Result<RewardStats>> {
+    return this.wrapAsync('getStats', async () => {
+      const allTasks = await TaskStorageService.getAllTasks();
+      const completedTasks = await TaskStorageService.getCompletedTasks();
 
-    const totalXP = completedTasks.reduce((sum, task) => sum + (task.xpEarned ?? 0), 0);
-    const tasksCompleted = completedTasks.length;
-    const totalTasks = allTasks.length;
-    const completionRate = totalTasks > 0 ? Math.round((tasksCompleted / totalTasks) * 100) : 0;
+      const totalXP = completedTasks.reduce((sum, task) => sum + (task.xpEarned ?? 0), 0);
+      const tasksCompleted = completedTasks.length;
+      const totalTasks = allTasks.length;
+      const completionRate = totalTasks > 0 ? Math.round((tasksCompleted / totalTasks) * 100) : 0;
 
-    const streakData = await this.getStreakData();
+      const streakDataResult = await this.getStreakData();
+      const streakData =
+        streakDataResult.success && streakDataResult.data
+          ? streakDataResult.data
+          : { current: 0, best: 0 };
 
-    return {
-      totalXP,
-      tasksCompleted,
-      totalTasks,
-      completionRate,
-      currentStreak: streakData.current,
-      bestStreak: streakData.best,
-    };
+      return {
+        totalXP,
+        tasksCompleted,
+        totalTasks,
+        completionRate,
+        currentStreak: streakData.current,
+        bestStreak: streakData.best,
+      };
+    });
   }
 
-  async checkForAchievements(task: Task): Promise<Achievement[]> {
-    const achievements: Achievement[] = [];
-    const stats = await this.getStats();
+  async checkForAchievements(task: Task): Promise<Result<Achievement[]>> {
+    return this.wrapAsync(
+      'checkForAchievements',
+      async () => {
+        const achievements: Achievement[] = [];
+        const statsResult = await this.getStats();
 
-    // First task achievement
-    if (stats.tasksCompleted === 1) {
-      achievements.push({
-        id: 'first_task',
-        title: 'First Step',
-        description: 'Completed your first task!',
-        xp: 20,
-      });
-    }
+        if (!statsResult.success || !statsResult.data) {
+          return achievements;
+        }
 
-    // Streak achievements
-    if (stats.currentStreak === 3) {
-      achievements.push({
-        id: 'streak_3',
-        title: 'On a Roll',
-        description: '3 day streak!',
-        xp: 30,
-      });
-    }
+        const stats = statsResult.data;
 
-    if (stats.currentStreak === 7) {
-      achievements.push({
-        id: 'streak_7',
-        title: 'Week Warrior',
-        description: '7 day streak!',
-        xp: 50,
-      });
-    }
+        // First task achievement
+        if (stats.tasksCompleted === 1) {
+          achievements.push({
+            id: 'first_task',
+            title: 'First Step',
+            description: 'Completed your first task!',
+            xp: 20,
+          });
+        }
 
-    // XP milestones
-    if (stats.totalXP >= 100 && stats.totalXP - (task.xpEarned || 0) < 100) {
-      achievements.push({
-        id: 'xp_100',
-        title: 'Century',
-        description: 'Earned 100 XP!',
-        xp: 25,
-      });
-    }
+        // Streak achievements
+        if (stats.currentStreak === 3) {
+          achievements.push({
+            id: 'streak_3',
+            title: 'On a Roll',
+            description: '3 day streak!',
+            xp: 30,
+          });
+        }
 
-    return achievements;
+        if (stats.currentStreak === 7) {
+          achievements.push({
+            id: 'streak_7',
+            title: 'Week Warrior',
+            description: '7 day streak!',
+            xp: 50,
+          });
+        }
+
+        // XP milestones
+        if (stats.totalXP >= 100 && stats.totalXP - (task.xpEarned || 0) < 100) {
+          achievements.push({
+            id: 'xp_100',
+            title: 'Century',
+            description: 'Earned 100 XP!',
+            xp: 25,
+          });
+        }
+
+        return achievements;
+      },
+      { task },
+    );
   }
 }
 

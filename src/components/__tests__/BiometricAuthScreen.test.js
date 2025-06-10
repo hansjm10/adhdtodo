@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import BiometricAuthScreen from '../BiometricAuthScreen';
 import BiometricAuthService from '../../services/BiometricAuthService';
-import { PINAuthService } from '../../services/PINAuthService';
+import PINAuthService from '../../services/PINAuthService';
 
 // Mock services
 jest.mock('../../services/BiometricAuthService', () => ({

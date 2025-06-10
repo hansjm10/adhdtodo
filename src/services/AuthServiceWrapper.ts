@@ -1,11 +1,11 @@
 // ABOUTME: Wrapper service that switches between local and Supabase auth based on feature flags
 // Provides seamless migration path from local to cloud authentication
 
+import { BaseService } from './BaseService';
 import type { IAuthService } from './AuthService';
 import LocalAuthService from './AuthService';
 import SupabaseAuthService from './SupabaseAuthService';
 import FeatureFlags from './FeatureFlags';
-import SecureLogger from './SecureLogger';
 import type { User, UserRole, SecureToken } from '../types/user.types';
 import type {
   AuthResult,
@@ -15,17 +15,21 @@ import type {
   PasswordResetResult,
 } from '../types/auth.types';
 
-class AuthServiceWrapper implements IAuthService {
+class AuthServiceWrapper extends BaseService implements IAuthService {
   private localService: IAuthService = LocalAuthService;
   private supabaseService: IAuthService = SupabaseAuthService;
   private currentService: IAuthService | null = null;
+
+  constructor() {
+    super('AuthWrapper');
+  }
 
   private async getService(): Promise<IAuthService> {
     if (!this.currentService) {
       const useSupabase = await FeatureFlags.isSupabaseAuthEnabled();
       this.currentService = useSupabase ? this.supabaseService : this.localService;
 
-      SecureLogger.info(`Using ${useSupabase ? 'Supabase' : 'Local'} auth service`, {
+      this.logger.info(`Using ${useSupabase ? 'Supabase' : 'Local'} auth service`, {
         code: 'AUTH_WRAPPER_001',
       });
     }
@@ -167,15 +171,12 @@ class AuthServiceWrapper implements IAuthService {
     try {
       // Silently create account in Supabase for future migration
       await this.supabaseService.signUp(email, password, name, role);
-      SecureLogger.info('Shadow Supabase account created', {
+      this.logger.info('Shadow Supabase account created', {
         code: 'AUTH_SHADOW_001',
       });
     } catch (error) {
       // Silent failure - don't affect user experience
-      SecureLogger.error('Failed to create shadow account', {
-        code: 'AUTH_SHADOW_002',
-        context: error instanceof Error ? error.message : 'Unknown error',
-      });
+      this.logError('createShadowAccount', error, { email });
     }
   }
 
@@ -185,7 +186,7 @@ class AuthServiceWrapper implements IAuthService {
       const result = await this.supabaseService.login(email, password);
 
       if (result.success) {
-        SecureLogger.info('User exists in Supabase, ready for migration', {
+        this.logger.info('User exists in Supabase, ready for migration', {
           code: 'AUTH_MIGRATE_001',
         });
 
@@ -194,9 +195,7 @@ class AuthServiceWrapper implements IAuthService {
       }
     } catch (error) {
       // Silent failure - user continues with local auth
-      SecureLogger.info('Supabase migration check failed', {
-        code: 'AUTH_MIGRATE_002',
-      });
+      this.logError('attemptSupabaseMigration', error, { email });
     }
   }
 
