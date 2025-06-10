@@ -20,6 +20,7 @@ import NotificationService from '../services/NotificationService';
 import PartnershipService from '../services/PartnershipService';
 import type { Task } from '../types/task.types';
 import type { User, Partnership } from '../types/user.types';
+import { logError } from '../utils/ErrorHandler';
 
 interface EncouragementModalProps extends Pick<ModalProps, 'visible'> {
   onClose: () => void;
@@ -65,7 +66,7 @@ const EncouragementModal = ({
       resetModal();
       onClose();
     } catch (error) {
-      // Error sending encouragement
+      logError('EncouragementModal.handleSendEncouragement', error);
     } finally {
       setSending(false);
     }
@@ -159,9 +160,7 @@ const EncouragementModal = ({
               ]}
               onPress={() => {
                 handleSendEncouragement().catch((error) => {
-                  if (global.__DEV__) {
-                    console.error('Failed to send encouragement:', error);
-                  }
+                  logError('EncouragementModal.onPress', error);
                 });
               }}
               disabled={(!customMessage && !selectedMessage) || sending}

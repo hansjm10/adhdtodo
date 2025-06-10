@@ -8,6 +8,7 @@ import NotificationBanner from './NotificationBanner';
 import NotificationService from '../services/NotificationService';
 import UserStorageService from '../services/UserStorageService';
 import type { Notification, User, NotificationTypes } from '../types';
+import { logError } from '../utils/ErrorHandler';
 
 // Extended notification type that includes the data property from the service
 interface NotificationWithData extends Omit<Notification, 'timestamp'> {
@@ -36,8 +37,7 @@ const NotificationContainer = () => {
       const user = await UserStorageService.getCurrentUser();
       setCurrentUser(user);
     } catch (error) {
-      // Error loading user
-      console.error('Error loading current user:', error);
+      logError('NotificationContainer.loadCurrentUser', error);
     }
   }, []);
 
@@ -77,8 +77,7 @@ const NotificationContainer = () => {
 
       lastCheckRef.current = new Date();
     } catch (error) {
-      // Error checking notifications
-      console.error('Error checking for new notifications:', error);
+      logError('NotificationContainer.checkForNewNotifications', error);
     }
   }, [currentUser]);
 
@@ -100,9 +99,7 @@ const NotificationContainer = () => {
 
   useEffect(() => {
     loadCurrentUser().catch((error) => {
-      if (global.__DEV__) {
-        console.error('Failed to load current user:', error);
-      }
+      logError('NotificationContainer.useEffect.loadCurrentUser', error);
     });
     return () => {
       if (checkIntervalRef.current) {
@@ -115,17 +112,13 @@ const NotificationContainer = () => {
     if (currentUser) {
       // Check for new notifications immediately
       checkForNewNotifications().catch((error) => {
-        if (global.__DEV__) {
-          console.error('Failed to check notifications:', error);
-        }
+        logError('NotificationContainer.useEffect.checkForNewNotifications', error);
       });
 
       // Set up polling interval
       checkIntervalRef.current = setInterval(() => {
         checkForNewNotifications().catch((error) => {
-          if (global.__DEV__) {
-            console.error('Failed to check notifications:', error);
-          }
+          logError('NotificationContainer.interval.checkForNewNotifications', error);
         });
       }, 5000); // Check every 5 seconds
     }

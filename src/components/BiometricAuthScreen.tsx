@@ -17,6 +17,7 @@ import {
 import type { BiometricSupport, SecuritySettings } from '../services/BiometricAuthService';
 import BiometricAuthService from '../services/BiometricAuthService';
 import PINAuthService from '../services/PINAuthService';
+import { logError } from '../utils/ErrorHandler';
 
 interface BiometricAuthScreenProps {
   onSuccess: () => void;
@@ -36,9 +37,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
 
   useEffect(() => {
     checkAuthMethods().catch((error) => {
-      if (global.__DEV__) {
-        console.error('Failed to check auth methods:', error);
-      }
+      logError('BiometricAuthScreen.checkAuthMethods', error);
     });
   }, []);
 
@@ -60,7 +59,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         setShowPIN(true);
       }
     } catch (error) {
-      console.error('Error checking auth methods:', error);
+      logError('BiometricAuthScreen.checkAuthMethods', error);
     }
   };
 
@@ -76,9 +75,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
             text: 'Try Again',
             onPress: (): void => {
               handleBiometricAuth().catch((error) => {
-                if (global.__DEV__) {
-                  console.error('Failed biometric auth:', error);
-                }
+                logError('BiometricAuthScreen.handleBiometricAuth.retry', error);
               });
             },
           },
@@ -91,6 +88,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         ]);
       }
     } catch (error) {
+      logError('BiometricAuthScreen.handleBiometricAuth', error);
       Alert.alert('Error', 'Failed to authenticate. Please try again.');
     } finally {
       setLoading(false);
@@ -127,6 +125,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
         }
       }
     } catch (error) {
+      logError('BiometricAuthScreen.handlePINSubmit', error);
       Alert.alert('Error', 'Failed to verify PIN. Please try again.');
     } finally {
       setLoading(false);
@@ -203,9 +202,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
             style={[styles.button, styles.primaryButton, loading && styles.buttonDisabled]}
             onPress={() => {
               handlePINSubmit().catch((error) => {
-                if (global.__DEV__) {
-                  console.error('Failed to submit PIN:', error);
-                }
+                logError('BiometricAuthScreen.handlePINSubmit.onPress', error);
               });
             }}
             disabled={loading || pin.length === 0}
@@ -245,9 +242,7 @@ const BiometricAuthScreen: React.FC<BiometricAuthScreenProps> = ({
           style={[styles.button, styles.primaryButton, loading && styles.buttonDisabled]}
           onPress={() => {
             handleBiometricAuth().catch((error) => {
-              if (global.__DEV__) {
-                console.error('Failed biometric auth:', error);
-              }
+              logError('BiometricAuthScreen.handleBiometricAuth.onPress', error);
             });
           }}
           disabled={loading}
