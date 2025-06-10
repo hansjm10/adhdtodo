@@ -110,7 +110,12 @@ class ConnectionMonitor extends BaseService {
 
     this.logger.info('Connection monitoring stopped', {
       code: 'CONNECTION_MONITOR_001',
-      context: 'Service stopped by user request',
+      context: JSON.stringify({
+        reason: 'Service stopped by user request',
+        wasMonitoring: this.isMonitoring,
+        hadActiveCallbacks: this.callbacks.size > 0,
+        hadHealthCheck: this.healthCheckInterval !== null,
+      }),
     });
   }
 
@@ -269,6 +274,14 @@ class ConnectionMonitor extends BaseService {
     // Detect connection changes
     if (!previousState) {
       // Initial state
+      this.logger.info('Initial connection state detected', {
+        code: 'CONNECTION_MONITOR_005',
+        context: JSON.stringify({
+          isConnected: this.currentState.isConnected,
+          connectionType: this.currentState.connectionType,
+          isInternetReachable: this.currentState.isInternetReachable,
+        }),
+      });
       this.emitEvent({
         type: this.currentState.isConnected ? 'connected' : 'disconnected',
         timestamp: new Date(),
@@ -278,6 +291,16 @@ class ConnectionMonitor extends BaseService {
       // Connection state changed
       if (this.currentState.isConnected) {
         // Reconnected
+        this.logger.info('Connection restored', {
+          code: 'CONNECTION_MONITOR_006',
+          context: JSON.stringify({
+            previousConnectionType: previousState.connectionType,
+            currentConnectionType: this.currentState.connectionType,
+            wasInternetReachable: previousState.isInternetReachable,
+            isInternetReachable: this.currentState.isInternetReachable,
+            connectionDetails: this.currentState.details,
+          }),
+        });
         this.onConnectionRestored();
         this.emitEvent({
           type: 'restored',
@@ -286,6 +309,15 @@ class ConnectionMonitor extends BaseService {
         });
       } else {
         // Disconnected
+        this.logger.info('Connection lost', {
+          code: 'CONNECTION_MONITOR_007',
+          context: JSON.stringify({
+            previousConnectionType: previousState.connectionType,
+            hadInternetAccess: previousState.isInternetReachable,
+            failureCount: this.failureCount,
+            isCircuitOpen: this.isCircuitOpen,
+          }),
+        });
         this.emitEvent({
           type: 'disconnected',
           timestamp: new Date(),
@@ -354,7 +386,13 @@ class ConnectionMonitor extends BaseService {
       this.isCircuitOpen = false;
       this.logger.info('Circuit breaker closed - connection restored', {
         code: 'CONNECTION_MONITOR_002',
-        context: `Previous failure count: ${this.failureCount}`,
+        context: JSON.stringify({
+          previousFailureCount: this.failureCount,
+          timeSinceLastFailure: this.lastFailureTime
+            ? Date.now() - new Date(this.lastFailureTime).getTime()
+            : null,
+          circuitWasOpenFor: 'auto-recovery',
+        }),
       });
     }
   }
@@ -370,7 +408,15 @@ class ConnectionMonitor extends BaseService {
       this.isCircuitOpen = true;
       this.logger.info('Circuit breaker opened due to repeated failures', {
         code: 'CONNECTION_MONITOR_003',
-        context: `Failure count: ${this.failureCount}, Threshold: ${this.FAILURE_THRESHOLD}`,
+        context: JSON.stringify({
+          failureCount: this.failureCount,
+          threshold: this.FAILURE_THRESHOLD,
+          lastError: error.message,
+          timeSinceFirstFailure: this.lastFailureTime
+            ? Date.now() - this.lastFailureTime.getTime()
+            : 0,
+          connectionState: this.currentState,
+        }),
       });
 
       // Set timeout to try again later
@@ -378,7 +424,12 @@ class ConnectionMonitor extends BaseService {
         this.isCircuitOpen = false;
         this.logger.info('Circuit breaker timeout - attempting to close', {
           code: 'CONNECTION_MONITOR_004',
-          context: `Timeout duration: ${this.CIRCUIT_TIMEOUT}ms`,
+          context: JSON.stringify({
+            timeoutDuration: this.CIRCUIT_TIMEOUT,
+            failureCountBeforeReset: this.failureCount,
+            isConnected: this.isConnected(),
+            connectionType: this.currentState?.connectionType,
+          }),
         });
       }, this.CIRCUIT_TIMEOUT);
     }
@@ -410,14 +461,28 @@ class ConnectionMonitor extends BaseService {
         callback(event);
       } catch (error) {
         this.logError('emitEvent', error, {
-          eventType: event.type,
-          eventTimestamp: event.timestamp.toISOString(),
-          connectionState: event.connectionState.isConnected,
-          connectionType: event.connectionState.connectionType,
-          subscriberCount: this.callbacks.size,
-          subscriberIndex: index,
-          eventMetadata: event.metadata,
-          callbackError: error instanceof Error ? error.message : String(error),
+          event: {
+            type: event.type,
+            timestamp: event.timestamp.toISOString(),
+            metadata: event.metadata,
+          },
+          connection: {
+            isConnected: event.connectionState.isConnected,
+            type: event.connectionState.connectionType,
+            isInternetReachable: event.connectionState.isInternetReachable,
+            details: event.connectionState.details,
+          },
+          subscriber: {
+            totalCount: this.callbacks.size,
+            failedIndex: index,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            errorType: error instanceof Error ? error.constructor.name : typeof error,
+          },
+          monitorState: {
+            isMonitoring: this.isMonitoring,
+            isCircuitOpen: this.isCircuitOpen,
+            failureCount: this.failureCount,
+          },
         });
       }
     });
