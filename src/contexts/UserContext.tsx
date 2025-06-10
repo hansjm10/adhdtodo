@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
 import UserStorageService from '../services/UserStorageService';
 import type { User, Partnership } from '../types/user.types';
+import { logError } from '../utils/ErrorHandler';
 
 interface UserContextValue {
   user: User | null;
@@ -78,7 +79,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error loading user data:', err);
+      logError('UserContext.loadUserData', err);
     } finally {
       setLoading(false);
     }
@@ -168,7 +169,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error updating user:', err);
+      logError('UserContext.updateUser', err);
     }
   }, []);
 
@@ -182,7 +183,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error updating partner:', err);
+        logError('UserContext.setPartnerData', err);
       }
     },
     [user],
@@ -198,7 +199,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error updating partnership:', err);
+        logError('UserContext.setPartnershipData', err);
       }
     },
     [user],
@@ -228,7 +229,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       setPartnership(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error during logout:', err);
+      logError('UserContext.logout', err);
     }
   }, []);
 
