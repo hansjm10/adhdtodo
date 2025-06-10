@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTasks } from '../contexts';
 import HyperfocusView from './HyperfocusView';
 import SettingsService from '../services/SettingsService';
+import { logError } from '../utils/ErrorHandler';
 
 const DEFAULT_WORK_DURATION = 25 * 60; // 25 minutes in seconds
 const DEFAULT_BREAK_DURATION = 5 * 60; // 5 minutes in seconds
@@ -46,9 +47,7 @@ export const HyperfocusContainer: React.FC = () => {
     };
 
     loadSettings().catch((error) => {
-      if (global.__DEV__) {
-        console.error('Failed to load settings:', error);
-      }
+      logError('HyperfocusContainer.loadSettings', error);
     });
   }, []);
 
@@ -65,6 +64,7 @@ export const HyperfocusContainer: React.FC = () => {
         timeSpent: (task.timeSpent || 0) + Math.round(workDuration / 60),
       });
     } catch (error) {
+      logError('HyperfocusContainer.updateTaskTimeSpent', error);
       Alert.alert('Error', 'Failed to update task progress.');
     }
   }, [task, updateTask, workDuration]);
@@ -100,9 +100,7 @@ export const HyperfocusContainer: React.FC = () => {
     } else {
       setSessionCount((prev) => prev + 1);
       updateTaskTimeSpent().catch((error) => {
-        if (global.__DEV__) {
-          console.error('Failed to update time spent:', error);
-        }
+        logError('HyperfocusContainer.handleTimerComplete', error);
       });
       Alert.alert('Great Work!', 'Time for a break. You deserve it!', [
         {

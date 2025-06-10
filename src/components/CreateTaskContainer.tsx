@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useUser, useTasks } from '../contexts';
 import CreateTaskView from './CreateTaskView';
 import { createTask } from '../utils/TaskModel';
+import { logError } from '../utils/ErrorHandler';
 
 export const CreateTaskContainer: React.FC = () => {
   const router = useRouter();
@@ -43,6 +44,7 @@ export const CreateTaskContainer: React.FC = () => {
       await addTask(newTask);
       router.back();
     } catch (error) {
+      logError('CreateTaskContainer', error);
       Alert.alert('Error', 'Failed to save task. Please try again.');
     }
   };
@@ -63,9 +65,7 @@ export const CreateTaskContainer: React.FC = () => {
       onTimePresetSelect={setSelectedTimePreset}
       onSave={() => {
         handleSave().catch((error) => {
-          if (global.__DEV__) {
-            console.error('Failed to save task:', error);
-          }
+          logError('CreateTaskContainer.onSave', error);
         });
       }}
       onCancel={handleCancel}

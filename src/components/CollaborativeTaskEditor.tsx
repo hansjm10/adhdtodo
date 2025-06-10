@@ -8,6 +8,7 @@ import { useCollaborativeEditing } from '../contexts/CollaborativeEditingContext
 import type { Task } from '../types/task.types';
 import { TaskStatus, TaskPriority } from '../types/task.types';
 import { colors, typography, spacing } from '../styles';
+import { logError } from '../utils/ErrorHandler';
 
 interface CollaborativeTaskEditorProps {
   task: Task;
@@ -185,9 +186,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
             }
           })
           .catch((error) => {
-            if (global.__DEV__) {
-              console.error('Failed to apply text operation:', error);
-            }
+            logError('CollaborativeTaskEditor.handleTextChange', error);
           });
       }
     }, 500);
@@ -217,9 +216,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
     // No error handling needed for cursor updates as they're non-critical
     updateCursor(field, position).catch((error) => {
       // Cursor updates are best-effort, failures don't impact functionality
-      if (global.__DEV__) {
-        console.info('Cursor update failed (non-critical):', error);
-      }
+      logError('CollaborativeTaskEditor.handleCursorPositionChange', error);
     });
   };
 
@@ -264,9 +261,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               style={styles.editButton}
               onPress={() => {
                 handleStartEditing().catch((error) => {
-                  if (global.__DEV__) {
-                    console.error('Failed to start editing:', error);
-                  }
+                  logError('CollaborativeTaskEditor.handleStartEditing', error);
                 });
               }}
               disabled={isReadOnly}
@@ -279,9 +274,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
               style={styles.doneButton}
               onPress={() => {
                 handleStopEditing().catch((error) => {
-                  if (global.__DEV__) {
-                    console.error('Failed to stop editing:', error);
-                  }
+                  logError('CollaborativeTaskEditor.handleStopEditing', error);
                 });
               }}
             >
@@ -396,9 +389,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
                 };
                 const newStatus = statusFlow[localTask.status] ?? TaskStatus.PENDING;
                 handleFieldChange('status', newStatus).catch((error) => {
-                  if (global.__DEV__) {
-                    console.error('Failed to update status:', error);
-                  }
+                  logError('CollaborativeTaskEditor.handleStatusChange', error);
                 });
               }
             }}
@@ -425,9 +416,7 @@ export const CollaborativeTaskEditor: React.FC<CollaborativeTaskEditorProps> = (
                 };
                 const newPriority = priorityFlow[localTask.priority] ?? TaskPriority.LOW;
                 handleFieldChange('priority', newPriority).catch((error) => {
-                  if (global.__DEV__) {
-                    console.error('Failed to update priority:', error);
-                  }
+                  logError('CollaborativeTaskEditor.handlePriorityChange', error);
                 });
               }
             }}
