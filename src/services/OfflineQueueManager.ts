@@ -127,7 +127,12 @@ class OfflineQueueManager extends BaseService {
         context: JSON.stringify({ count: this.queue.length }),
       });
     } catch (error) {
-      this.logError('loadPersistedQueue', error);
+      this.logError('loadPersistedQueue', error, {
+        queueSize: this.queue.length,
+        deadLetterQueueSize: this.deadLetterQueue.length,
+        storageKey: this.STORAGE_KEY,
+        deadLetterKey: this.DEAD_LETTER_KEY,
+      });
     }
   }
 
@@ -141,7 +146,14 @@ class OfflineQueueManager extends BaseService {
         AsyncStorage.setItem(this.DEAD_LETTER_KEY, JSON.stringify(this.deadLetterQueue)),
       ]);
     } catch (error) {
-      this.logError('persistQueue', error);
+      this.logError('persistQueue', error, {
+        queueSize: this.queue.length,
+        deadLetterQueueSize: this.deadLetterQueue.length,
+        storageKey: this.STORAGE_KEY,
+        deadLetterKey: this.DEAD_LETTER_KEY,
+        isProcessing: this.isProcessing,
+        isOnline: this.isOnline,
+      });
     }
   }
 
@@ -230,6 +242,8 @@ class OfflineQueueManager extends BaseService {
     this.isProcessing = true;
     const results: OfflineOperationResult[] = [];
     let processed = 0;
+    let failed = 0;
+    let skipped = 0;
 
     this.logger.info(`Processing offline queue (${this.queue.length} operations)`, {
       code: 'OFFLINE_QUEUE_005',
@@ -244,6 +258,7 @@ class OfflineQueueManager extends BaseService {
         if (!this.areDependenciesSatisfied(operation)) {
           // Move to end of queue and continue
           this.queue.push(this.queue.shift()!);
+          skipped++;
           continue;
         }
 
@@ -265,6 +280,7 @@ class OfflineQueueManager extends BaseService {
             // Move to dead letter queue
             const failedOp = this.queue.shift()!;
             this.deadLetterQueue.push(failedOp);
+            failed++;
             this.logger.info(`Moved ${operation.type} operation to dead letter queue`, {
               code: 'OFFLINE_QUEUE_007',
               context: JSON.stringify({ type: operation.type }),
@@ -298,7 +314,15 @@ class OfflineQueueManager extends BaseService {
         });
       }
     } catch (error) {
-      this.logError('processQueue', error);
+      this.logError('processQueue', error, {
+        queueSize: this.queue.length,
+        processedCount: processed,
+        failedCount: failed,
+        skippedCount: skipped,
+        isOnline: this.isOnline,
+        batchSize: this.BATCH_SIZE,
+        deadLetterQueueSize: this.deadLetterQueue.length,
+      });
     } finally {
       this.isProcessing = false;
     }

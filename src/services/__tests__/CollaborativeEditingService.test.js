@@ -36,6 +36,9 @@ describe('CollaborativeEditingService', () => {
     CollaborativeEditingService.editSessions = new Map();
     CollaborativeEditingService.channels = new Map();
     CollaborativeEditingService.currentUserId = null;
+
+    // Mock OfflineQueueManager
+    OfflineQueueManager.addOperation = jest.fn().mockResolvedValue({ success: true });
   });
 
   describe('startEditSession', () => {

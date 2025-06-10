@@ -408,9 +408,9 @@ class CollaborativeEditingService extends BaseService {
    * Apply operation to database
    */
   private async applyToDatabase(operation: EditOperation): Promise<boolean> {
-    try {
-      const updateData: Record<string, unknown> = {};
+    const updateData: Record<string, unknown> = {};
 
+    try {
       switch (operation.type) {
         case 'text': {
           // For text operations, we need to get the current value and apply the change
@@ -473,7 +473,14 @@ class CollaborativeEditingService extends BaseService {
 
       return !error;
     } catch (error) {
-      this.logError('applyToDatabase', error);
+      this.logError('applyToDatabase', error, {
+        taskId: operation.taskId,
+        operationType: operation.type,
+        field: operation.field,
+        operation: operation.operation,
+        userId: operation.userId,
+        updateDataKeys: Object.keys(updateData),
+      });
       return false;
     }
   }

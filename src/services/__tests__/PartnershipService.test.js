@@ -1,7 +1,7 @@
 // ABOUTME: Comprehensive unit tests for PartnershipService with BaseService error handling
 // Tests partnership creation, invites, status updates, and partnership operations with Result<T> patterns
 
-import PartnershipService from '../PartnershipService';
+import { SupabasePartnershipService } from '../PartnershipService';
 import { supabase } from '../SupabaseService';
 import UserStorageService from '../UserStorageService';
 import {
@@ -30,7 +30,17 @@ jest.mock('../UserStorageService', () => ({
 jest.mock('../../utils/PartnershipModel');
 jest.mock('../../utils/UserModel');
 
+// Mock Date.now() for consistent testing
+const mockNow = jest.spyOn(Date, 'now');
+
 describe('PartnershipService', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
   const mockPartnership = {
     id: 'partnership_123',
     adhdUserId: 'user_123',
@@ -99,9 +109,16 @@ describe('PartnershipService', () => {
   };
 
   let mockSupabaseQuery;
+  let PartnershipService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Reset time for each test
+    mockNow.mockReturnValue(1000000);
+
+    // Create a fresh instance for each test to avoid cache issues
+    PartnershipService = new SupabasePartnershipService();
 
     // Mock Supabase query chain
     mockSupabaseQuery = {
@@ -177,8 +194,8 @@ describe('PartnershipService', () => {
     });
 
     it('should return empty array if no partnerships', async () => {
-      // Clear cache by calling clearAllPartnerships first
-      await PartnershipService.clearAllPartnerships();
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
 
       mockSupabaseQuery.select.mockResolvedValue({
         error: null,
@@ -192,8 +209,8 @@ describe('PartnershipService', () => {
     });
 
     it('should handle Supabase errors', async () => {
-      // Clear cache first
-      await PartnershipService.clearAllPartnerships();
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
 
       mockSupabaseQuery.select.mockResolvedValue({
         error: new Error('Database error'),
@@ -239,11 +256,12 @@ describe('PartnershipService', () => {
 
   describe('updatePartnership', () => {
     it('should update existing partnership', async () => {
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
       // Setup fresh mock for this test
-      mockSupabaseQuery.update.mockResolvedValueOnce({
-        error: null,
-      });
-      mockSupabaseQuery.eq.mockResolvedValueOnce({
+      mockSupabaseQuery.update.mockReturnThis();
+      mockSupabaseQuery.eq.mockResolvedValue({
         error: null,
       });
 
@@ -260,6 +278,9 @@ describe('PartnershipService', () => {
     });
 
     it('should handle update errors', async () => {
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
       mockSupabaseQuery.update.mockResolvedValue({
         error: new Error('Update error'),
       });
@@ -275,14 +296,12 @@ describe('PartnershipService', () => {
 
   describe('createPartnershipInvite', () => {
     it('should create partnership invite for partner role', async () => {
-      mockSupabaseQuery.insert.mockResolvedValueOnce({
-        error: null,
-      });
-      mockSupabaseQuery.select.mockResolvedValueOnce({
-        error: null,
-        data: mockDatabasePartnership,
-      });
-      mockSupabaseQuery.single.mockResolvedValueOnce({
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      mockSupabaseQuery.insert.mockReturnThis();
+      mockSupabaseQuery.select.mockReturnThis();
+      mockSupabaseQuery.single.mockResolvedValue({
         error: null,
         data: mockDatabasePartnership,
       });
@@ -296,14 +315,12 @@ describe('PartnershipService', () => {
     });
 
     it('should create partnership invite for adhd_user role', async () => {
-      mockSupabaseQuery.insert.mockResolvedValueOnce({
-        error: null,
-      });
-      mockSupabaseQuery.select.mockResolvedValueOnce({
-        error: null,
-        data: mockDatabasePartnership,
-      });
-      mockSupabaseQuery.single.mockResolvedValueOnce({
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      mockSupabaseQuery.insert.mockReturnThis();
+      mockSupabaseQuery.select.mockReturnThis();
+      mockSupabaseQuery.single.mockResolvedValue({
         error: null,
         data: mockDatabasePartnership,
       });
@@ -328,15 +345,12 @@ describe('PartnershipService', () => {
 
   describe('acceptPartnershipInvite', () => {
     it('should accept valid partnership invite', async () => {
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
       // Mock finding the partnership
-      mockSupabaseQuery.select.mockResolvedValueOnce({
-        error: null,
-        data: null, // No data for select
-      });
-      mockSupabaseQuery.eq.mockResolvedValueOnce({
-        error: null,
-        data: null,
-      });
+      mockSupabaseQuery.select.mockReturnValueOnce(mockSupabaseQuery);
+      mockSupabaseQuery.eq.mockReturnValueOnce(mockSupabaseQuery);
       mockSupabaseQuery.single.mockResolvedValueOnce({
         error: null,
         data: {
@@ -348,15 +362,9 @@ describe('PartnershipService', () => {
       });
 
       // Mock updating the partnership
-      mockSupabaseQuery.update.mockResolvedValueOnce({
-        error: null,
-      });
-      mockSupabaseQuery.eq.mockResolvedValueOnce({
-        error: null,
-      });
-      mockSupabaseQuery.select.mockResolvedValueOnce({
-        error: null,
-      });
+      mockSupabaseQuery.update.mockReturnValueOnce(mockSupabaseQuery);
+      mockSupabaseQuery.eq.mockReturnValueOnce(mockSupabaseQuery);
+      mockSupabaseQuery.select.mockReturnValueOnce(mockSupabaseQuery);
       mockSupabaseQuery.single.mockResolvedValueOnce({
         error: null,
         data: mockDatabasePartnership,
@@ -398,6 +406,10 @@ describe('PartnershipService', () => {
 
   describe('getUserPartnerships', () => {
     it('should return all partnerships for a user', async () => {
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      mockSupabaseQuery.select.mockReturnThis();
       mockSupabaseQuery.or.mockResolvedValue({
         error: null,
         data: [mockDatabasePartnership],
@@ -414,14 +426,18 @@ describe('PartnershipService', () => {
     });
 
     it('should return empty array if no partnerships', async () => {
-      // Clear cache first
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      // Clear cache first - set up mocks for clearAllPartnerships
+      mockSupabaseQuery.delete.mockReturnThis();
+      mockSupabaseQuery.neq.mockResolvedValueOnce({
+        error: null,
+      });
       await PartnershipService.clearAllPartnerships();
 
-      mockSupabaseQuery.select.mockResolvedValueOnce({
-        error: null,
-        data: [],
-      });
-      mockSupabaseQuery.or.mockResolvedValueOnce({
+      mockSupabaseQuery.select.mockReturnThis();
+      mockSupabaseQuery.or.mockResolvedValue({
         error: null,
         data: [],
       });
@@ -435,6 +451,12 @@ describe('PartnershipService', () => {
 
   describe('getActivePartnership', () => {
     it('should return active partnership for user', async () => {
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      mockSupabaseQuery.select.mockReturnThis();
+      mockSupabaseQuery.or.mockReturnThis();
+      mockSupabaseQuery.eq.mockReturnThis();
       mockSupabaseQuery.single.mockResolvedValue({
         error: null,
         data: mockDatabasePartnership,
@@ -448,6 +470,12 @@ describe('PartnershipService', () => {
     });
 
     it('should return null if no active partnership', async () => {
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      mockSupabaseQuery.select.mockReturnThis();
+      mockSupabaseQuery.or.mockReturnThis();
+      mockSupabaseQuery.eq.mockReturnThis();
       mockSupabaseQuery.single.mockResolvedValue({
         error: new Error('Not found'),
         data: null,
@@ -513,10 +541,12 @@ describe('PartnershipService', () => {
 
   describe('clearAllPartnerships', () => {
     it('should clear all partnerships from Supabase', async () => {
-      mockSupabaseQuery.delete.mockResolvedValueOnce({
-        error: null,
-      });
-      mockSupabaseQuery.neq.mockResolvedValueOnce({
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      // Set up the mock chain properly
+      mockSupabaseQuery.delete.mockReturnThis();
+      mockSupabaseQuery.neq.mockResolvedValue({
         error: null,
       });
 
@@ -532,7 +562,11 @@ describe('PartnershipService', () => {
     });
 
     it('should handle clear errors', async () => {
-      mockSupabaseQuery.delete.mockResolvedValue({
+      // Advance time to invalidate any cached data
+      mockNow.mockReturnValue(1000000 + 6 * 60 * 1000); // 6 minutes later (cache is 5 minutes)
+
+      mockSupabaseQuery.delete.mockReturnThis();
+      mockSupabaseQuery.neq.mockResolvedValue({
         error: new Error('Delete error'),
       });
 
