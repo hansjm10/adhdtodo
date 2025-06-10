@@ -15,6 +15,7 @@ import TaskStorageService from '../services/TaskStorageService';
 import type { Task } from '../types/task.types';
 import { TaskStatus, TaskPriority } from '../types/task.types';
 import { supabase } from '../services/SupabaseService';
+import { logError } from '../utils/ErrorHandler';
 
 // Define the context value interface
 interface TaskContextValue {
@@ -83,7 +84,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     } catch (err) {
       if (isMountedRef.current) {
         setError((err as Error).message);
-        console.error('Error loading tasks:', err);
+        logError('TaskContext.loadTasks', err);
       }
     } finally {
       if (isMountedRef.current) {
@@ -217,7 +218,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         // Real-time subscription will handle adding to state
       } catch (err) {
         setError((err as Error).message);
-        console.error('Error adding task:', err);
+        logError('TaskContext.addTask', err);
         throw err;
       }
     },
@@ -245,7 +246,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         // Real-time subscription will handle updating state
       } catch (err) {
         setError((err as Error).message);
-        console.error('Error updating task:', err);
+        logError('TaskContext.updateTask', err);
         throw err;
       }
     },
@@ -261,7 +262,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       // Real-time subscription will handle removing from state
     } catch (err) {
       setError((err as Error).message);
-      console.error('Error deleting task:', err);
+      logError('TaskContext.deleteTask', err);
       throw err;
     }
   }, []);

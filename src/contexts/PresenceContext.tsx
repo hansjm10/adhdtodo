@@ -6,6 +6,7 @@ import { AppState } from 'react-native';
 import type { PresenceState } from '../services/PresenceService';
 import PresenceService from '../services/PresenceService';
 import { useUser } from './UserContext';
+import { logError } from '../utils/ErrorHandler';
 
 interface PresenceContextType {
   presenceStates: Map<string, PresenceState>;
@@ -46,7 +47,7 @@ export const PresenceProvider: React.FC<PresenceProviderProps> = ({ children }) 
           setMyPresence(PresenceService.getPresenceState(user.id) ?? null);
         }, 5000); // Update every 5 seconds
       } catch (error) {
-        console.error('Error initializing presence:', error);
+        logError('PresenceContext.initializePresence', error);
       }
     };
 

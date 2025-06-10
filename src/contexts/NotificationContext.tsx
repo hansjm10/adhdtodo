@@ -15,6 +15,7 @@ import NotificationService from '../services/NotificationService';
 import type { Notification } from '../types/notification.types';
 import { NotificationTypes } from '../types/user.types';
 import { supabase } from '../services/SupabaseService';
+import { logError } from '../utils/ErrorHandler';
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -90,7 +91,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
     } catch (err) {
       if (isMountedRef.current) {
         setError((err as Error).message);
-        console.error('Error loading notifications:', err);
+        logError('NotificationContext.loadNotifications', err);
       }
     } finally {
       if (isMountedRef.current) {
@@ -157,7 +158,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
         // Real-time subscription will handle adding to state
       } catch (err) {
         setError((err as Error).message);
-        console.error('Error adding notification:', err);
+        logError('NotificationContext.addNotification', err);
         throw err;
       }
     },
@@ -178,7 +179,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
       }
     } catch (err) {
       setError((err as Error).message);
-      console.error('Error marking notification as read:', err);
+      logError('NotificationContext.markAsRead', err);
       throw err;
     }
   }, []);
@@ -197,7 +198,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
       }
     } catch (err) {
       setError((err as Error).message);
-      console.error('Error marking all notifications as read:', err);
+      logError('NotificationContext.markAllAsRead', err);
       throw err;
     }
   }, [currentUser?.id]);
@@ -213,7 +214,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
         setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       } catch (err) {
         setError((err as Error).message);
-        console.error('Error deleting notification:', err);
+        logError('NotificationContext.deleteNotification', err);
         throw err;
       }
     });
@@ -233,7 +234,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
       }
     } catch (err) {
       setError((err as Error).message);
-      console.error('Error clearing notifications:', err);
+      logError('NotificationContext.clearAllNotifications', err);
       throw err;
     }
   }, [currentUser?.id]);
